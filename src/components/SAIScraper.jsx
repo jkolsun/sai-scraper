@@ -48,22 +48,28 @@ const SIGNAL_TYPES = [
   { id: 'inboundResponseRisk', label: 'Inbound Response Risk', description: 'Slow or no response to inbound inquiries, risking lost opportunities from paid and organic traffic.', icon: '⚠', color: '#F59E0B' }
 ];
 
+// Real companies for testing - these have actual websites and likely run Google Ads
 const MOCK_COMPANIES = [
-  { name: 'Acme Corp', domain: 'acmecorp.com', industry: 'SaaS', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
-  { name: 'TechFlow', domain: 'techflow.io', industry: 'SaaS', employees: '11-50', location: 'United States', revenue: '$1M - $10M' },
-  { name: 'GrowthBase', domain: 'growthbase.com', industry: 'Marketing Agency', employees: '11-50', location: 'United States', revenue: '$1M - $10M' },
-  { name: 'Meridian Software', domain: 'meridiansw.com', industry: 'SaaS', employees: '201-500', location: 'Canada', revenue: '$10M - $50M' },
-  { name: 'CloudPeak Analytics', domain: 'cloudpeak.ai', industry: 'SaaS', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
-  { name: 'NexGen Retail', domain: 'nexgenretail.com', industry: 'E-commerce', employees: '501-1000', location: 'United States', revenue: '$50M - $100M' },
-  { name: 'Vertex Health', domain: 'vertexhealth.io', industry: 'Healthcare', employees: '201-500', location: 'United States', revenue: '$10M - $50M' },
-  { name: 'FinEdge', domain: 'finedge.com', industry: 'FinTech', employees: '51-200', location: 'United Kingdom', revenue: '$10M - $50M' },
-  { name: 'LearnPath', domain: 'learnpath.co', industry: 'EdTech', employees: '11-50', location: 'United States', revenue: '$1M - $10M' },
-  { name: 'PropTech Solutions', domain: 'proptechsolutions.com', industry: 'Real Estate', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
-  { name: 'DataDriven', domain: 'datadriven.io', industry: 'SaaS', employees: '11-50', location: 'Germany', revenue: '$1M - $10M' },
-  { name: 'ScaleUp Agency', domain: 'scaleupagency.com', industry: 'Marketing Agency', employees: '11-50', location: 'United States', revenue: '$1M - $10M' },
-  { name: 'BuildRight', domain: 'buildright.co', industry: 'Construction', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
-  { name: 'LegalEase', domain: 'legalease.com', industry: 'Legal', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
-  { name: 'InsureTech', domain: 'insuretech.io', industry: 'Insurance', employees: '51-200', location: 'United States', revenue: '$10M - $50M' }
+  { name: 'HubSpot', domain: 'hubspot.com', industry: 'SaaS', employees: '1000+', location: 'United States', revenue: '$100M+' },
+  { name: 'Mailchimp', domain: 'mailchimp.com', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$100M+' },
+  { name: 'Zendesk', domain: 'zendesk.com', industry: 'SaaS', employees: '1000+', location: 'United States', revenue: '$100M+' },
+  { name: 'Freshworks', domain: 'freshworks.com', industry: 'SaaS', employees: '1000+', location: 'United States', revenue: '$100M+' },
+  { name: 'Monday.com', domain: 'monday.com', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$100M+' },
+  { name: 'Pipedrive', domain: 'pipedrive.com', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'ActiveCampaign', domain: 'activecampaign.com', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'Calendly', domain: 'calendly.com', industry: 'SaaS', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'Intercom', domain: 'intercom.com', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$100M+' },
+  { name: 'Drift', domain: 'drift.com', industry: 'SaaS', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'Gong', domain: 'gong.io', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$100M+' },
+  { name: 'Outreach', domain: 'outreach.io', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$100M+' },
+  { name: 'Salesloft', domain: 'salesloft.com', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'ZoomInfo', domain: 'zoominfo.com', industry: 'SaaS', employees: '1000+', location: 'United States', revenue: '$100M+' },
+  { name: 'Apollo', domain: 'apollo.io', industry: 'SaaS', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'Lemlist', domain: 'lemlist.com', industry: 'SaaS', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
+  { name: 'Reply.io', domain: 'reply.io', industry: 'SaaS', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
+  { name: 'Woodpecker', domain: 'woodpecker.co', industry: 'SaaS', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
+  { name: 'Klenty', domain: 'klenty.com', industry: 'SaaS', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
+  { name: 'Mixmax', domain: 'mixmax.com', industry: 'SaaS', employees: '51-200', location: 'United States', revenue: '$10M - $50M' }
 ];
 
 // ==================== ICONS ====================
