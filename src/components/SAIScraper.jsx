@@ -316,30 +316,50 @@ const SAIScraper = () => {
       setCurrentStatus('Processing n8n results...');
       setProgress(80);
 
+      // Ensure we have an array
+      const resultsArray = Array.isArray(n8nResults) ? n8nResults : [n8nResults];
+
+      console.log('Processing results:', resultsArray);
+
       // Map n8n results back to our format
-      const processedResults = n8nResults.map((result, index) => {
-        const company = eligibleCompanies.find(c => c.domain === result.domain) || eligibleCompanies[index];
-        const signals = result.signals?.filter(s => s.detected).map(s => s.id) || [];
+      const processedResults = resultsArray.map((result, index) => {
+        // Handle case where result might be wrapped
+        const r = result?.json || result;
+
+        const company = eligibleCompanies.find(c => c.domain === r.domain) || eligibleCompanies[index];
+
+        // Extract signals - handle both array and object formats
+        let signalsList = [];
+        if (Array.isArray(r.signals)) {
+          signalsList = r.signals.filter(s => s.detected).map(s => s.id);
+        } else if (r.signals && typeof r.signals === 'object') {
+          // Handle signals as object with keys like googleAds, afterHoursCoverage, etc.
+          signalsList = Object.entries(r.signals)
+            .filter(([key, val]) => val?.detected)
+            .map(([key]) => key);
+        }
 
         return {
           id: Date.now() + index,
-          name: company?.name || result.domain,
-          domain: result.domain,
+          name: company?.name || r.domain || 'Unknown',
+          domain: r.domain || company?.domain || 'unknown.com',
           industry: company?.industry || 'Unknown',
           employees: company?.employees || 'Unknown',
           location: company?.location || 'Unknown',
           revenue: company?.revenue || 'Unknown',
-          score: result.score || 0,
-          signals,
-          signalDetails: result.signals?.filter(s => s.detected).map(s => ({
-            type: s.label,
-            value: s.value,
-            detected: result.checkedAt
-          })) || [],
-          whyNow: result.whyNow || 'Signal detected',
-          scrapedAt: result.checkedAt
+          score: r.score || r.totalScore || 0,
+          signals: signalsList,
+          signalDetails: Array.isArray(r.signals)
+            ? r.signals.filter(s => s.detected).map(s => ({
+                type: s.label,
+                value: s.value,
+                detected: r.checkedAt || r.timestamps?.scrapedAt
+              }))
+            : [],
+          whyNow: r.whyNow || r.explanation || 'Signal detected',
+          scrapedAt: r.checkedAt || r.timestamps?.scrapedAt
         };
-      }).filter(r => r.score >= minScore && r.signals.length > 0);
+      }).filter(r => r.domain && (r.score >= minScore || r.signals.length > 0));
 
       setResults(processedResults.sort((a, b) => b.score - a.score));
       setCompaniesFound(processedResults.length);
