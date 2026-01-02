@@ -26,43 +26,59 @@ export async function scrapeWithN8n(domains) {
 
     console.log('n8n raw response:', JSON.stringify(data, null, 2));
 
-    // The n8n workflow returns aggregated results in various formats
-    // Handle all possible response structures
+    // Helper to extract array from various n8n response formats
+    const extractArray = (obj) => {
+      if (!obj) return null;
 
-    // Direct array
-    if (Array.isArray(data)) {
-      return data;
-    }
-
-    // n8n Aggregate node wraps in { data: [...] }
-    if (data.data && Array.isArray(data.data)) {
-      return data.data;
-    }
-
-    // n8n sometimes returns { json: { data: [...] } }
-    if (data.json && Array.isArray(data.json)) {
-      return data.json;
-    }
-
-    if (data.json && data.json.data && Array.isArray(data.json.data)) {
-      return data.json.data;
-    }
-
-    // Sometimes wrapped in results property
-    if (data.results && Array.isArray(data.results)) {
-      return data.results;
-    }
-
-    // Handle { [0]: {...}, [1]: {...} } object format from n8n
-    if (typeof data === 'object' && !Array.isArray(data)) {
-      const keys = Object.keys(data);
-      // Check if keys are numeric (0, 1, 2, etc.)
-      if (keys.length > 0 && keys.every(k => !isNaN(parseInt(k)))) {
-        return keys.map(k => data[k]);
+      // Direct array
+      if (Array.isArray(obj)) {
+        // Check if items are wrapped in { json: {...} }
+        if (obj.length > 0 && obj[0].json) {
+          return obj.map(item => item.json);
+        }
+        return obj;
       }
+
+      // Object with data property (n8n Aggregate node output)
+      if (obj.data) {
+        return extractArray(obj.data);
+      }
+
+      // Object with json property
+      if (obj.json) {
+        return extractArray(obj.json);
+      }
+
+      // Object with results property
+      if (obj.results) {
+        return extractArray(obj.results);
+      }
+
+      // Object with numeric keys like { "0": {...}, "1": {...} }
+      if (typeof obj === 'object') {
+        const keys = Object.keys(obj);
+        if (keys.length > 0 && keys.every(k => !isNaN(parseInt(k)))) {
+          const arr = keys.sort((a, b) => parseInt(a) - parseInt(b)).map(k => obj[k]);
+          // Check if items are wrapped in { json: {...} }
+          if (arr.length > 0 && arr[0].json) {
+            return arr.map(item => item.json);
+          }
+          return arr;
+        }
+      }
+
+      return null;
+    };
+
+    const result = extractArray(data);
+
+    if (result && Array.isArray(result) && result.length > 0) {
+      console.log('Parsed n8n results:', result.length, 'items');
+      return result;
     }
 
-    // Single result wrapped in array
+    // Fallback: wrap single object in array
+    console.log('Fallback: wrapping response in array');
     return [data];
   } catch (error) {
     console.error('Error calling n8n webhook:', error);
