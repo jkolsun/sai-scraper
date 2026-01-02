@@ -1,0 +1,324 @@
+{
+  "name": "SAI Scraper - Google Ads Signal",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sai-google-ads",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "sai-google-ads"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract domains from incoming request\nconst domains = $input.first().json.body.domains || [];\n\n// Return each domain as separate item for processing\nreturn domains.map(domain => ({\n  json: {\n    domain: domain.replace(/^https?:\\/\\//, '').replace(/^www\\./, '').split('/')[0],\n    originalDomain: domain\n  }\n}));"
+      },
+      "id": "parse-domains",
+      "name": "Parse Domains",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {
+          "delayBetweenBatches": 2000
+        }
+      },
+      "id": "loop-domains",
+      "name": "Loop Domains",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://adstransparency.google.com/anji/_/rpc/SearchService/SearchCreatives",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "f.req",
+              "value": "={{JSON.stringify([[null,null,null,null,null,null,null,[$json.domain]]]})}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true
+            }
+          }
+        }
+      },
+      "id": "check-google-ads",
+      "name": "Check Google Ads Transparency",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process the Google Ads Transparency response\nconst domain = $input.first().json.domain;\nconst originalDomain = $input.first().json.originalDomain;\n\nlet hasAds = false;\nlet adDetails = null;\nlet confidence = 0;\nlet error = null;\n\ntry {\n  const response = $input.first().json;\n  \n  // Check if we got a valid response with ad data\n  if (response.data) {\n    const data = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);\n    \n    // Look for indicators of active ads\n    if (data.includes('creative') || data.includes('advertiser')) {\n      hasAds = true;\n      confidence = 80;\n      adDetails = 'Active ads detected in transparency center';\n    }\n  }\n  \n  // If HTTP request failed, check the error\n  if (response.error) {\n    error = response.error;\n    confidence = 0;\n  }\n  \n} catch (e) {\n  error = e.message;\n}\n\nreturn [{\n  json: {\n    domain,\n    originalDomain,\n    signal: 'googlePaidTraffic',\n    detected: hasAds,\n    confidence,\n    details: adDetails,\n    error,\n    checkedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-response",
+      "name": "Process Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "url": "=https://{{$json.domain}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (compatible; SAIBot/1.0)"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 8000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 3
+            }
+          }
+        }
+      },
+      "id": "fetch-website",
+      "name": "Fetch Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 400],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Analyze website for additional signals\nconst domain = $input.first().json.domain;\nconst html = $input.first().json.data || '';\n\n// Detect chat widgets (After Hours Coverage signal)\nconst chatWidgets = {\n  drift: /drift\\.com|dc\\.js|driftt/i,\n  intercom: /intercom\\.com|intercom\\.io|widget\\.intercom/i,\n  zendesk: /zendesk\\.com|zopim|zdassets/i,\n  hubspot: /hubspot\\.com\\/conversations|hs-scripts/i,\n  freshdesk: /freshdesk\\.com|freshchat/i,\n  crisp: /crisp\\.chat|crisp\\.im/i,\n  livechat: /livechatinc\\.com|livechat/i,\n  olark: /olark\\.com/i,\n  tawk: /tawk\\.to/i\n};\n\nlet chatWidgetDetected = null;\nfor (const [name, pattern] of Object.entries(chatWidgets)) {\n  if (pattern.test(html)) {\n    chatWidgetDetected = name;\n    break;\n  }\n}\n\n// Detect booking tools\nconst bookingTools = {\n  calendly: /calendly\\.com/i,\n  hubspotMeetings: /meetings\\.hubspot\\.com/i,\n  chilipiper: /chilipiper\\.com/i,\n  acuity: /acuityscheduling\\.com/i,\n  savvycal: /savvycal\\.com/i\n};\n\nlet bookingToolDetected = null;\nfor (const [name, pattern] of Object.entries(bookingTools)) {\n  if (pattern.test(html)) {\n    bookingToolDetected = name;\n    break;\n  }\n}\n\n// Check for forms (potential inbound response risk)\nconst hasContactForm = /contact-form|wpcf7|form.*contact|hubspot.*form/i.test(html);\n\nreturn [{\n  json: {\n    domain,\n    websiteAnalysis: {\n      chatWidget: chatWidgetDetected,\n      hasChatWidget: !!chatWidgetDetected,\n      bookingTool: bookingToolDetected,\n      hasBookingTool: !!bookingToolDetected,\n      hasContactForm\n    }\n  }\n}];"
+      },
+      "id": "analyze-website",
+      "name": "Analyze Website",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "merge-results",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine all signals and calculate score\nconst items = $input.all();\nconst adsData = items[0]?.json || {};\nconst websiteData = items[1]?.json?.websiteAnalysis || {};\n\nconst domain = adsData.domain;\n\n// Build signals array\nconst signals = [];\n\n// Google Paid Traffic signal\nif (adsData.detected) {\n  signals.push({\n    id: 'googlePaidTraffic',\n    label: 'Google Paid Traffic Active',\n    detected: true,\n    value: adsData.details || 'Active Google Ads detected',\n    confidence: adsData.confidence\n  });\n}\n\n// After Hours Coverage Gap signal\n// If they have chat but no 24/7 indicator, flag as potential gap\nif (websiteData.hasChatWidget) {\n  signals.push({\n    id: 'afterHoursCoverage',\n    label: 'After Hours Coverage Gap',\n    detected: true,\n    value: `Uses ${websiteData.chatWidget} - verify after-hours coverage`,\n    confidence: 60\n  });\n}\n\n// Inbound Response Risk\n// If they have forms but no chat/booking, potential slow response\nif (websiteData.hasContactForm && !websiteData.hasChatWidget && !websiteData.hasBookingTool) {\n  signals.push({\n    id: 'inboundResponseRisk',\n    label: 'Inbound Response Risk',\n    detected: true,\n    value: 'Form-only contact - no live chat or booking',\n    confidence: 70\n  });\n}\n\n// Calculate score\nconst scoreWeights = {\n  googlePaidTraffic: 40,\n  afterHoursCoverage: 30,\n  inboundResponseRisk: 25\n};\n\nlet score = 0;\nfor (const signal of signals) {\n  const weight = scoreWeights[signal.id] || 0;\n  score += Math.round(weight * (signal.confidence / 100));\n}\n\n// Generate \"Why Now\" message\nlet whyNow = 'Signal activity detected';\nconst signalIds = signals.map(s => s.id);\n\nif (signalIds.includes('googlePaidTraffic') && signalIds.includes('afterHoursCoverage')) {\n  whyNow = 'Paying for ads but potential after-hours coverage gap';\n} else if (signalIds.includes('googlePaidTraffic') && signalIds.includes('inboundResponseRisk')) {\n  whyNow = 'Ad spend at risk due to slow response setup';\n} else if (signalIds.includes('googlePaidTraffic')) {\n  whyNow = 'Active Google Ads spend detected';\n} else if (signalIds.includes('afterHoursCoverage')) {\n  whyNow = 'After-hours coverage gap identified';\n} else if (signalIds.includes('inboundResponseRisk')) {\n  whyNow = 'Inbound response at risk';\n}\n\nreturn [{\n  json: {\n    domain,\n    originalDomain: adsData.originalDomain,\n    score,\n    signals,\n    signalCount: signals.length,\n    whyNow,\n    websiteAnalysis: websiteData,\n    checkedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "calculate-score",
+      "name": "Calculate Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "aggregate-results",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1850, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Domains",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Domains": {
+      "main": [
+        [
+          {
+            "node": "Loop Domains",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Domains": {
+      "main": [
+        [
+          {
+            "node": "Check Google Ads Transparency",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Google Ads Transparency": {
+      "main": [
+        [
+          {
+            "node": "Process Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Website": {
+      "main": [
+        [
+          {
+            "node": "Analyze Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Response": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Website": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Calculate Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Score": {
+      "main": [
+        [
+          {
+            "node": "Loop Domains",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "SAI Scraper"
+    }
+  ]
+}
