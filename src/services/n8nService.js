@@ -24,15 +24,42 @@ export async function scrapeWithN8n(domains) {
 
     const data = await response.json();
 
-    // The n8n workflow returns aggregated results
-    // Handle both array and object responses
+    console.log('n8n raw response:', JSON.stringify(data, null, 2));
+
+    // The n8n workflow returns aggregated results in various formats
+    // Handle all possible response structures
+
+    // Direct array
     if (Array.isArray(data)) {
       return data;
     }
 
-    // If it's wrapped in a data property
+    // n8n Aggregate node wraps in { data: [...] }
     if (data.data && Array.isArray(data.data)) {
       return data.data;
+    }
+
+    // n8n sometimes returns { json: { data: [...] } }
+    if (data.json && Array.isArray(data.json)) {
+      return data.json;
+    }
+
+    if (data.json && data.json.data && Array.isArray(data.json.data)) {
+      return data.json.data;
+    }
+
+    // Sometimes wrapped in results property
+    if (data.results && Array.isArray(data.results)) {
+      return data.results;
+    }
+
+    // Handle { [0]: {...}, [1]: {...} } object format from n8n
+    if (typeof data === 'object' && !Array.isArray(data)) {
+      const keys = Object.keys(data);
+      // Check if keys are numeric (0, 1, 2, etc.)
+      if (keys.length > 0 && keys.every(k => !isNaN(parseInt(k)))) {
+        return keys.map(k => data[k]);
+      }
     }
 
     // Single result wrapped in array
