@@ -48,28 +48,32 @@ const SIGNAL_TYPES = [
   { id: 'inboundResponseRisk', label: 'Inbound Response Risk', description: 'Slow or no response to inbound inquiries, risking lost opportunities from paid and organic traffic.', icon: '⚠', color: '#F59E0B' }
 ];
 
-// Real companies for testing - these have actual websites and likely run Google Ads
+// Mix of small-medium businesses across industries - easier to scrape than enterprise SaaS
 const MOCK_COMPANIES = [
-  { name: 'HubSpot', domain: 'hubspot.com', industry: 'SaaS', employees: '1000+', location: 'United States', revenue: '$100M+' },
-  { name: 'Mailchimp', domain: 'mailchimp.com', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$100M+' },
-  { name: 'Zendesk', domain: 'zendesk.com', industry: 'SaaS', employees: '1000+', location: 'United States', revenue: '$100M+' },
-  { name: 'Freshworks', domain: 'freshworks.com', industry: 'SaaS', employees: '1000+', location: 'United States', revenue: '$100M+' },
-  { name: 'Monday.com', domain: 'monday.com', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$100M+' },
-  { name: 'Pipedrive', domain: 'pipedrive.com', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$50M - $100M' },
-  { name: 'ActiveCampaign', domain: 'activecampaign.com', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$50M - $100M' },
-  { name: 'Calendly', domain: 'calendly.com', industry: 'SaaS', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
-  { name: 'Intercom', domain: 'intercom.com', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$100M+' },
-  { name: 'Drift', domain: 'drift.com', industry: 'SaaS', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
-  { name: 'Gong', domain: 'gong.io', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$100M+' },
-  { name: 'Outreach', domain: 'outreach.io', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$100M+' },
-  { name: 'Salesloft', domain: 'salesloft.com', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$50M - $100M' },
-  { name: 'ZoomInfo', domain: 'zoominfo.com', industry: 'SaaS', employees: '1000+', location: 'United States', revenue: '$100M+' },
-  { name: 'Apollo', domain: 'apollo.io', industry: 'SaaS', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
-  { name: 'Lemlist', domain: 'lemlist.com', industry: 'SaaS', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
-  { name: 'Reply.io', domain: 'reply.io', industry: 'SaaS', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
-  { name: 'Woodpecker', domain: 'woodpecker.co', industry: 'SaaS', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
-  { name: 'Klenty', domain: 'klenty.com', industry: 'SaaS', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
-  { name: 'Mixmax', domain: 'mixmax.com', industry: 'SaaS', employees: '51-200', location: 'United States', revenue: '$10M - $50M' }
+  // Local service businesses (good targets for after-hours/response signals)
+  { name: 'Roto-Rooter', domain: 'rotorooter.com', industry: 'Professional Services', employees: '1000+', location: 'United States', revenue: '$100M+' },
+  { name: 'ServiceMaster', domain: 'servicemaster.com', industry: 'Professional Services', employees: '1000+', location: 'United States', revenue: '$100M+' },
+  { name: 'Mr. Electric', domain: 'mrelectric.com', industry: 'Professional Services', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'Two Men and a Truck', domain: 'twomenandatruck.com', industry: 'Logistics', employees: '501-1000', location: 'United States', revenue: '$100M+' },
+  { name: 'Servpro', domain: 'servpro.com', industry: 'Professional Services', employees: '1000+', location: 'United States', revenue: '$100M+' },
+  // Marketing agencies (often run Google Ads)
+  { name: 'WebFX', domain: 'webfx.com', industry: 'Marketing Agency', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'Thrive Agency', domain: 'thriveagency.com', industry: 'Marketing Agency', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
+  { name: 'Ignite Visibility', domain: 'ignitevisibility.com', industry: 'Marketing Agency', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
+  { name: 'Disruptive Advertising', domain: 'disruptiveadvertising.com', industry: 'Marketing Agency', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
+  { name: 'KlientBoost', domain: 'klientboost.com', industry: 'Marketing Agency', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
+  // E-commerce/Retail
+  { name: 'Chubbies', domain: 'chubbiesshorts.com', industry: 'E-commerce', employees: '51-200', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'MVMT Watches', domain: 'mvmt.com', industry: 'E-commerce', employees: '51-200', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'Beardbrand', domain: 'beardbrand.com', industry: 'E-commerce', employees: '11-50', location: 'United States', revenue: '$10M - $50M' },
+  // B2B Software (smaller ones)
+  { name: 'Process Street', domain: 'process.st', industry: 'SaaS', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
+  { name: 'Typeform', domain: 'typeform.com', industry: 'SaaS', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'Hotjar', domain: 'hotjar.com', industry: 'SaaS', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'Loom', domain: 'loom.com', industry: 'SaaS', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'Notion', domain: 'notion.so', industry: 'SaaS', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'Airtable', domain: 'airtable.com', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$100M+' },
+  { name: 'ClickUp', domain: 'clickup.com', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$100M+' }
 ];
 
 // ==================== ICONS ====================
