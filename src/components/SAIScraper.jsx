@@ -319,25 +319,46 @@ const SAIScraper = () => {
       // Ensure we have an array
       const resultsArray = Array.isArray(n8nResults) ? n8nResults : [n8nResults];
 
-      console.log('Processing results:', resultsArray);
+      console.log('Raw n8n results array:', JSON.stringify(resultsArray, null, 2));
 
       // Map n8n results back to our format
       const processedResults = resultsArray.map((result, index) => {
         // Handle case where result might be wrapped
         const r = result?.json || result;
 
+        console.log(`Processing item ${index}:`, JSON.stringify(r, null, 2));
+
         const company = eligibleCompanies.find(c => c.domain === r.domain) || eligibleCompanies[index];
 
         // Extract signals - handle both array and object formats
         let signalsList = [];
+        let signalDetails = [];
+
         if (Array.isArray(r.signals)) {
-          signalsList = r.signals.filter(s => s.detected).map(s => s.id);
+          console.log(`Item ${index} has signals array:`, r.signals);
+          signalsList = r.signals.filter(s => s && s.detected).map(s => s.id);
+          signalDetails = r.signals.filter(s => s && s.detected).map(s => ({
+            type: s.label || s.id,
+            value: s.value || s.reason,
+            detected: r.checkedAt || r.timestamps?.scrapedAt
+          }));
         } else if (r.signals && typeof r.signals === 'object') {
+          console.log(`Item ${index} has signals object:`, r.signals);
           // Handle signals as object with keys like googleAds, afterHoursCoverage, etc.
-          signalsList = Object.entries(r.signals)
-            .filter(([key, val]) => val?.detected)
-            .map(([key]) => key);
+          Object.entries(r.signals).forEach(([key, val]) => {
+            if (val?.detected) {
+              signalsList.push(key);
+              signalDetails.push({
+                type: val.label || key,
+                value: val.value || val.reason || val.details,
+                detected: r.checkedAt || r.timestamps?.scrapedAt
+              });
+            }
+          });
         }
+
+        const score = r.score || r.totalScore || 0;
+        console.log(`Item ${index} - domain: ${r.domain}, score: ${score}, signals: ${signalsList.length}, disqualified: ${r.disqualified}`);
 
         return {
           id: Date.now() + index,
@@ -347,22 +368,25 @@ const SAIScraper = () => {
           employees: company?.employees || 'Unknown',
           location: company?.location || 'Unknown',
           revenue: company?.revenue || 'Unknown',
-          score: r.score || r.totalScore || 0,
+          score: score,
           signals: signalsList,
-          signalDetails: Array.isArray(r.signals)
-            ? r.signals.filter(s => s.detected).map(s => ({
-                type: s.label,
-                value: s.value,
-                detected: r.checkedAt || r.timestamps?.scrapedAt
-              }))
-            : [],
-          whyNow: r.whyNow || r.explanation || 'Signal detected',
-          scrapedAt: r.checkedAt || r.timestamps?.scrapedAt
+          signalDetails: signalDetails,
+          whyNow: r.whyNow || r.explanation || r.disqualifyReason || 'Signal detected',
+          scrapedAt: r.checkedAt || r.timestamps?.scrapedAt,
+          disqualified: r.disqualified || false,
+          readyState: r.readyState
         };
-      }).filter(r => r.domain && (r.score >= minScore || r.signals.length > 0));
+      });
 
-      setResults(processedResults.sort((a, b) => b.score - a.score));
-      setCompaniesFound(processedResults.length);
+      console.log('All processed results before filter:', processedResults);
+
+      // Show all results including disqualified (score 0) for now - filter less aggressively
+      const filteredResults = processedResults.filter(r => r.domain && r.domain !== 'unknown.com');
+
+      console.log('Filtered results:', filteredResults.length);
+
+      setResults(filteredResults.sort((a, b) => b.score - a.score));
+      setCompaniesFound(filteredResults.length);
       setProgress(100);
       setCurrentStatus('Complete');
     } catch (error) {
