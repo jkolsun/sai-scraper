@@ -327,3 +327,149 @@ a:hover {
     display: none !important;
   }
 }
+
+/* ==================== MOBILE RESPONSIVE STYLES ==================== */
+
+/* Mobile-first layout adjustments */
+@media (max-width: 900px) {
+  /* Make the app container stack vertically on mobile */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* Override inline styles for mobile layout */
+  [style*="width: 420px"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  }
+
+  [style*="display: flex"][style*="flex: 1"][style*="overflow: hidden"] {
+    flex-direction: column !important;
+  }
+
+  /* Results table - make scrollable horizontally */
+  [style*="overflow-x: auto"] {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Smaller padding on mobile */
+  [style*="padding: 24px"] {
+    padding: 16px !important;
+  }
+
+  [style*="padding: 20px 24px"] {
+    padding: 16px !important;
+  }
+
+  /* Grid adjustments */
+  [style*="gridTemplateColumns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Smaller stat values on mobile */
+  .stat-value {
+    font-size: 22px !important;
+  }
+
+  /* Navigation tabs - make scrollable */
+  [style*="display: flex"][style*="gap: 8px"] {
+    flex-wrap: wrap;
+  }
+}
+
+/* Extra small screens (phones) */
+@media (max-width: 480px) {
+  /* Even smaller padding */
+  [style*="padding: 24px"],
+  [style*="padding: 20px 24px"],
+  [style*="padding: 16px"] {
+    padding: 12px !important;
+  }
+
+  /* Smaller fonts */
+  [style*="fontSize: '14px'"] {
+    font-size: 13px !important;
+  }
+
+  [style*="fontSize: '13px'"] {
+    font-size: 12px !important;
+  }
+
+  /* Smaller buttons */
+  button {
+    padding: 10px 14px !important;
+    font-size: 12px !important;
+  }
+
+  /* Table cells tighter */
+  td, th {
+    padding: 8px 10px !important;
+    font-size: 11px !important;
+  }
+
+  /* Signal cards - stack icon above text */
+  [style*="gap: '16px'"] {
+    gap: 10px !important;
+  }
+
+  /* Dropdown adjustments */
+  [style*="maxHeight: '220px'"] {
+    max-height: 180px !important;
+  }
+
+  /* Progress section */
+  [style*="width: '140px'"] {
+    width: 100px !important;
+  }
+}
+
+/* Improve touch targets on mobile */
+@media (hover: none) and (pointer: coarse) {
+  button,
+  [style*="cursor: pointer"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Larger checkboxes for touch */
+  [style*="width: '18px'"][style*="height: '18px'"] {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  /* Larger dropdown touch targets */
+  [style*="padding: '11px 14px'"] {
+    padding: 14px 16px !important;
+  }
+}
+
+/* Landscape phone adjustments */
+@media (max-width: 900px) and (orientation: landscape) {
+  /* Keep sidebar narrower in landscape */
+  [style*="width: 420px"] {
+    max-height: 40vh !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* Safe area insets for notched phones */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Fix for iOS momentum scrolling */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent text size adjustment on orientation change */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
