@@ -237,6 +237,7 @@ function processResults(organic, filters, maxResults) {
     'publicsaascompanies.com', 'omnius.so', 'ascendixtech.com', 'mikesonders.com',
     'advancedclient.io', 'semrush.com', 'technologyadvice.com', 'digitalsilk.com',
     'builtin.com', 'angel.co', 'producthunt.com', 'betalist.com',
+    'xtalks.com', 'thehealthcaretechnologyreport.com', 'healthcaretechnologyreport.com',
     'gov', 'edu', 'org'
   ]);
 
