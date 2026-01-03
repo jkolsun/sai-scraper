@@ -61,7 +61,7 @@ export default async function handler(req, res) {
     const data = await serperResponse.json();
     const organic = data.organic || [];
 
-    // Domains to skip
+    // Domains to skip (directories, social media, forums, training sites, gov)
     const skipDomains = new Set([
       'facebook.com', 'twitter.com', 'linkedin.com', 'instagram.com', 'youtube.com',
       'yelp.com', 'yellowpages.com', 'bbb.org', 'mapquest.com',
@@ -71,7 +71,11 @@ export default async function handler(req, res) {
       'avvo.com', 'findlaw.com', 'healthgrades.com', 'zocdoc.com',
       'forbes.com', 'inc.com', 'wikipedia.org', 'medium.com',
       'amazon.com', 'google.com', 'apple.com', 'microsoft.com',
-      'healthcare.gov', 'uhc.com', 'hcahealthcare.com'
+      'healthcare.gov', 'uhc.com', 'hcahealthcare.com',
+      'reddit.com', 'quora.com', 'stackexchange.com', 'stackoverflow.com',
+      'nextinsurance.com', 'contractortrainingcenter.com', 'trainingcenter.com',
+      'texas.gov', 'tsbpe.texas.gov', 'state.tx.us',
+      'coursera.org', 'udemy.com', 'skillshare.com'
     ]);
 
     const companies = [];
