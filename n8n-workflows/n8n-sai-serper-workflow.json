@@ -1,0 +1,313 @@
+{
+  "name": "SAI Scraper - Serper API v1",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sai-scraper-serper",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 500],
+      "webhookId": "sai-scraper-serper"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// CONFIGURATION & NORMALIZATION\n// ============================================\nconst body = $input.first().json.body || {};\nconst domains = body.domains || [];\nconst options = body.options || {};\n\n// SERPER API KEY - Get free at https://serper.dev (2500 free searches)\nconst SERPER_API_KEY = options.serperApiKey || 'YOUR_SERPER_API_KEY';\n\n// Signal weights\nconst SIGNAL_WEIGHTS = {\n  googleAds: 0.30,\n  afterHoursCoverage: 0.25,\n  inboundRisk: 0.20,\n  hiringSignals: 0.15,\n  techStack: 0.10\n};\n\nconst config = {\n  serperApiKey: SERPER_API_KEY,\n  signalWeights: SIGNAL_WEIGHTS\n};\n\n// Return each domain as separate item\nreturn domains.map((domain, index) => {\n  let cleanDomain = domain\n    .replace(/^https?:\\/\\//, '')\n    .replace(/^www\\./, '')\n    .split('/')[0]\n    .toLowerCase()\n    .trim();\n  \n  const companyName = cleanDomain\n    .replace(/\\.(com|io|co|net|org|ai|app)$/, '')\n    .replace(/[-_]/g, ' ')\n    .split('.')\n    .pop()\n    .replace(/\\b\\w/g, c => c.toUpperCase());\n  \n  return {\n    json: {\n      domain: cleanDomain,\n      companyName,\n      config,\n      timestamp: Date.now(),\n      signals: {},\n      enrichment: {},\n      errors: []\n    }\n  };\n});"
+      },
+      "id": "normalize-inputs",
+      "name": "Normalize Inputs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 500]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {
+          "delayBetweenBatches": 1000
+        }
+      },
+      "id": "loop-domains",
+      "name": "Loop Domains",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [500, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://google.serper.dev/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-API-KEY", "value": "={{$json.config.serperApiKey}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"q\": \"{{$json.domain}}\",\n  \"gl\": \"us\",\n  \"hl\": \"en\",\n  \"num\": 20\n}"
+      },
+      "id": "serper-ads-search",
+      "name": "Serper - Ads Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 350],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://google.serper.dev/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-API-KEY", "value": "={{$json.config.serperApiKey}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"q\": \"\\\"{{$json.companyName}}\\\" hiring jobs careers\",\n  \"gl\": \"us\",\n  \"hl\": \"en\",\n  \"num\": 10\n}"
+      },
+      "id": "serper-hiring-search",
+      "name": "Serper - Hiring Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 550],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://google.serper.dev/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-API-KEY", "value": "={{$json.config.serperApiKey}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"q\": \"\\\"{{$json.companyName}}\\\" site:linkedin.com/company\",\n  \"gl\": \"us\",\n  \"hl\": \"en\",\n  \"num\": 5\n}"
+      },
+      "id": "serper-linkedin-search",
+      "name": "Serper - LinkedIn Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 750],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// MERGE SERPER SEARCH RESULTS\n// ============================================\nconst items = $input.all();\n\nlet baseItem = null;\nlet adsData = null;\nlet hiringData = null;\nlet linkedInData = null;\n\nfor (const item of items) {\n  const json = item.json;\n  \n  // Find base item with domain\n  if (json.domain && json.config) {\n    baseItem = json;\n  }\n  \n  // Serper returns structured data - identify by search type\n  if (json.ads || json.organic) {\n    // Check if it's hiring search by looking at query\n    const searchParams = json.searchParameters || {};\n    const query = searchParams.q || '';\n    \n    if (query.includes('hiring') || query.includes('jobs') || query.includes('careers')) {\n      hiringData = json;\n    } else if (query.includes('linkedin.com')) {\n      linkedInData = json;\n    } else {\n      // Main search - check for ads\n      adsData = json;\n    }\n  }\n}\n\n// Use first item as base if not found\nif (!baseItem) {\n  baseItem = items[0]?.json || {};\n}\n\nreturn [{\n  json: {\n    ...baseItem,\n    serperData: {\n      ads: adsData,\n      hiring: hiringData,\n      linkedIn: linkedInData\n    }\n  }\n}];"
+      },
+      "id": "merge-search-results",
+      "name": "Merge Serper Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [950, 550]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// ANALYZE SERPER DATA FOR GOOGLE ADS\n// ============================================\nconst item = $input.first().json;\nconst adsData = item.serperData?.ads || {};\nconst domain = item.domain;\n\nlet googleAdsDetected = false;\nlet adCount = 0;\nlet adDetails = [];\nlet adTitles = [];\nlet adLinks = [];\n\ntry {\n  // Serper returns ads in a dedicated 'ads' array - VERY RELIABLE!\n  const ads = adsData.ads || [];\n  \n  if (ads.length > 0) {\n    googleAdsDetected = true;\n    adCount = ads.length;\n    \n    // Extract ad details\n    for (const ad of ads) {\n      if (ad.title) adTitles.push(ad.title);\n      if (ad.link) adLinks.push(ad.link);\n    }\n    \n    // Check if any ads are from the target domain\n    const domainAds = ads.filter(ad => \n      (ad.link && ad.link.includes(domain)) ||\n      (ad.displayLink && ad.displayLink.includes(domain))\n    );\n    \n    if (domainAds.length > 0) {\n      adDetails.push(`${domainAds.length} ads directly from ${domain}`);\n    }\n    \n    adDetails.push(`${adCount} total ads in SERP`);\n  }\n  \n  // Also check organic results for competitor context\n  const organic = adsData.organic || [];\n  const organicMentions = organic.filter(r => \n    r.link?.includes(domain) || r.snippet?.toLowerCase().includes(domain)\n  ).length;\n  \n  if (organicMentions > 0) {\n    adDetails.push(`${organicMentions} organic mentions`);\n  }\n  \n} catch (e) {\n  item.errors.push(`Ads analysis error: ${e.message}`);\n}\n\n// Calculate score\nlet googleAdsScore = 0;\nlet googleAdsConfidence = 0;\n\nif (googleAdsDetected) {\n  // More ads = higher score\n  googleAdsScore = Math.min(60 + (adCount * 5), 95);\n  googleAdsConfidence = 90; // Serper data is very reliable\n}\n\nreturn [{\n  json: {\n    ...item,\n    signals: {\n      ...item.signals,\n      googleAds: {\n        detected: googleAdsDetected,\n        score: googleAdsScore,\n        confidence: googleAdsConfidence,\n        adCount,\n        adTitles: adTitles.slice(0, 5),\n        source: 'serper_api',\n        details: googleAdsDetected \n          ? adDetails.join('; ')\n          : 'No Google Ads detected in SERP'\n      }\n    }\n  }\n}];"
+      },
+      "id": "analyze-ads",
+      "name": "Analyze Google Ads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1150, 550]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// ANALYZE HIRING SIGNALS FROM SERPER\n// ============================================\nconst item = $input.first().json;\nconst hiringData = item.serperData?.hiring || {};\nconst companyName = item.companyName;\n\nlet hiringDetected = false;\nlet jobCount = 0;\nlet hiringRoles = [];\nlet hiringPlatforms = [];\nlet jobListings = [];\n\ntry {\n  const organic = hiringData.organic || [];\n  \n  // Check each result for job indicators\n  for (const result of organic) {\n    const title = (result.title || '').toLowerCase();\n    const snippet = (result.snippet || '').toLowerCase();\n    const link = (result.link || '').toLowerCase();\n    const combined = title + ' ' + snippet;\n    \n    // Check for job platforms\n    if (link.includes('linkedin.com/jobs') || link.includes('linkedin.com/company')) {\n      if (!hiringPlatforms.includes('LinkedIn')) hiringPlatforms.push('LinkedIn');\n      hiringDetected = true;\n    }\n    if (link.includes('indeed.com')) {\n      if (!hiringPlatforms.includes('Indeed')) hiringPlatforms.push('Indeed');\n      hiringDetected = true;\n    }\n    if (link.includes('glassdoor.com')) {\n      if (!hiringPlatforms.includes('Glassdoor')) hiringPlatforms.push('Glassdoor');\n      hiringDetected = true;\n    }\n    if (link.includes('greenhouse.io') || link.includes('lever.co')) {\n      if (!hiringPlatforms.includes('ATS')) hiringPlatforms.push('ATS');\n      hiringDetected = true;\n    }\n    \n    // Extract job count from snippets\n    const countMatch = combined.match(/(\\d+)\\s*(job|position|opening)/i);\n    if (countMatch) {\n      jobCount = Math.max(jobCount, parseInt(countMatch[1]));\n      hiringDetected = true;\n    }\n    \n    // Detect specific roles\n    const rolePatterns = [\n      { pattern: /sales|account executive|ae\\b/i, role: 'Sales' },\n      { pattern: /sdr|bdr|business development/i, role: 'SDR/BDR' },\n      { pattern: /customer success|csm/i, role: 'Customer Success' },\n      { pattern: /marketing|growth/i, role: 'Marketing' },\n      { pattern: /engineer|developer|software/i, role: 'Engineering' },\n      { pattern: /support|service/i, role: 'Support' }\n    ];\n    \n    for (const { pattern, role } of rolePatterns) {\n      if (pattern.test(combined) && !hiringRoles.includes(role)) {\n        hiringRoles.push(role);\n        hiringDetected = true;\n      }\n    }\n    \n    // Save job listing info\n    if (title.includes('job') || title.includes('career') || title.includes('hiring')) {\n      jobListings.push({\n        title: result.title,\n        platform: link.includes('linkedin') ? 'LinkedIn' : \n                  link.includes('indeed') ? 'Indeed' : \n                  link.includes('glassdoor') ? 'Glassdoor' : 'Other'\n      });\n    }\n  }\n  \n  // Also check for hiring keywords in results\n  if (!hiringDetected) {\n    for (const result of organic) {\n      const combined = ((result.title || '') + ' ' + (result.snippet || '')).toLowerCase();\n      if (/hiring|careers|join our team|we're hiring|work with us/i.test(combined)) {\n        hiringDetected = true;\n        break;\n      }\n    }\n  }\n  \n} catch (e) {\n  item.errors.push(`Hiring analysis error: ${e.message}`);\n}\n\n// Calculate score\nlet hiringScore = 0;\nlet hiringConfidence = 0;\n\nif (hiringDetected) {\n  hiringScore = Math.min(50 + (hiringRoles.length * 10) + (jobCount * 2) + (hiringPlatforms.length * 10), 90);\n  hiringConfidence = Math.min(50 + (hiringPlatforms.length * 15) + (jobCount > 0 ? 20 : 0), 85);\n  \n  // Boost for sales/customer-facing roles\n  if (hiringRoles.includes('Sales') || hiringRoles.includes('SDR/BDR') || hiringRoles.includes('Customer Success')) {\n    hiringScore = Math.min(hiringScore + 15, 95);\n  }\n}\n\nreturn [{\n  json: {\n    ...item,\n    signals: {\n      ...item.signals,\n      hiring: {\n        detected: hiringDetected,\n        score: hiringScore,\n        confidence: hiringConfidence,\n        jobCount,\n        roles: hiringRoles,\n        platforms: hiringPlatforms,\n        listings: jobListings.slice(0, 5),\n        details: hiringDetected \n          ? `Actively hiring: ${hiringRoles.join(', ') || 'various roles'} via ${hiringPlatforms.join(', ') || 'job boards'}${jobCount > 0 ? ` (${jobCount}+ positions)` : ''}`\n          : 'No active hiring signals detected'\n      }\n    }\n  }\n}];"
+      },
+      "id": "analyze-hiring",
+      "name": "Analyze Hiring Signals",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1350, 550]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// EXTRACT LINKEDIN COMPANY DATA FROM SERPER\n// ============================================\nconst item = $input.first().json;\nconst linkedInData = item.serperData?.linkedIn || {};\n\nlet linkedInFound = false;\nlet linkedInUrl = null;\nlet employeeCount = null;\nlet employeeRange = null;\nlet companyDescription = '';\nlet industry = null;\n\ntry {\n  const organic = linkedInData.organic || [];\n  \n  // Find LinkedIn company URL\n  for (const result of organic) {\n    const link = result.link || '';\n    const urlMatch = link.match(/linkedin\\.com\\/company\\/([a-zA-Z0-9-]+)/i);\n    \n    if (urlMatch) {\n      linkedInFound = true;\n      linkedInUrl = `https://linkedin.com/company/${urlMatch[1]}`;\n      \n      // Extract info from snippet\n      const snippet = result.snippet || '';\n      \n      // Try to extract employee count\n      const empMatch = snippet.match(/(\\d[\\d,]*)\\s*(?:followers|employees)/i);\n      if (empMatch) {\n        employeeCount = parseInt(empMatch[1].replace(/,/g, ''));\n      }\n      \n      // Extract description\n      companyDescription = snippet.substring(0, 200);\n      \n      break;\n    }\n  }\n  \n  // Determine employee range bucket\n  if (employeeCount && !employeeRange) {\n    if (employeeCount <= 10) employeeRange = '1-10';\n    else if (employeeCount <= 50) employeeRange = '11-50';\n    else if (employeeCount <= 200) employeeRange = '51-200';\n    else if (employeeCount <= 500) employeeRange = '201-500';\n    else if (employeeCount <= 1000) employeeRange = '501-1000';\n    else employeeRange = '1000+';\n  }\n  \n} catch (e) {\n  item.errors.push(`LinkedIn analysis error: ${e.message}`);\n}\n\nreturn [{\n  json: {\n    ...item,\n    enrichment: {\n      ...item.enrichment,\n      linkedIn: {\n        found: linkedInFound,\n        url: linkedInUrl,\n        employeeCount,\n        employeeRange,\n        description: companyDescription\n      }\n    }\n  }\n}];"
+      },
+      "id": "analyze-linkedin",
+      "name": "Extract LinkedIn Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1550, 550]
+    },
+    {
+      "parameters": {
+        "url": "=https://{{$json.domain}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "User-Agent", "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36" },
+            { "name": "Accept", "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" },
+            { "name": "Accept-Language", "value": "en-US,en;q=0.9" }
+          ]
+        },
+        "options": { "timeout": 20000, "redirect": { "redirect": { "followRedirects": true, "maxRedirects": 5 } } }
+      },
+      "id": "scrape-website",
+      "name": "Scrape Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1750, 550],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// COMPREHENSIVE WEBSITE ANALYSIS\n// ============================================\nconst item = $input.first().json;\nconst rawHtml = item.data || '';\nconst html = rawHtml.toLowerCase();\n\n// Check scrape success\nconst scrapeSuccess = rawHtml.length > 1000 && \n  !rawHtml.includes('403 Forbidden') && \n  !rawHtml.includes('Access Denied') &&\n  !rawHtml.includes('Just a moment') && \n  !rawHtml.includes('captcha') &&\n  !rawHtml.includes('blocked');\n\nif (!scrapeSuccess) {\n  return [{\n    json: {\n      ...item,\n      data: undefined,\n      scrapeSuccess: false,\n      websiteAnalysis: {\n        hasChatWidget: false, hasBookingTool: false, hasContactForm: false,\n        hasPhone: false, has24x7: false, hasWeekendHours: false,\n        contactMethods: [], urgencyScore: 0, responseScore: 70\n      },\n      techStack: { detected: [], confidence: 0 }\n    }\n  }];\n}\n\n// ===== CHAT WIDGETS =====\nconst chatWidgets = {\n  intercom: /intercom|widget\\.intercom|intercomcdn/i,\n  drift: /drift\\.com|driftt|drift-frame/i,\n  zendesk: /zendesk|zopim|zdassets|ze-snippet/i,\n  hubspot: /hubspot.*conversations|hs-scripts.*conversations/i,\n  crisp: /crisp\\.chat|client\\.crisp/i,\n  livechat: /livechatinc/i,\n  freshdesk: /freshdesk|freshchat/i,\n  tawk: /tawk\\.to|embed\\.tawk/i,\n  tidio: /tidio\\.co/i,\n  podium: /podium\\.com.*webchat/i\n};\n\nlet chatWidget = null;\nfor (const [name, pattern] of Object.entries(chatWidgets)) {\n  if (pattern.test(rawHtml)) {\n    chatWidget = name;\n    break;\n  }\n}\n\n// ===== BOOKING TOOLS =====\nconst bookingTools = {\n  calendly: /calendly\\.com/i,\n  hubspotMeetings: /meetings\\.hubspot\\.com/i,\n  chilipiper: /chilipiper/i,\n  acuity: /acuityscheduling/i,\n  cal: /cal\\.com\\//i\n};\n\nlet bookingTool = null;\nfor (const [name, pattern] of Object.entries(bookingTools)) {\n  if (pattern.test(rawHtml)) {\n    bookingTool = name;\n    break;\n  }\n}\n\n// ===== CONTACT INFO =====\nconst hasPhone = /(?:\\+1[\\s.-]?)?\\(?\\d{3}\\)?[\\s.-]?\\d{3}[\\s.-]?\\d{4}/.test(rawHtml) || /href=\"tel:/i.test(rawHtml);\nconst hasClickToCall = /href=\"tel:/i.test(rawHtml);\nconst hasTollFree = /1-8[0-9]{2}-/i.test(rawHtml);\nconst emails = rawHtml.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/g) || [];\nconst validEmails = emails.filter(e => !e.includes('example') && !e.includes('test@'));\n\n// ===== FORMS =====\nconst hasContactForm = /<form[^>]*(?:contact|inquiry|lead|quote)/i.test(rawHtml) || \n  /contact-form|wpcf7|hubspot.*form|hs-form/i.test(rawHtml);\n\n// ===== HOURS =====\nconst has24x7 = /24\\/7|24 hours|always open|round.the.clock/i.test(html);\nconst hasWeekendHours = /saturday|sunday|weekend/i.test(html);\n\n// ===== URGENCY =====\nlet urgencyScore = 0;\nif (/emergency/i.test(html)) urgencyScore += 20;\nif (/urgent/i.test(html)) urgencyScore += 15;\nif (/24\\/7/i.test(html)) urgencyScore += 10;\nif (/same.day/i.test(html)) urgencyScore += 15;\nif (/call now/i.test(html)) urgencyScore += 10;\nurgencyScore = Math.min(urgencyScore, 100);\n\n// ===== RESPONSE SPEED =====\nlet responseScore = 70;\nif (/respond.*within.*minute/i.test(html)) responseScore = 5;\nelse if (/respond.*within.*hour/i.test(html)) responseScore = 15;\nelse if (/respond.*24/i.test(html)) responseScore = 30;\n\n// ===== TECH STACK =====\nconst techPatterns = {\n  hubspot: /hubspot|hs-scripts|hbspt/i,\n  salesforce: /salesforce|pardot/i,\n  marketo: /marketo|munchkin/i,\n  intercom: /intercom/i,\n  segment: /segment\\.com/i,\n  googleAnalytics: /google-analytics|gtag|googletagmanager/i,\n  hotjar: /hotjar/i,\n  stripe: /stripe\\.com/i\n};\n\nlet techStack = [];\nfor (const [name, pattern] of Object.entries(techPatterns)) {\n  if (pattern.test(rawHtml)) techStack.push(name);\n}\n\n// Build contact methods\nconst contactMethods = [];\nif (hasPhone) contactMethods.push('phone');\nif (validEmails.length > 0) contactMethods.push('email');\nif (chatWidget) contactMethods.push('chat');\nif (hasContactForm) contactMethods.push('form');\nif (bookingTool) contactMethods.push('booking');\n\nreturn [{\n  json: {\n    ...item,\n    data: undefined,\n    scrapeSuccess: true,\n    websiteAnalysis: {\n      chatWidget,\n      hasChatWidget: !!chatWidget,\n      bookingTool,\n      hasBookingTool: !!bookingTool,\n      hasContactForm,\n      hasPhone,\n      hasClickToCall,\n      hasTollFree,\n      hasEmail: validEmails.length > 0,\n      contactMethods,\n      contactMethodCount: contactMethods.length,\n      has24x7,\n      hasWeekendHours,\n      urgencyScore,\n      responseScore\n    },\n    techStack: {\n      detected: techStack,\n      count: techStack.length,\n      confidence: techStack.length > 0 ? Math.min(60 + techStack.length * 10, 95) : 0\n    }\n  }\n}];"
+      },
+      "id": "analyze-website",
+      "name": "Analyze Website",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1950, 550]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// CALCULATE AFTER-HOURS COVERAGE SIGNAL\n// ============================================\nconst item = $input.first().json;\nconst wa = item.websiteAnalysis || {};\n\nlet score = 0;\nlet details = [];\n\nif (!item.scrapeSuccess) {\n  score = 45;\n  details.push('Coverage verification pending (site protected)');\n} else {\n  if (!wa.has24x7) { score += 25; details.push('No 24/7 coverage'); }\n  if (!wa.hasWeekendHours) { score += 15; details.push('No weekend hours'); }\n  if (!wa.hasChatWidget) { score += 25; details.push('No live chat'); }\n  if (!wa.hasBookingTool) { score += 15; details.push('No self-service booking'); }\n  if (wa.urgencyScore > 30 && !wa.has24x7) {\n    score += 15;\n    details.push('Urgency messaging without 24/7 coverage');\n  }\n  if (wa.hasTollFree && !wa.has24x7) {\n    score += 10;\n    details.push('Toll-free without 24/7 availability');\n  }\n}\n\nscore = Math.max(0, Math.min(score, 100));\nconst detected = score > 35;\n\nreturn [{\n  json: {\n    ...item,\n    signals: {\n      ...item.signals,\n      afterHoursCoverage: {\n        detected,\n        score,\n        confidence: item.scrapeSuccess ? (score > 50 ? 85 : 70) : 40,\n        details: details.join('; '),\n        reason: score > 60 ? 'Significant coverage gap' : score > 35 ? 'Moderate coverage gap' : 'Adequate coverage'\n      }\n    }\n  }\n}];"
+      },
+      "id": "calc-after-hours",
+      "name": "Calculate After-Hours",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2150, 550]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// CALCULATE INBOUND RESPONSE RISK\n// ============================================\nconst item = $input.first().json;\nconst wa = item.websiteAnalysis || {};\n\nlet score = 0;\nlet details = [];\n\nif (!item.scrapeSuccess) {\n  score = 40;\n  details.push('Response analysis pending');\n} else {\n  if (!wa.hasPhone) { score += 30; details.push('No phone number'); }\n  else if (!wa.hasClickToCall) { score += 15; details.push('No click-to-call'); }\n  \n  if (!wa.hasContactForm) { score += 20; details.push('No contact form'); }\n  if (wa.responseScore > 50) { score += 20; details.push('No fast response commitment'); }\n  \n  const methods = wa.contactMethodCount || 0;\n  if (methods <= 1) { score += 25; details.push('Only 1 contact method'); }\n  else if (methods <= 2) { score += 15; details.push('Limited contact options'); }\n  \n  if (!wa.hasChatWidget) { score += 10; details.push('No instant response option'); }\n}\n\nscore = Math.max(0, Math.min(score, 100));\nconst detected = score > 40;\nconst riskLevel = score >= 70 ? 'high' : score >= 50 ? 'medium' : score >= 30 ? 'low' : 'minimal';\n\nreturn [{\n  json: {\n    ...item,\n    signals: {\n      ...item.signals,\n      inboundRisk: {\n        detected,\n        score,\n        confidence: item.scrapeSuccess ? (score > 50 ? 85 : 70) : 40,\n        riskLevel,\n        details: details.join('; '),\n        reason: riskLevel === 'high' ? 'High risk of losing leads' : riskLevel === 'medium' ? 'Moderate response risk' : 'Good response setup'\n      }\n    }\n  }\n}];"
+      },
+      "id": "calc-inbound-risk",
+      "name": "Calculate Inbound Risk",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2350, 550]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// CALCULATE TECH STACK SIGNAL\n// ============================================\nconst item = $input.first().json;\nconst ts = item.techStack || {};\nconst detected = ts.detected || [];\n\nlet score = 0;\nlet details = [];\n\nconst premiumTech = ['hubspot', 'salesforce', 'marketo', 'intercom', 'segment'];\nconst growthTech = ['mixpanel', 'hotjar', 'stripe'];\n\nlet premiumCount = 0;\nlet growthCount = 0;\n\nfor (const tech of detected) {\n  if (premiumTech.includes(tech)) {\n    premiumCount++;\n    score += 20;\n  } else if (growthTech.includes(tech)) {\n    growthCount++;\n    score += 10;\n  } else {\n    score += 5;\n  }\n}\n\nif (premiumCount > 0) details.push(`Uses ${premiumCount} enterprise tool(s)`);\nif (growthCount > 0) details.push(`Uses ${growthCount} growth tool(s)`);\n\nscore = Math.min(score, 95);\nconst signalDetected = score > 30 && detected.length > 2;\n\nreturn [{\n  json: {\n    ...item,\n    signals: {\n      ...item.signals,\n      techStack: {\n        detected: signalDetected,\n        score,\n        confidence: ts.confidence || 0,\n        tools: detected,\n        premiumToolCount: premiumCount,\n        details: details.join('; ') || 'Basic tech stack'\n      }\n    }\n  }\n}];"
+      },
+      "id": "calc-tech-stack",
+      "name": "Calculate Tech Stack Signal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2550, 550]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// CALCULATE FINAL SCORE & OUTPUT\n// ============================================\nconst item = $input.first().json;\nconst signals = item.signals || {};\nconst config = item.config || {};\nconst wa = item.websiteAnalysis || {};\nconst enrichment = item.enrichment || {};\n\n// Signal weights\nconst weights = config.signalWeights || {\n  googleAds: 0.30,\n  afterHoursCoverage: 0.25,\n  inboundRisk: 0.20,\n  hiring: 0.15,\n  techStack: 0.10\n};\n\n// Calculate weighted score\nlet totalScore = 0;\nlet detectedSignals = [];\nlet contributions = {};\n\nconst signalMap = {\n  googleAds: signals.googleAds,\n  afterHoursCoverage: signals.afterHoursCoverage,\n  inboundRisk: signals.inboundRisk,\n  hiring: signals.hiring,\n  techStack: signals.techStack\n};\n\nfor (const [key, weight] of Object.entries(weights)) {\n  const signal = signalMap[key];\n  if (signal?.detected) {\n    detectedSignals.push(key);\n    const contribution = Math.round((signal.score || 0) * weight * (signal.confidence || 50) / 100);\n    contributions[key] = contribution;\n    totalScore += contribution;\n  }\n}\n\n// Compound signal bonuses\nif (detectedSignals.length >= 2) totalScore += 10;\nif (detectedSignals.length >= 3) totalScore += 10;\nif (detectedSignals.length >= 4) totalScore += 10;\n\n// Golden combos\nif (detectedSignals.includes('googleAds') && detectedSignals.includes('afterHoursCoverage')) {\n  totalScore += 12;\n}\nif (detectedSignals.includes('hiring') && detectedSignals.includes('googleAds')) {\n  totalScore += 8;\n}\n\ntotalScore = Math.max(0, Math.min(Math.round(totalScore), 100));\n\n// Confidence\nlet confidenceSum = 0;\nlet confidenceCount = 0;\nfor (const signal of Object.values(signals)) {\n  if (signal?.confidence) {\n    confidenceSum += signal.confidence;\n    confidenceCount++;\n  }\n}\nconst avgConfidence = confidenceCount > 0 ? Math.round(confidenceSum / confidenceCount) : 30;\nlet confidenceLevel = avgConfidence >= 80 ? 'high' : avgConfidence >= 60 ? 'medium' : avgConfidence >= 40 ? 'low' : 'very_low';\n\n// Ready state\nlet readyState = 'cold';\nlet readyReason = 'Limited signals - add to nurture';\n\nif (totalScore >= 80 && detectedSignals.length >= 3) {\n  readyState = 'hot';\n  readyReason = 'Multiple strong buying signals - prioritize outreach';\n} else if (totalScore >= 65 && detectedSignals.length >= 2) {\n  readyState = 'hot';\n  readyReason = 'High-intent with verified signals';\n} else if (totalScore >= 50) {\n  readyState = 'warm';\n  readyReason = 'Good potential - verified opportunity';\n} else if (totalScore >= 30) {\n  readyState = 'nurture';\n  readyReason = 'Some signals - worth monitoring';\n}\n\n// Why Now\nlet whyNowParts = [];\nif (signals.googleAds?.detected) whyNowParts.push(`Active Google Ads (${signals.googleAds.adCount} ads)`);\nif (signals.afterHoursCoverage?.score > 60) whyNowParts.push('Major coverage gap');\nelse if (signals.afterHoursCoverage?.detected) whyNowParts.push('After-hours opportunity');\nif (signals.inboundRisk?.riskLevel === 'high') whyNowParts.push('High lead loss risk');\nelse if (signals.inboundRisk?.detected) whyNowParts.push('Response gaps');\nif (signals.hiring?.detected) whyNowParts.push(`Hiring ${signals.hiring.roles?.slice(0,2).join(', ') || 'actively'}`);\nif (signals.techStack?.premiumToolCount > 0) whyNowParts.push('Sophisticated buyer');\n\nconst whyNow = whyNowParts.length > 0 ? whyNowParts.join(' + ') : 'Limited signals detected';\n\n// Key insights\nlet insights = [];\nif (signals.googleAds?.detected) insights.push(`${signals.googleAds.adCount} Google Ads detected via Serper`);\nif (wa.hasChatWidget) insights.push(`Uses ${wa.chatWidget} chat`);\nelse if (item.scrapeSuccess) insights.push('No live chat - instant response opportunity');\nif (wa.hasBookingTool) insights.push(`Self-service booking: ${wa.bookingTool}`);\nif (signals.hiring?.platforms?.length > 0) insights.push(`Hiring on ${signals.hiring.platforms.join(', ')}`);\nif (enrichment.linkedIn?.employeeRange) insights.push(`Company size: ${enrichment.linkedIn.employeeRange} employees`);\n\n// Recommended contact\nlet contactMethod = 'nurture_campaign';\nlet contactReason = 'Add to email nurture';\n\nif (signals.googleAds?.detected && signals.afterHoursCoverage?.score > 50) {\n  contactMethod = 'phone_priority';\n  contactReason = 'Spending on ads but losing after-hours leads';\n} else if (readyState === 'hot') {\n  contactMethod = 'phone_call';\n  contactReason = 'Hot lead - direct outreach';\n} else if (signals.inboundRisk?.riskLevel === 'high') {\n  contactMethod = 'email_sequence';\n  contactReason = 'Show faster response solutions';\n} else if (readyState === 'warm') {\n  contactMethod = 'email_sequence';\n  contactReason = 'Warm lead - value-focused nurture';\n}\n\n// Build signal array for frontend\nconst signalArray = [];\n\nif (signals.googleAds?.detected) {\n  signalArray.push({\n    id: 'googlePaidTraffic',\n    label: 'Google Paid Traffic Active',\n    detected: true,\n    value: signals.googleAds.details,\n    confidence: signals.googleAds.confidence,\n    score: signals.googleAds.score\n  });\n}\n\nif (signals.afterHoursCoverage?.detected) {\n  signalArray.push({\n    id: 'afterHoursCoverage',\n    label: 'After Hours Coverage Gap',\n    detected: true,\n    value: signals.afterHoursCoverage.details,\n    confidence: signals.afterHoursCoverage.confidence,\n    score: signals.afterHoursCoverage.score\n  });\n}\n\nif (signals.inboundRisk?.detected) {\n  signalArray.push({\n    id: 'inboundResponseRisk',\n    label: 'Inbound Response Risk',\n    detected: true,\n    value: signals.inboundRisk.details,\n    confidence: signals.inboundRisk.confidence,\n    score: signals.inboundRisk.score\n  });\n}\n\nif (signals.hiring?.detected) {\n  signalArray.push({\n    id: 'hiringSignal',\n    label: 'Active Hiring',\n    detected: true,\n    value: signals.hiring.details,\n    confidence: signals.hiring.confidence,\n    score: signals.hiring.score\n  });\n}\n\nif (signals.techStack?.detected) {\n  signalArray.push({\n    id: 'techStackSignal',\n    label: 'Sophisticated Tech Stack',\n    detected: true,\n    value: signals.techStack.details,\n    confidence: signals.techStack.confidence,\n    score: signals.techStack.score\n  });\n}\n\nreturn [{\n  json: {\n    domain: item.domain,\n    companyName: item.companyName,\n    score: totalScore,\n    signals: signalArray,\n    signalCount: signalArray.length,\n    whyNow,\n    keyInsights: insights,\n    readyState,\n    readyReason,\n    confidence: {\n      level: confidenceLevel,\n      score: avgConfidence,\n      dataPoints: confidenceCount\n    },\n    recommendedContact: {\n      method: contactMethod,\n      reason: contactReason\n    },\n    enrichment: {\n      linkedIn: enrichment.linkedIn || {},\n      employeeRange: enrichment.linkedIn?.employeeRange,\n      techStack: item.techStack?.detected || [],\n      hiringRoles: signals.hiring?.roles || [],\n      hiringPlatforms: signals.hiring?.platforms || []\n    },\n    websiteAnalysis: {\n      chatWidget: wa.chatWidget,\n      hasChatWidget: wa.hasChatWidget || false,\n      bookingTool: wa.bookingTool,\n      hasBookingTool: wa.hasBookingTool || false,\n      hasContactForm: wa.hasContactForm || false,\n      hasPhone: wa.hasPhone || false,\n      contactMethods: wa.contactMethods || [],\n      has24x7: wa.has24x7 || false,\n      scrapeSuccess: item.scrapeSuccess || false\n    },\n    timestamps: {\n      scrapedAt: new Date().toISOString(),\n      expiresAt: new Date(Date.now() + 86400000).toISOString()\n    },\n    debug: {\n      contributions,\n      detectedSignals,\n      scrapeSuccess: item.scrapeSuccess,\n      errors: item.errors || []\n    }\n  }\n}];"
+      },
+      "id": "final-score",
+      "name": "Calculate Final Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2750, 550]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "aggregate-results",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [2950, 550]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" },
+              { "name": "Access-Control-Allow-Origin", "value": "*" }
+            ]
+          }
+        }
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [3150, 550]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Normalize Inputs", "type": "main", "index": 0 }]]
+    },
+    "Normalize Inputs": {
+      "main": [[{ "node": "Loop Domains", "type": "main", "index": 0 }]]
+    },
+    "Loop Domains": {
+      "main": [
+        [
+          { "node": "Serper - Ads Search", "type": "main", "index": 0 },
+          { "node": "Serper - Hiring Search", "type": "main", "index": 0 },
+          { "node": "Serper - LinkedIn Search", "type": "main", "index": 0 }
+        ],
+        [{ "node": "Aggregate Results", "type": "main", "index": 0 }]
+      ]
+    },
+    "Serper - Ads Search": {
+      "main": [[{ "node": "Merge Serper Results", "type": "main", "index": 0 }]]
+    },
+    "Serper - Hiring Search": {
+      "main": [[{ "node": "Merge Serper Results", "type": "main", "index": 0 }]]
+    },
+    "Serper - LinkedIn Search": {
+      "main": [[{ "node": "Merge Serper Results", "type": "main", "index": 0 }]]
+    },
+    "Merge Serper Results": {
+      "main": [[{ "node": "Analyze Google Ads", "type": "main", "index": 0 }]]
+    },
+    "Analyze Google Ads": {
+      "main": [[{ "node": "Analyze Hiring Signals", "type": "main", "index": 0 }]]
+    },
+    "Analyze Hiring Signals": {
+      "main": [[{ "node": "Extract LinkedIn Data", "type": "main", "index": 0 }]]
+    },
+    "Extract LinkedIn Data": {
+      "main": [[{ "node": "Scrape Website", "type": "main", "index": 0 }]]
+    },
+    "Scrape Website": {
+      "main": [[{ "node": "Analyze Website", "type": "main", "index": 0 }]]
+    },
+    "Analyze Website": {
+      "main": [[{ "node": "Calculate After-Hours", "type": "main", "index": 0 }]]
+    },
+    "Calculate After-Hours": {
+      "main": [[{ "node": "Calculate Inbound Risk", "type": "main", "index": 0 }]]
+    },
+    "Calculate Inbound Risk": {
+      "main": [[{ "node": "Calculate Tech Stack Signal", "type": "main", "index": 0 }]]
+    },
+    "Calculate Tech Stack Signal": {
+      "main": [[{ "node": "Calculate Final Score", "type": "main", "index": 0 }]]
+    },
+    "Calculate Final Score": {
+      "main": [[{ "node": "Loop Domains", "type": "main", "index": 0 }]]
+    },
+    "Aggregate Results": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [{ "name": "SAI Scraper" }, { "name": "Serper" }, { "name": "Production" }]
+}

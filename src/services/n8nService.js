@@ -1,7 +1,8 @@
 // n8n Integration Service
 // This service connects your SAI Scraper UI to the n8n workflow
 
-const N8N_WEBHOOK_URL = process.env.REACT_APP_N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/sai-google-ads';
+const N8N_WEBHOOK_URL = process.env.REACT_APP_N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/sai-scraper-serper';
+const SERPER_API_KEY = process.env.REACT_APP_SERPER_API_KEY || '';
 
 /**
  * Send domains to n8n for scraping
@@ -15,7 +16,12 @@ export async function scrapeWithN8n(domains) {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ domains }),
+      body: JSON.stringify({
+        domains,
+        options: {
+          serperApiKey: SERPER_API_KEY
+        }
+      }),
     });
 
     if (!response.ok) {
