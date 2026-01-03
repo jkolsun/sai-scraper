@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { scrapeWithN8n } from '../services/n8nService';
+import { scrapeWithN8n, discoverCompanies } from '../services/n8nService';
 
 // ==================== CONSTANTS ====================
 const INDUSTRIES = [
@@ -312,7 +312,7 @@ const SAIScraper = () => {
   // Handlers
   const handleClearFilters = () => setIcpFilters({ industries: [], employeeRange: null, revenueRange: null, locations: [], hiringRoles: [], techStack: [] });
 
-  // n8n-powered scrape
+  // n8n-powered scrape with company discovery
   const handleN8nScrape = async () => {
     if (!canStartScraping) return;
     setIsRunning(true);
@@ -321,19 +321,53 @@ const SAIScraper = () => {
     setCompaniesFound(0);
     setSelectedIds(new Set());
     setN8nError(null);
-    setCurrentStatus('Sending domains to n8n workflow...');
-    setProgress(20);
 
-    // Get domains to check from mock companies (filtered by ICP)
-    let eligibleCompanies = [...MOCK_COMPANIES];
-    if (icpFilters.industries.length > 0) eligibleCompanies = eligibleCompanies.filter(c => icpFilters.industries.includes(c.industry));
-    if (icpFilters.locations.length > 0) eligibleCompanies = eligibleCompanies.filter(c => icpFilters.locations.includes(c.location));
-    if (icpFilters.employeeRange) eligibleCompanies = eligibleCompanies.filter(c => c.employees === icpFilters.employeeRange);
-    if (icpFilters.revenueRange) eligibleCompanies = eligibleCompanies.filter(c => c.revenue === icpFilters.revenueRange);
-    if (eligibleCompanies.length === 0) eligibleCompanies = [...MOCK_COMPANIES];
-    eligibleCompanies = eligibleCompanies.slice(0, maxResults);
+    let eligibleCompanies = [];
+    let domains = [];
 
-    const domains = eligibleCompanies.map(c => c.domain);
+    // Check if we have filters that require discovery
+    const hasDiscoveryFilters = icpFilters.industries.length > 0 || icpFilters.locations.length > 0;
+
+    if (hasDiscoveryFilters) {
+      // DISCOVERY MODE: Find new companies based on ICP filters
+      setCurrentStatus('Discovering companies matching your ICP...');
+      setProgress(10);
+
+      try {
+        const discoveredCompanies = await discoverCompanies(icpFilters, maxResults);
+        console.log('Discovered companies:', discoveredCompanies);
+
+        if (discoveredCompanies.length === 0) {
+          setN8nError('No companies found matching your filters. Try broadening your search.');
+          setIsRunning(false);
+          return;
+        }
+
+        eligibleCompanies = discoveredCompanies.slice(0, maxResults);
+        domains = eligibleCompanies.map(c => c.domain);
+        setCurrentStatus(`Found ${eligibleCompanies.length} companies, now analyzing signals...`);
+        setProgress(30);
+      } catch (error) {
+        // Fallback to mock companies if discovery fails
+        console.error('Discovery failed, falling back to sample companies:', error);
+        setCurrentStatus('Discovery service unavailable, using sample companies...');
+        eligibleCompanies = [...MOCK_COMPANIES];
+        if (icpFilters.industries.length > 0) eligibleCompanies = eligibleCompanies.filter(c => icpFilters.industries.includes(c.industry));
+        if (icpFilters.locations.length > 0) eligibleCompanies = eligibleCompanies.filter(c => icpFilters.locations.includes(c.location));
+        if (icpFilters.employeeRange) eligibleCompanies = eligibleCompanies.filter(c => c.employees === icpFilters.employeeRange);
+        if (icpFilters.revenueRange) eligibleCompanies = eligibleCompanies.filter(c => c.revenue === icpFilters.revenueRange);
+        if (eligibleCompanies.length === 0) eligibleCompanies = [...MOCK_COMPANIES];
+        eligibleCompanies = eligibleCompanies.slice(0, maxResults);
+        domains = eligibleCompanies.map(c => c.domain);
+        setProgress(20);
+      }
+    } else {
+      // NO FILTERS: Use sample companies (legacy behavior)
+      setCurrentStatus('Sending sample domains to n8n workflow...');
+      setProgress(20);
+      eligibleCompanies = [...MOCK_COMPANIES].slice(0, maxResults);
+      domains = eligibleCompanies.map(c => c.domain);
+    }
 
     try {
       setCurrentStatus('Processing domains through n8n...');

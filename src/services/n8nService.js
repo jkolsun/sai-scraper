@@ -113,57 +113,123 @@ export async function checkN8nConnection() {
 }
 
 /**
- * Discover companies using ICP filters via Serper
+ * Discover companies using ICP filters via Serper - Direct API call (no n8n)
  * @param {Object} filters - ICP filters (industries, locations, employeeRange, etc.)
  * @param {number} maxResults - Maximum number of companies to discover
  * @returns {Promise<Array>} - Array of discovered companies
  */
 export async function discoverCompanies(filters, maxResults = 25) {
+  const SERPER_KEY = 'cad6eefce44b2e9d112983ff0796cab6ae988d8b';
+
+  const industries = filters.industries || [];
+  const locations = filters.locations || [];
+
+  // Build search query
+  let query;
+  if (industries.length > 0 && locations.length > 0) {
+    query = `${industries[0]} company ${locations[0]} "contact us"`;
+  } else if (industries.length > 0) {
+    query = `${industries[0]} company "contact us" "free estimate"`;
+  } else if (locations.length > 0) {
+    query = `local business ${locations[0]} "contact us"`;
+  } else {
+    query = 'small business company "contact us"';
+  }
+
+  console.log('Discovery search query:', query);
+
   try {
-    const response = await fetch(N8N_DISCOVERY_WEBHOOK_URL, {
+    // Call Serper directly
+    const response = await fetch('https://google.serper.dev/search', {
       method: 'POST',
       headers: {
+        'X-API-KEY': SERPER_KEY,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        filters,
-        maxResults,
-        options: {
-          serperApiKey: SERPER_API_KEY
-        }
+        q: query,
+        gl: 'us',
+        hl: 'en',
+        num: 30
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`n8n discovery webhook error: ${response.status} ${response.statusText}`);
+      throw new Error(`Serper API error: ${response.status}`);
     }
 
     const data = await response.json();
+    const organic = data.organic || [];
 
-    console.log('n8n discovery raw response:', JSON.stringify(data, null, 2));
+    console.log('Serper returned', organic.length, 'results');
 
-    // Extract companies array from response
-    if (data.companies && Array.isArray(data.companies)) {
-      return data.companies;
-    }
+    // Domains to skip
+    const skipDomains = new Set([
+      'facebook.com', 'twitter.com', 'linkedin.com', 'instagram.com', 'youtube.com',
+      'yelp.com', 'yellowpages.com', 'bbb.org', 'mapquest.com',
+      'angi.com', 'homeadvisor.com', 'thumbtack.com', 'houzz.com',
+      'zillow.com', 'realtor.com', 'redfin.com',
+      'indeed.com', 'glassdoor.com',
+      'avvo.com', 'findlaw.com', 'healthgrades.com', 'zocdoc.com',
+      'forbes.com', 'inc.com', 'wikipedia.org', 'medium.com',
+      'amazon.com', 'google.com', 'apple.com'
+    ]);
 
-    // Handle wrapped response
-    if (data.json && data.json.companies) {
-      return data.json.companies;
-    }
+    const companies = [];
+    const seenDomains = new Set();
 
-    // Handle array response with companies inside
-    if (Array.isArray(data) && data.length > 0) {
-      const first = data[0].json || data[0];
-      if (first.companies) {
-        return first.companies;
+    for (const result of organic) {
+      if (companies.length >= maxResults) break;
+
+      const url = result.link || '';
+      let domain;
+      try {
+        domain = new URL(url).hostname.replace('www.', '').toLowerCase();
+      } catch {
+        continue;
       }
+
+      // Skip duplicates and blocked domains
+      if (seenDomains.has(domain)) continue;
+      if (skipDomains.has(domain)) continue;
+
+      // Skip if domain contains blocked patterns
+      let skip = false;
+      for (const blocked of skipDomains) {
+        if (domain.includes(blocked.split('.')[0])) {
+          skip = true;
+          break;
+        }
+      }
+      if (skip) continue;
+
+      seenDomains.add(domain);
+
+      // Extract company name from title
+      let name = (result.title || '').split(/[|\\-–—:]/)[0].trim();
+      if (name.length < 2 || name.length > 60) {
+        name = domain.replace(/\.(com|io|co|net|org)$/i, '').replace(/[-_]/g, ' ');
+        name = name.charAt(0).toUpperCase() + name.slice(1);
+      }
+
+      companies.push({
+        name: name,
+        domain: domain,
+        industry: industries[0] || 'Professional Services',
+        location: locations[0] || 'United States',
+        employees: filters.employeeRange || '11-50',
+        revenue: filters.revenueRange || '$1M - $10M',
+        source: 'serper_discovery',
+        snippet: (result.snippet || '').substring(0, 200),
+        sourceUrl: url
+      });
     }
 
-    console.warn('Could not extract companies from response');
-    return [];
+    console.log('Discovered', companies.length, 'companies');
+    return companies;
+
   } catch (error) {
-    console.error('Error calling n8n discovery webhook:', error);
+    console.error('Error discovering companies:', error);
     throw error;
   }
 }
