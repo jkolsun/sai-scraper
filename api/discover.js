@@ -122,19 +122,22 @@ function buildSearchQueries({ industries, locations, employeeRange, revenueRange
     'Operations': 'hiring operations'
   };
 
-  // Strategy 1: Industry + Location queries
+  // Strategy 1: Industry + Location queries - search for actual companies
   if (industries.length > 0) {
     for (const industry of industries.slice(0, 2)) {
       const terms = industryTerms[industry] || [industry.toLowerCase()];
-      const mainTerm = terms[0];
+      // Use multiple term variations to find actual company sites
+      const searchTerms = [terms[0], terms[1] || terms[0]];
 
       if (locations.length > 0) {
         for (const location of locations.slice(0, 2)) {
           const locTerms = locationTerms[location] || [location];
-          queries.push(`${mainTerm} ${locTerms[0]}`);
+          // Add specific search modifiers to find company homepages
+          queries.push(`${searchTerms[0]} ${locTerms[0]}`);
         }
       } else {
-        queries.push(mainTerm);
+        queries.push(`${searchTerms[0]}`);
+        queries.push(`${searchTerms[1]}`);
       }
     }
   }
@@ -237,9 +240,8 @@ function processResults(organic, filters, maxResults) {
     'gov', 'edu', 'org'
   ]);
 
-  // Skip patterns in domains and titles
-  const skipPatterns = ['wiki', 'news', 'blog', 'list', 'directory', 'review', 'rating', 'compare', 'top10', 'best', 'startup', 'agencies'];
-  const skipTitlePatterns = ['top ', 'best ', ' list', 'companies to', 'startups to', 'agencies in', 'funded by', 'biggest ', 'largest '];
+  // Skip patterns in domains
+  const skipPatterns = ['wiki', 'news', 'directory', 'review', 'rating', 'compare'];
 
   const companies = [];
   const seenDomains = new Set();
@@ -282,15 +284,6 @@ function processResults(organic, filters, maxResults) {
     // Skip government and education sites
     if (domain.endsWith('.gov') || domain.endsWith('.edu') || domain.endsWith('.mil')) {
       shouldSkip = true;
-    }
-
-    // Skip list/directory articles based on title
-    const titleLower = (result.title || '').toLowerCase();
-    for (const pattern of skipTitlePatterns) {
-      if (titleLower.includes(pattern)) {
-        shouldSkip = true;
-        break;
-      }
     }
 
     if (shouldSkip) continue;
