@@ -1,0 +1,496 @@
+{
+  "name": "SAI Scraper - Production v2 (ScraperAPI)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sai-scraper-v2",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 500],
+      "webhookId": "sai-scraper-v2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// NORMALIZE INPUTS & CONFIGURATION\n// ============================================\nconst body = $input.first().json.body || {};\nconst domains = body.domains || [];\nconst options = body.options || {};\n\n// User-Agent rotation pool - realistic browser signatures\nconst USER_AGENTS = [\n  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',\n  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',\n  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',\n  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',\n  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',\n  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0'\n];\n\n// ScraperAPI configuration\n// IMPORTANT: Replace YOUR_SCRAPERAPI_KEY with your actual key\nconst SCRAPER_API_KEY = options.scraperApiKey || 'YOUR_SCRAPERAPI_KEY';\nconst USE_SCRAPER_API = SCRAPER_API_KEY && SCRAPER_API_KEY !== 'YOUR_SCRAPERAPI_KEY';\n\n// Configuration\nconst config = {\n  scraperApiKey: SCRAPER_API_KEY,\n  useScraperApi: USE_SCRAPER_API,\n  maxRetries: 2,\n  timeout: 30000\n};\n\n// Return each domain as separate item\nreturn domains.map((domain, index) => {\n  let cleanDomain = domain\n    .replace(/^https?:\\/\\//, '')\n    .replace(/^www\\./, '')\n    .split('/')[0]\n    .toLowerCase()\n    .trim();\n  \n  // Rotate user agent\n  const userAgent = USER_AGENTS[index % USER_AGENTS.length];\n  \n  return {\n    json: {\n      domain: cleanDomain,\n      originalDomain: domain,\n      config,\n      userAgent,\n      timestamp: Date.now(),\n      signals: {},\n      rawData: {},\n      errors: []\n    }\n  };\n});"
+      },
+      "id": "normalize-inputs",
+      "name": "Normalize Inputs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 500]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {
+          "delayBetweenBatches": 3000
+        }
+      },
+      "id": "loop-domains",
+      "name": "Loop Domains",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [500, 500]
+    },
+    {
+      "parameters": {
+        "url": "=https://www.google.com/search?q=site:{{$json.domain}}+OR+\"{{$json.domain}}\"",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "={{$json.userAgent}}"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "en-US,en;q=0.9"
+            },
+            {
+              "name": "Accept-Encoding",
+              "value": "gzip, deflate, br"
+            },
+            {
+              "name": "Cache-Control",
+              "value": "no-cache"
+            },
+            {
+              "name": "Sec-Fetch-Dest",
+              "value": "document"
+            },
+            {
+              "name": "Sec-Fetch-Mode",
+              "value": "navigate"
+            },
+            {
+              "name": "Sec-Fetch-Site",
+              "value": "none"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 3
+            }
+          }
+        }
+      },
+      "id": "google-search",
+      "name": "Google Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 500],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// ANALYZE GOOGLE SEARCH RESULTS\n// Detect ads, extract snippets, verify domain\n// ============================================\nconst item = $input.first().json;\nconst html = item.data || '';\nconst domain = item.domain;\n\nlet googleAdsDetected = false;\nlet adCount = 0;\nlet organicPosition = -1;\nlet hasKnowledgePanel = false;\nlet serpSnippet = '';\nlet companyDescription = '';\n\ntry {\n  // Detect Google Ads in search results\n  const adPatterns = [\n    /Sponsored/gi,\n    /Ad\\s*·/gi,\n    /data-text-ad/gi,\n    /class=\"[^\"]*ad-slot/gi,\n    /aria-label=\"[^\"]*[Aa]ds?\"/gi,\n    /data-hveid.*Sponsored/gi,\n    /class=\"[^\"]*commercial-unit/gi\n  ];\n  \n  for (const pattern of adPatterns) {\n    const matches = html.match(pattern);\n    if (matches) {\n      googleAdsDetected = true;\n      adCount += matches.length;\n    }\n  }\n  \n  // Check if domain appears in organic results\n  const domainRegex = new RegExp(domain.replace(/\\./g, '\\\\.'), 'gi');\n  if (domainRegex.test(html)) {\n    organicPosition = 1;\n  }\n  \n  // Check for knowledge panel\n  hasKnowledgePanel = /kp-blk|knowledge-panel|kno-result|kp-header/i.test(html);\n  \n  // Try to extract company description from SERP\n  const descMatch = html.match(new RegExp(domain + '[^<]*<[^>]*class=\"[^\"]*\"[^>]*>([^<]{30,300})', 'i'));\n  if (descMatch) {\n    companyDescription = descMatch[1].replace(/<[^>]*>/g, '').replace(/\\s+/g, ' ').trim();\n  }\n  \n} catch (e) {\n  item.errors.push(`SERP analysis error: ${e.message}`);\n}\n\n// Calculate Google Ads score\nlet googleAdsScore = 0;\nlet googleAdsConfidence = 0;\n\nif (googleAdsDetected) {\n  // Base score for having ads\n  googleAdsScore = 60;\n  googleAdsConfidence = 70;\n  \n  // Boost for multiple ad indicators\n  if (adCount > 3) {\n    googleAdsScore = 75;\n    googleAdsConfidence = 80;\n  }\n  if (adCount > 5) {\n    googleAdsScore = 85;\n    googleAdsConfidence = 85;\n  }\n}\n\nreturn [{\n  json: {\n    ...item,\n    rawData: {\n      ...item.rawData,\n      serpHtml: html.substring(0, 10000)\n    },\n    signals: {\n      ...item.signals,\n      googleAds: {\n        detected: googleAdsDetected,\n        confidence: googleAdsConfidence,\n        score: googleAdsScore,\n        adCount: Math.min(adCount, 20),\n        source: 'google_serp',\n        details: googleAdsDetected \n          ? `Found ${adCount} ad indicator(s) in Google search results` \n          : 'No Google Ads detected in search results'\n      }\n    },\n    serpData: {\n      organicPosition,\n      hasKnowledgePanel,\n      serpSnippet,\n      companyDescription,\n      domainVerified: organicPosition > 0\n    }\n  }\n}];"
+      },
+      "id": "analyze-serp",
+      "name": "Analyze SERP",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 500]
+    },
+    {
+      "parameters": {
+        "url": "=https://adstransparency.google.com/anji/_/rpc/SearchService/SearchCreatives",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            },
+            {
+              "name": "User-Agent",
+              "value": "={{$json.userAgent}}"
+            },
+            {
+              "name": "Origin",
+              "value": "https://adstransparency.google.com"
+            },
+            {
+              "name": "Referer",
+              "value": "https://adstransparency.google.com/"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "f.req",
+              "value": "={{JSON.stringify([[null,null,null,null,null,null,null,[$json.domain]]])}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "ads-transparency",
+      "name": "Ads Transparency API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 500],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// PROCESS ADS TRANSPARENCY RESPONSE\n// ============================================\nconst item = $input.first().json;\nconst response = item.data || '';\nlet adsFromTransparency = false;\nlet transparencyConfidence = 0;\nlet adDetails = null;\nlet adCreativeCount = 0;\n\ntry {\n  const data = typeof response === 'string' ? response : JSON.stringify(response);\n  \n  // Check for creative/advertiser indicators\n  if (data.length > 200) {\n    // Look for specific indicators that ads exist\n    if (data.includes('creative') || data.includes('advertiser')) {\n      adsFromTransparency = true;\n      transparencyConfidence = 90;\n      adDetails = 'Verified active ads in Google Ads Transparency Center';\n    }\n    \n    // Try to count creatives\n    const creativeMatches = data.match(/creative_id|ad_creative/gi);\n    if (creativeMatches) {\n      adCreativeCount = creativeMatches.length;\n      adsFromTransparency = true;\n      transparencyConfidence = 95;\n      adDetails = `Found ${adCreativeCount} ad creative(s) in Transparency Center`;\n    }\n  }\n} catch (e) {\n  item.errors.push(`Transparency API error: ${e.message}`);\n}\n\n// Merge with existing Google Ads signal\nconst existingAds = item.signals?.googleAds || {};\nconst finalDetected = adsFromTransparency || existingAds.detected;\nconst finalConfidence = Math.max(transparencyConfidence, existingAds.confidence || 0);\n\n// Calculate final score\nlet finalScore = 0;\nif (finalDetected) {\n  if (adsFromTransparency) {\n    // Verified by Transparency API = high confidence\n    finalScore = 85;\n  } else if (existingAds.detected) {\n    // Only SERP detection = moderate confidence\n    finalScore = existingAds.score || 65;\n  }\n}\n\nreturn [{\n  json: {\n    ...item,\n    signals: {\n      ...item.signals,\n      googleAds: {\n        detected: finalDetected,\n        confidence: finalConfidence,\n        score: finalScore,\n        details: adDetails || existingAds.details,\n        source: adsFromTransparency ? 'transparency_api' : existingAds.source,\n        adCount: existingAds.adCount || 0,\n        adCreativeCount,\n        verifiedByTransparency: adsFromTransparency\n      }\n    }\n  }\n}];"
+      },
+      "id": "process-transparency",
+      "name": "Process Transparency",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// BUILD SCRAPE URL (ScraperAPI or Direct)\n// ============================================\nconst item = $input.first().json;\nconst config = item.config || {};\nconst domain = item.domain;\n\nlet scrapeUrl;\n\nif (config.useScraperApi && config.scraperApiKey) {\n  // Use ScraperAPI for reliable scraping\n  const targetUrl = encodeURIComponent(`https://${domain}`);\n  scrapeUrl = `http://api.scraperapi.com?api_key=${config.scraperApiKey}&url=${targetUrl}&render=true&country_code=us`;\n} else {\n  // Direct scrape (may get blocked)\n  scrapeUrl = `https://${domain}`;\n}\n\nreturn [{\n  json: {\n    ...item,\n    scrapeUrl,\n    usingScraperApi: config.useScraperApi\n  }\n}];"
+      },
+      "id": "build-scrape-url",
+      "name": "Build Scrape URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1500, 500]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.scrapeUrl}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "={{$json.userAgent}}"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "en-US,en;q=0.9"
+            },
+            {
+              "name": "Accept-Encoding",
+              "value": "gzip, deflate, br"
+            },
+            {
+              "name": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "name": "Upgrade-Insecure-Requests",
+              "value": "1"
+            },
+            {
+              "name": "Sec-Fetch-Dest",
+              "value": "document"
+            },
+            {
+              "name": "Sec-Fetch-Mode",
+              "value": "navigate"
+            },
+            {
+              "name": "Sec-Fetch-Site",
+              "value": "none"
+            },
+            {
+              "name": "Sec-Fetch-User",
+              "value": "?1"
+            },
+            {
+              "name": "Cache-Control",
+              "value": "max-age=0"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          }
+        }
+      },
+      "id": "scrape-website",
+      "name": "Scrape Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1700, 500],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// COMPREHENSIVE WEBSITE ANALYSIS\n// Extract all signals from website HTML\n// ============================================\nconst item = $input.first().json;\nconst rawHtml = item.data || '';\nconst html = rawHtml.toLowerCase();\nconst domain = item.domain;\n\n// Check if scrape was successful\nconst scrapeSuccess = rawHtml.length > 1000 && \n                      !rawHtml.includes('403 Forbidden') && \n                      !rawHtml.includes('Access Denied') &&\n                      !rawHtml.includes('Just a moment') && \n                      !rawHtml.includes('checking your browser') &&\n                      !rawHtml.includes('blocked') &&\n                      !rawHtml.includes('captcha');\n\nif (!scrapeSuccess) {\n  // Return with partial data - will still score based on SERP/Ads\n  return [{\n    json: {\n      ...item,\n      scrapeSuccess: false,\n      scrapeError: rawHtml.length < 1000 ? 'Empty or minimal response' : 'Blocked by bot protection',\n      htmlContent: '',\n      websiteAnalysis: {\n        chatWidget: null,\n        hasChatWidget: false,\n        hasBookingTool: false,\n        hasContactForm: false,\n        hasPhone: false,\n        hasEmail: false,\n        contactMethods: [],\n        businessHours: null,\n        has24x7: false,\n        hasWeekendHours: false,\n        urgencyScore: 0,\n        responseSpeed: 'unknown',\n        responseScore: 70\n      }\n    }\n  }];\n}\n\n// ========== CHAT WIDGET DETECTION ==========\nconst chatWidgets = {\n  intercom: /intercom\\.com|intercom\\.io|widget\\.intercom|intercomcdn/i,\n  drift: /drift\\.com|js\\.driftt\\.com|drift-frame/i,\n  zendesk: /zendesk\\.com|zopim|zdassets\\.com|ze-snippet/i,\n  hubspot: /hubspot\\.com\\/conversations|hs-scripts|hubspot-messages/i,\n  crisp: /crisp\\.chat|client\\.crisp\\.chat/i,\n  livechat: /livechatinc\\.com|livechat\\.com|cdn\\.livechatinc/i,\n  freshdesk: /freshdesk\\.com|freshchat|wchat\\.freshchat/i,\n  tawk: /tawk\\.to|embed\\.tawk/i,\n  olark: /olark\\.com|static\\.olark/i,\n  helpscout: /beacon-v2\\.helpscout|helpscout\\.net/i,\n  chatwoot: /chatwoot/i,\n  tidio: /tidio\\.co|code\\.tidio/i,\n  podium: /podium\\.com/i,\n  birdeye: /birdeye\\.com/i\n};\n\nlet detectedChatWidget = null;\nlet chatWidgetCount = 0;\nfor (const [name, pattern] of Object.entries(chatWidgets)) {\n  if (pattern.test(rawHtml)) {\n    detectedChatWidget = detectedChatWidget || name;\n    chatWidgetCount++;\n  }\n}\n\n// ========== BOOKING TOOLS DETECTION ==========\nconst bookingTools = {\n  calendly: /calendly\\.com/i,\n  hubspotMeetings: /meetings\\.hubspot\\.com/i,\n  chilipiper: /chilipiper\\.com|js\\.chilipiper/i,\n  acuity: /acuityscheduling\\.com/i,\n  savvycal: /savvycal\\.com/i,\n  cal: /cal\\.com/i,\n  doodle: /doodle\\.com/i,\n  appointlet: /appointlet\\.com/i,\n  oncehub: /oncehub\\.com|scheduleonce/i,\n  square: /squareup\\.com.*appointments/i\n};\n\nlet detectedBookingTool = null;\nfor (const [name, pattern] of Object.entries(bookingTools)) {\n  if (pattern.test(rawHtml)) {\n    detectedBookingTool = name;\n    break;\n  }\n}\n\n// ========== CONTACT FORM DETECTION ==========\nconst formPatterns = [\n  /<form[^>]*>/gi,\n  /contact-form|contactform|wpcf7/gi,\n  /hubspot.*form|hs-form/gi,\n  /typeform\\.com/gi,\n  /jotform\\.com/gi,\n  /gravity-form|gform/gi,\n  /formspree|formsubmit|netlify.*form/gi,\n  /wpforms/gi\n];\n\nlet formCount = 0;\nfor (const pattern of formPatterns) {\n  const matches = rawHtml.match(pattern);\n  if (matches) formCount += matches.length;\n}\nconst hasContactForm = formCount > 0;\n\n// ========== PHONE NUMBER DETECTION ==========\nconst phonePatterns = [\n  /(?:\\+1[\\s.-]?)?\\(?\\d{3}\\)?[\\s.-]?\\d{3}[\\s.-]?\\d{4}/g,\n  /tel:\\+?[\\d-]+/gi,\n  /href=\"tel:/gi,\n  /1-800-[\\d-]+/gi,\n  /1-888-[\\d-]+/gi,\n  /1-877-[\\d-]+/gi,\n  /1-866-[\\d-]+/gi\n];\n\nlet phoneNumbers = [];\nfor (const pattern of phonePatterns) {\n  const matches = rawHtml.match(pattern);\n  if (matches) phoneNumbers = phoneNumbers.concat(matches);\n}\nconst uniquePhones = [...new Set(phoneNumbers.map(p => p.replace(/\\D/g, '')))].filter(p => p.length >= 10);\nconst hasPhone = uniquePhones.length > 0;\nconst hasClickToCall = /href=\"tel:/i.test(rawHtml);\nconst hasTollFree = /1-8[0-9]{2}-/i.test(rawHtml);\n\n// ========== EMAIL DETECTION ==========\nconst emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/g;\nconst emails = rawHtml.match(emailPattern) || [];\nconst filteredEmails = emails.filter(e => !e.includes('example') && !e.includes('test@'));\nconst hasEmail = filteredEmails.length > 0;\n\n// ========== BUSINESS HOURS DETECTION ==========\nconst hoursPatterns = [\n  /hours?\\s*:?\\s*\\d{1,2}\\s*(?:am|pm)?\\s*[-–to]+\\s*\\d{1,2}\\s*(?:am|pm)?/gi,\n  /open\\s*:?\\s*\\d{1,2}\\s*(?:am|pm)?/gi,\n  /monday\\s*[-–]\\s*friday|mon\\s*[-–]\\s*fri/gi,\n  /saturday|sunday|weekend/gi,\n  /24\\/7|24 hours|always open|around the clock/gi,\n  /business hours/gi,\n  /hours of operation/gi\n];\n\nlet hoursFound = [];\nlet has24x7 = false;\nlet hasWeekendHours = false;\n\nfor (const pattern of hoursPatterns) {\n  const matches = html.match(pattern);\n  if (matches) {\n    hoursFound = hoursFound.concat(matches);\n    if (/24\\/7|24 hours|always|round.the.clock/i.test(matches.join(' '))) has24x7 = true;\n    if (/saturday|sunday|weekend|sat|sun/i.test(matches.join(' '))) hasWeekendHours = true;\n  }\n}\n\n// ========== URGENCY/EMERGENCY LANGUAGE ==========\nconst urgencyPatterns = [\n  { pattern: /emergency/gi, weight: 3 },\n  { pattern: /urgent/gi, weight: 2 },\n  { pattern: /24\\/7|24-7|twenty.four/gi, weight: 3 },\n  { pattern: /same[\\s-]?day/gi, weight: 2 },\n  { pattern: /immediate/gi, weight: 2 },\n  { pattern: /fast response|quick response/gi, weight: 2 },\n  { pattern: /call now|contact.*today|act now/gi, weight: 2 },\n  { pattern: /limited time|hurry|don't wait/gi, weight: 1 }\n];\n\nlet urgencyScore = 0;\nlet urgencyTerms = [];\nfor (const { pattern, weight } of urgencyPatterns) {\n  const matches = html.match(pattern);\n  if (matches) {\n    urgencyScore += matches.length * weight;\n    urgencyTerms.push(pattern.source.replace(/\\\\|\\[|\\]|\\?|\\-|\\.|\\*/g, ''));\n  }\n}\nurgencyScore = Math.min(urgencyScore * 5, 100);\n\n// ========== RESPONSE TIME PROMISES ==========\nconst responsePatterns = [\n  { pattern: /respond.*within.*minute/gi, speed: 'instant', score: 5 },\n  { pattern: /respond.*within.*hour/gi, speed: 'fast', score: 15 },\n  { pattern: /respond.*within.*24/gi, speed: 'medium', score: 30 },\n  { pattern: /respond.*within.*48/gi, speed: 'slow', score: 50 },\n  { pattern: /get back.*soon|as soon as possible/gi, speed: 'vague', score: 60 }\n];\n\nlet responseSpeed = 'unknown';\nlet responseScore = 70;\nfor (const { pattern, speed, score } of responsePatterns) {\n  if (pattern.test(html)) {\n    responseSpeed = speed;\n    responseScore = score;\n    break;\n  }\n}\n\n// ========== BUILD CONTACT METHODS LIST ==========\nconst contactMethods = [];\nif (hasPhone) contactMethods.push('phone');\nif (hasEmail) contactMethods.push('email');\nif (detectedChatWidget) contactMethods.push('chat');\nif (hasContactForm) contactMethods.push('form');\nif (detectedBookingTool) contactMethods.push('booking');\n\nreturn [{\n  json: {\n    ...item,\n    scrapeSuccess: true,\n    htmlContent: rawHtml,\n    websiteAnalysis: {\n      chatWidget: detectedChatWidget,\n      hasChatWidget: !!detectedChatWidget,\n      chatWidgetCount,\n      bookingTool: detectedBookingTool,\n      hasBookingTool: !!detectedBookingTool,\n      hasContactForm,\n      formCount,\n      hasPhone,\n      phoneCount: uniquePhones.length,\n      hasClickToCall,\n      hasTollFree,\n      hasEmail,\n      emailCount: filteredEmails.length,\n      contactMethods,\n      contactMethodCount: contactMethods.length,\n      businessHours: hoursFound.slice(0, 3),\n      has24x7,\n      hasWeekendHours,\n      urgencyScore,\n      urgencyTerms: [...new Set(urgencyTerms)].slice(0, 5),\n      responseSpeed,\n      responseScore\n    }\n  }\n}];"
+      },
+      "id": "analyze-website",
+      "name": "Analyze Website",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1900, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// CALCULATE AFTER-HOURS COVERAGE SIGNAL\n// High score = coverage GAP = sales opportunity\n// ============================================\nconst item = $input.first().json;\nconst wa = item.websiteAnalysis || {};\n\nlet afterHoursScore = 0;\nlet afterHoursDetails = [];\n\n// If scrape failed, assign moderate gap score (assume gaps exist)\nif (!item.scrapeSuccess) {\n  afterHoursScore = 45;\n  afterHoursDetails.push('Unable to verify coverage (site blocked scraping)');\n  \n  return [{\n    json: {\n      ...item,\n      signals: {\n        ...item.signals,\n        afterHoursCoverage: {\n          detected: true,\n          score: afterHoursScore,\n          confidence: 40,\n          details: afterHoursDetails.join('; '),\n          reason: 'Potential after-hours gap (verification pending)'\n        }\n      }\n    }\n  }];\n}\n\n// Scoring logic - higher = bigger gap = better opportunity\nif (!wa.has24x7) {\n  afterHoursScore += 25;\n  afterHoursDetails.push('No 24/7 coverage advertised');\n}\n\nif (!wa.hasWeekendHours) {\n  afterHoursScore += 15;\n  afterHoursDetails.push('No weekend hours mentioned');\n}\n\nif (!wa.hasChatWidget) {\n  afterHoursScore += 25;\n  afterHoursDetails.push('No live chat widget for after-hours inquiries');\n} else {\n  afterHoursScore -= 10;\n}\n\nif (!wa.hasBookingTool) {\n  afterHoursScore += 15;\n  afterHoursDetails.push('No self-service booking option');\n}\n\n// Urgency language without coverage = big opportunity\nif (wa.urgencyScore > 30 && !wa.has24x7) {\n  afterHoursScore += 15;\n  afterHoursDetails.push('Uses urgency language but lacks after-hours coverage');\n}\n\n// Toll-free without 24/7 = they want calls but may miss them\nif (wa.hasTollFree && !wa.has24x7) {\n  afterHoursScore += 10;\n  afterHoursDetails.push('Has toll-free number but no 24/7 availability');\n}\n\nafterHoursScore = Math.max(0, Math.min(afterHoursScore, 100));\nconst afterHoursDetected = afterHoursScore > 35;\n\nreturn [{\n  json: {\n    ...item,\n    signals: {\n      ...item.signals,\n      afterHoursCoverage: {\n        detected: afterHoursDetected,\n        score: afterHoursScore,\n        confidence: item.scrapeSuccess ? (afterHoursScore > 50 ? 85 : 70) : 40,\n        details: afterHoursDetails.join('; '),\n        reason: afterHoursScore > 60 \n          ? 'Significant after-hours coverage gap - high opportunity'\n          : afterHoursScore > 35\n            ? 'Moderate coverage gap detected'\n            : 'Adequate after-hours coverage'\n      }\n    }\n  }\n}];"
+      },
+      "id": "calc-after-hours",
+      "name": "Calculate After-Hours",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2100, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// CALCULATE INBOUND RESPONSE RISK SIGNAL\n// High score = poor response setup = opportunity\n// ============================================\nconst item = $input.first().json;\nconst wa = item.websiteAnalysis || {};\n\nlet riskScore = 0;\nlet riskDetails = [];\n\n// If scrape failed, assign moderate risk score\nif (!item.scrapeSuccess) {\n  riskScore = 40;\n  riskDetails.push('Unable to fully analyze response setup (site blocked)');\n  \n  return [{\n    json: {\n      ...item,\n      signals: {\n        ...item.signals,\n        inboundRisk: {\n          detected: true,\n          score: riskScore,\n          confidence: 40,\n          riskLevel: 'unknown',\n          details: riskDetails.join('; '),\n          reason: 'Potential inbound response risk (verification pending)'\n        }\n      }\n    }\n  }];\n}\n\n// Phone coverage scoring\nif (!wa.hasPhone) {\n  riskScore += 30;\n  riskDetails.push('No phone number found on website');\n} else if (!wa.hasClickToCall) {\n  riskScore += 15;\n  riskDetails.push('Phone number not mobile-optimized (no click-to-call)');\n}\n\n// Form scoring\nif (!wa.hasContactForm) {\n  riskScore += 20;\n  riskDetails.push('No contact form detected');\n}\n\n// Response speed scoring\nif (wa.responseScore > 50) {\n  riskScore += 20;\n  riskDetails.push('No fast response time commitment advertised');\n}\n\n// Contact method redundancy (fewer methods = higher risk)\nconst methodCount = wa.contactMethodCount || 0;\nif (methodCount <= 1) {\n  riskScore += 25;\n  riskDetails.push('Only 1 contact method available - high risk of missed leads');\n} else if (methodCount <= 2) {\n  riskScore += 15;\n  riskDetails.push('Limited contact options (only ' + methodCount + ' methods)');\n}\n\n// No chat + form only = high risk of slow response\nif (!wa.hasChatWidget && wa.hasContactForm && !wa.hasPhone) {\n  riskScore += 15;\n  riskDetails.push('Form-only contact with no immediate response option');\n}\n\n// No chat widget at all = missed real-time opportunities\nif (!wa.hasChatWidget) {\n  riskScore += 10;\n  riskDetails.push('No live chat for immediate visitor engagement');\n}\n\nriskScore = Math.max(0, Math.min(riskScore, 100));\nconst riskDetected = riskScore > 40;\n\n// Determine risk level\nlet riskLevel = 'minimal';\nif (riskScore >= 70) riskLevel = 'high';\nelse if (riskScore >= 50) riskLevel = 'medium';\nelse if (riskScore >= 30) riskLevel = 'low';\n\nreturn [{\n  json: {\n    ...item,\n    signals: {\n      ...item.signals,\n      inboundRisk: {\n        detected: riskDetected,\n        score: riskScore,\n        confidence: item.scrapeSuccess ? (riskScore > 50 ? 85 : 70) : 40,\n        riskLevel,\n        details: riskDetails.join('; '),\n        reason: riskLevel === 'high'\n          ? 'High risk of losing inbound leads due to poor response setup'\n          : riskLevel === 'medium'\n            ? 'Moderate inbound response risk - room for improvement'\n            : 'Good inbound lead handling setup'\n      }\n    }\n  }\n}];"
+      },
+      "id": "calc-inbound-risk",
+      "name": "Calculate Inbound Risk",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2300, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// CALCULATE FINAL SCORE & GENERATE OUTPUT\n// ============================================\nconst item = $input.first().json;\nconst signals = item.signals || {};\nconst wa = item.websiteAnalysis || {};\n\n// ========== SIGNAL WEIGHTS ==========\nconst weights = {\n  googleAds: 0.40,        // Strong buying signal - actively spending money\n  afterHoursCoverage: 0.35, // Coverage gap = direct opportunity\n  inboundRisk: 0.25       // Response risk = opportunity\n};\n\n// ========== CALCULATE TOTAL SCORE ==========\nlet totalScore = 0;\nlet detectedSignals = [];\nlet signalContributions = {};\n\nfor (const [key, weight] of Object.entries(weights)) {\n  const signal = signals[key];\n  if (signal?.detected) {\n    detectedSignals.push(key);\n    const signalScore = signal.score || 0;\n    const signalConfidence = signal.confidence || 50;\n    const contribution = Math.round(signalScore * weight * (signalConfidence / 100));\n    signalContributions[key] = contribution;\n    totalScore += contribution;\n  }\n}\n\n// Boost for multiple signals (compound opportunity)\nif (detectedSignals.length >= 2) {\n  totalScore = Math.min(totalScore + 12, 100);\n}\nif (detectedSignals.length >= 3) {\n  totalScore = Math.min(totalScore + 8, 100);\n}\n\n// Google Ads + Coverage Gap is the golden combination\nif (detectedSignals.includes('googleAds') && detectedSignals.includes('afterHoursCoverage')) {\n  totalScore = Math.min(totalScore + 10, 100);\n}\n\n// Ensure score is in range\ntotalScore = Math.max(0, Math.min(Math.round(totalScore), 100));\n\n// ========== CALCULATE CONFIDENCE ==========\nlet confidenceScore = 0;\nlet dataPoints = 0;\n\nfor (const signal of Object.values(signals)) {\n  if (signal && typeof signal === 'object' && signal.confidence) {\n    dataPoints++;\n    confidenceScore += signal.confidence;\n  }\n}\n\nconst avgConfidence = dataPoints > 0 ? Math.round(confidenceScore / dataPoints) : 30;\nlet confidenceLevel = 'very_low';\nif (avgConfidence >= 80 && detectedSignals.length >= 2) confidenceLevel = 'high';\nelse if (avgConfidence >= 65 && detectedSignals.length >= 1) confidenceLevel = 'medium';\nelse if (avgConfidence >= 45) confidenceLevel = 'low';\n\n// ========== DETERMINE READY STATE ==========\nlet readyState = 'cold';\nlet readyReason = 'Limited signals detected - add to nurture list';\n\nif (totalScore >= 75 && detectedSignals.length >= 2) {\n  readyState = 'hot';\n  readyReason = 'High-intent lead with multiple strong buying signals';\n} else if (totalScore >= 55 && detectedSignals.length >= 1) {\n  readyState = 'warm';\n  readyReason = 'Good potential - verified signals indicate opportunity';\n} else if (totalScore >= 35) {\n  readyState = 'nurture';\n  readyReason = 'Some signals detected - worth monitoring and nurturing';\n}\n\n// ========== GENERATE \"WHY NOW\" EXPLANATION ==========\nlet whyNowParts = [];\n\nif (signals.googleAds?.detected && signals.googleAds?.verifiedByTransparency) {\n  whyNowParts.push('Verified Google Ads spend (high intent)');\n} else if (signals.googleAds?.detected) {\n  whyNowParts.push('Active Google Ads detected');\n}\n\nif (signals.afterHoursCoverage?.detected && signals.afterHoursCoverage.score > 60) {\n  whyNowParts.push('Major after-hours coverage gap');\n} else if (signals.afterHoursCoverage?.detected) {\n  whyNowParts.push('After-hours coverage opportunity');\n}\n\nif (signals.inboundRisk?.detected && signals.inboundRisk.riskLevel === 'high') {\n  whyNowParts.push('High risk of losing inbound leads');\n} else if (signals.inboundRisk?.detected) {\n  whyNowParts.push('Inbound response gaps identified');\n}\n\nconst whyNow = whyNowParts.length > 0 \n  ? whyNowParts.join(' + ')\n  : 'Limited buying signals detected at this time';\n\n// ========== KEY INSIGHTS ==========\nlet keyInsights = [];\nif (signals.googleAds?.verifiedByTransparency) {\n  keyInsights.push('Google Ads verified via Transparency Center');\n}\nif (wa.hasChatWidget) {\n  keyInsights.push(`Uses ${wa.chatWidget} for live chat`);\n} else if (item.scrapeSuccess) {\n  keyInsights.push('No live chat widget - opportunity for instant response');\n}\nif (wa.hasBookingTool) {\n  keyInsights.push(`Self-service booking via ${wa.bookingTool}`);\n}\nif (wa.contactMethodCount) {\n  keyInsights.push(`${wa.contactMethodCount} contact method(s): ${wa.contactMethods?.join(', ')}`);\n}\nif (!item.scrapeSuccess) {\n  keyInsights.push('Website blocked direct scraping - using SERP/Ads data only');\n}\nif (wa.has24x7) {\n  keyInsights.push('Claims 24/7 availability');\n}\n\n// ========== RECOMMENDED APPROACH ==========\nlet contactMethod = 'marketing_nurture';\nlet contactReason = 'Add to email nurture campaign';\n\nif (signals.googleAds?.detected && signals.afterHoursCoverage?.score > 50) {\n  contactMethod = 'phone_call';\n  contactReason = 'Paying for ads but losing after-hours leads - urgent opportunity';\n} else if (signals.afterHoursCoverage?.score > 60) {\n  contactMethod = 'phone_call';\n  contactReason = 'Demonstrate how you solve their after-hours gap';\n} else if (signals.inboundRisk?.riskLevel === 'high') {\n  contactMethod = 'email_sequence';\n  contactReason = 'Show how you improve response times and capture rates';\n} else if (readyState === 'hot') {\n  contactMethod = 'phone_call';\n  contactReason = 'Hot lead - prioritize direct outreach';\n} else if (readyState === 'warm') {\n  contactMethod = 'email_sequence';\n  contactReason = 'Warm lead - start value-focused email sequence';\n}\n\n// ========== BUILD SIGNAL ARRAY FOR FRONTEND ==========\nconst signalArray = [];\n\nif (signals.googleAds?.detected) {\n  signalArray.push({\n    id: 'googlePaidTraffic',\n    label: 'Google Paid Traffic Active',\n    detected: true,\n    value: signals.googleAds.details || 'Active Google Ads campaign detected',\n    confidence: signals.googleAds.confidence,\n    score: signals.googleAds.score\n  });\n}\n\nif (signals.afterHoursCoverage?.detected) {\n  signalArray.push({\n    id: 'afterHoursCoverage',\n    label: 'After Hours Coverage Gap',\n    detected: true,\n    value: signals.afterHoursCoverage.details || signals.afterHoursCoverage.reason,\n    confidence: signals.afterHoursCoverage.confidence,\n    score: signals.afterHoursCoverage.score\n  });\n}\n\nif (signals.inboundRisk?.detected) {\n  signalArray.push({\n    id: 'inboundResponseRisk',\n    label: 'Inbound Response Risk',\n    detected: true,\n    value: signals.inboundRisk.details || signals.inboundRisk.reason,\n    confidence: signals.inboundRisk.confidence,\n    score: signals.inboundRisk.score\n  });\n}\n\n// ========== FINAL OUTPUT ==========\nreturn [{\n  json: {\n    domain: item.domain,\n    originalDomain: item.originalDomain,\n    score: totalScore,\n    signals: signalArray,\n    signalCount: signalArray.length,\n    whyNow,\n    keyInsights,\n    readyState,\n    readyReason,\n    confidence: {\n      level: confidenceLevel,\n      score: avgConfidence,\n      dataPoints\n    },\n    recommendedContact: {\n      method: contactMethod,\n      reason: contactReason\n    },\n    websiteAnalysis: {\n      chatWidget: wa.chatWidget,\n      hasChatWidget: wa.hasChatWidget || false,\n      bookingTool: wa.bookingTool,\n      hasBookingTool: wa.hasBookingTool || false,\n      hasContactForm: wa.hasContactForm || false,\n      hasPhone: wa.hasPhone || false,\n      hasEmail: wa.hasEmail || false,\n      contactMethods: wa.contactMethods || [],\n      has24x7: wa.has24x7 || false,\n      scrapeSuccess: item.scrapeSuccess || false\n    },\n    timestamps: {\n      scrapedAt: new Date().toISOString(),\n      expiresAt: new Date(Date.now() + 86400000).toISOString()\n    },\n    debug: {\n      signalContributions,\n      rawSignals: signals,\n      scrapeSuccess: item.scrapeSuccess,\n      usingScraperApi: item.usingScraperApi,\n      errors: item.errors || []\n    }\n  }\n}];"
+      },
+      "id": "final-score",
+      "name": "Calculate Final Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2500, 500]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "aggregate-results",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [2700, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2900, 500]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Inputs": {
+      "main": [
+        [
+          {
+            "node": "Loop Domains",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Domains": {
+      "main": [
+        [
+          {
+            "node": "Google Search",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Search": {
+      "main": [
+        [
+          {
+            "node": "Analyze SERP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze SERP": {
+      "main": [
+        [
+          {
+            "node": "Ads Transparency API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ads Transparency API": {
+      "main": [
+        [
+          {
+            "node": "Process Transparency",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Transparency": {
+      "main": [
+        [
+          {
+            "node": "Build Scrape URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Scrape URL": {
+      "main": [
+        [
+          {
+            "node": "Scrape Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Website": {
+      "main": [
+        [
+          {
+            "node": "Analyze Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Website": {
+      "main": [
+        [
+          {
+            "node": "Calculate After-Hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate After-Hours": {
+      "main": [
+        [
+          {
+            "node": "Calculate Inbound Risk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Inbound Risk": {
+      "main": [
+        [
+          {
+            "node": "Calculate Final Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Final Score": {
+      "main": [
+        [
+          {
+            "node": "Loop Domains",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "SAI Scraper"
+    },
+    {
+      "name": "Production"
+    }
+  ]
+}

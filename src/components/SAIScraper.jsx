@@ -48,32 +48,50 @@ const SIGNAL_TYPES = [
   { id: 'inboundResponseRisk', label: 'Inbound Response Risk', description: 'Slow or no response to inbound inquiries, risking lost opportunities from paid and organic traffic.', icon: '⚠', color: '#F59E0B' }
 ];
 
-// Mix of small-medium businesses across industries - easier to scrape than enterprise SaaS
+// High-value target companies - mix of industries known to spend on Google Ads
+// These are IDEAL prospects: running ads + likely have after-hours gaps
 const MOCK_COMPANIES = [
-  // Local service businesses (good targets for after-hours/response signals)
-  { name: 'Roto-Rooter', domain: 'rotorooter.com', industry: 'Professional Services', employees: '1000+', location: 'United States', revenue: '$100M+' },
-  { name: 'ServiceMaster', domain: 'servicemaster.com', industry: 'Professional Services', employees: '1000+', location: 'United States', revenue: '$100M+' },
-  { name: 'Mr. Electric', domain: 'mrelectric.com', industry: 'Professional Services', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
-  { name: 'Two Men and a Truck', domain: 'twomenandatruck.com', industry: 'Logistics', employees: '501-1000', location: 'United States', revenue: '$100M+' },
-  { name: 'Servpro', domain: 'servpro.com', industry: 'Professional Services', employees: '1000+', location: 'United States', revenue: '$100M+' },
-  // Marketing agencies (often run Google Ads)
+  // HOME SERVICES - Heavy ad spenders, often lack 24/7 coverage
+  { name: 'ABC Plumbing', domain: 'abcplumbing.com', industry: 'Professional Services', employees: '11-50', location: 'United States', revenue: '$1M - $10M' },
+  { name: 'Merry Maids', domain: 'merrymaids.com', industry: 'Professional Services', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'Stanley Steemer', domain: 'stanleysteemer.com', industry: 'Professional Services', employees: '1000+', location: 'United States', revenue: '$100M+' },
+  { name: '1-800-GOT-JUNK', domain: '1800gotjunk.com', industry: 'Professional Services', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'Mosquito Joe', domain: 'mosquitojoe.com', industry: 'Professional Services', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
+  // LEGAL - Known Google Ads spenders, often poor response times
+  { name: 'Morgan & Morgan', domain: 'forthepeople.com', industry: 'Legal', employees: '1000+', location: 'United States', revenue: '$100M+' },
+  { name: 'Jacoby & Meyers', domain: 'jacobyandmeyers.com', industry: 'Legal', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'Sokolove Law', domain: 'sokolovelaw.com', industry: 'Legal', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
+  // HEALTHCARE/DENTAL - High CPC advertisers
+  { name: 'Aspen Dental', domain: 'aspendental.com', industry: 'Healthcare', employees: '1000+', location: 'United States', revenue: '$100M+' },
+  { name: 'ClearChoice', domain: 'clearchoice.com', industry: 'Healthcare', employees: '501-1000', location: 'United States', revenue: '$100M+' },
+  { name: 'Ideal Image', domain: 'idealimage.com', industry: 'Healthcare', employees: '501-1000', location: 'United States', revenue: '$100M+' },
+  // REAL ESTATE - Always advertising
+  { name: 'Offerpad', domain: 'offerpad.com', industry: 'Real Estate', employees: '501-1000', location: 'United States', revenue: '$100M+' },
+  { name: 'HomeVestors', domain: 'homevestors.com', industry: 'Real Estate', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'We Buy Ugly Houses', domain: 'webuyuglyhouses.com', industry: 'Real Estate', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
+  // INSURANCE - Highest CPCs, often slow response
+  { name: 'SelectQuote', domain: 'selectquote.com', industry: 'Insurance', employees: '1000+', location: 'United States', revenue: '$100M+' },
+  { name: 'eHealth', domain: 'ehealthinsurance.com', industry: 'Insurance', employees: '501-1000', location: 'United States', revenue: '$100M+' },
+  { name: 'GoHealth', domain: 'gohealth.com', industry: 'Insurance', employees: '1000+', location: 'United States', revenue: '$100M+' },
+  // MARKETING AGENCIES - Run their own ads
   { name: 'WebFX', domain: 'webfx.com', industry: 'Marketing Agency', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
   { name: 'Thrive Agency', domain: 'thriveagency.com', industry: 'Marketing Agency', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
-  { name: 'Ignite Visibility', domain: 'ignitevisibility.com', industry: 'Marketing Agency', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
-  { name: 'Disruptive Advertising', domain: 'disruptiveadvertising.com', industry: 'Marketing Agency', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
-  { name: 'KlientBoost', domain: 'klientboost.com', industry: 'Marketing Agency', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
-  // E-commerce/Retail
-  { name: 'Chubbies', domain: 'chubbiesshorts.com', industry: 'E-commerce', employees: '51-200', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'Straight North', domain: 'straightnorth.com', industry: 'Marketing Agency', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
+  // E-COMMERCE - Active advertisers
   { name: 'MVMT Watches', domain: 'mvmt.com', industry: 'E-commerce', employees: '51-200', location: 'United States', revenue: '$50M - $100M' },
-  { name: 'Beardbrand', domain: 'beardbrand.com', industry: 'E-commerce', employees: '11-50', location: 'United States', revenue: '$10M - $50M' },
-  // B2B Software (smaller ones)
-  { name: 'Process Street', domain: 'process.st', industry: 'SaaS', employees: '51-200', location: 'United States', revenue: '$10M - $50M' },
-  { name: 'Typeform', domain: 'typeform.com', industry: 'SaaS', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
-  { name: 'Hotjar', domain: 'hotjar.com', industry: 'SaaS', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
-  { name: 'Loom', domain: 'loom.com', industry: 'SaaS', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
-  { name: 'Notion', domain: 'notion.so', industry: 'SaaS', employees: '201-500', location: 'United States', revenue: '$50M - $100M' },
-  { name: 'Airtable', domain: 'airtable.com', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$100M+' },
-  { name: 'ClickUp', domain: 'clickup.com', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$100M+' }
+  { name: 'Ridge Wallet', domain: 'ridge.com', industry: 'E-commerce', employees: '51-200', location: 'United States', revenue: '$50M - $100M' },
+  { name: 'Manscaped', domain: 'manscaped.com', industry: 'E-commerce', employees: '201-500', location: 'United States', revenue: '$100M+' },
+  // SAAS - Good mix
+  { name: 'Monday.com', domain: 'monday.com', industry: 'SaaS', employees: '1000+', location: 'United States', revenue: '$100M+' },
+  { name: 'Pipedrive', domain: 'pipedrive.com', industry: 'SaaS', employees: '501-1000', location: 'United States', revenue: '$100M+' },
+  { name: 'Freshworks', domain: 'freshworks.com', industry: 'SaaS', employees: '1000+', location: 'United States', revenue: '$100M+' },
+  // FINTECH - High value leads
+  { name: 'LendingTree', domain: 'lendingtree.com', industry: 'FinTech', employees: '501-1000', location: 'United States', revenue: '$100M+' },
+  { name: 'NerdWallet', domain: 'nerdwallet.com', industry: 'FinTech', employees: '501-1000', location: 'United States', revenue: '$100M+' },
+  { name: 'Credit Karma', domain: 'creditkarma.com', industry: 'FinTech', employees: '1000+', location: 'United States', revenue: '$100M+' },
+  // EDUCATION - Known advertisers
+  { name: 'Coursera', domain: 'coursera.org', industry: 'EdTech', employees: '1000+', location: 'United States', revenue: '$100M+' },
+  { name: 'Udemy', domain: 'udemy.com', industry: 'EdTech', employees: '1000+', location: 'United States', revenue: '$100M+' }
 ];
 
 // ==================== ICONS ====================

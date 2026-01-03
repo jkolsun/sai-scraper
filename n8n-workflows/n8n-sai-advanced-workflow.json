@@ -1,0 +1,381 @@
+{
+  "name": "SAI Scraper - Advanced Production v3",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sai-scraper-advanced",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 500],
+      "webhookId": "sai-scraper-advanced"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// ADVANCED CONFIGURATION & NORMALIZATION\n// ============================================\nconst body = $input.first().json.body || {};\nconst domains = body.domains || [];\nconst options = body.options || {};\n\n// User-Agent rotation pool - 10 realistic browser signatures\nconst USER_AGENTS = [\n  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',\n  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',\n  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0',\n  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2.1 Safari/605.1.15',\n  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',\n  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0',\n  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',\n  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 OPR/106.0.0.0',\n  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_2_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1',\n  'Mozilla/5.0 (iPad; CPU OS 17_2_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1'\n];\n\n// ScraperAPI configuration\nconst SCRAPER_API_KEY = options.scraperApiKey || 'YOUR_SCRAPERAPI_KEY';\nconst USE_SCRAPER_API = SCRAPER_API_KEY && SCRAPER_API_KEY !== 'YOUR_SCRAPERAPI_KEY';\n\n// Signal weights (customizable)\nconst SIGNAL_WEIGHTS = {\n  googleAds: options.weights?.googleAds || 0.30,\n  afterHoursCoverage: options.weights?.afterHoursCoverage || 0.25,\n  inboundRisk: options.weights?.inboundRisk || 0.20,\n  hiringSignals: options.weights?.hiringSignals || 0.15,\n  techStack: options.weights?.techStack || 0.10\n};\n\n// Configuration object\nconst config = {\n  scraperApiKey: SCRAPER_API_KEY,\n  useScraperApi: USE_SCRAPER_API,\n  signalWeights: SIGNAL_WEIGHTS,\n  maxRetries: 2,\n  timeout: 30000,\n  enableLinkedIn: options.enableLinkedIn !== false,\n  enableIndeed: options.enableIndeed !== false,\n  enableTechStack: options.enableTechStack !== false\n};\n\n// Return each domain as separate item\nreturn domains.map((domain, index) => {\n  let cleanDomain = domain\n    .replace(/^https?:\\/\\//, '')\n    .replace(/^www\\./, '')\n    .split('/')[0]\n    .toLowerCase()\n    .trim();\n  \n  // Extract company name from domain\n  const companyName = cleanDomain\n    .replace(/\\.(com|io|co|net|org|ai|app)$/, '')\n    .replace(/[-_]/g, ' ')\n    .split('.')\n    .pop()\n    .replace(/\\b\\w/g, c => c.toUpperCase());\n  \n  // Rotate user agent\n  const userAgent = USER_AGENTS[index % USER_AGENTS.length];\n  \n  return {\n    json: {\n      domain: cleanDomain,\n      companyName,\n      originalDomain: domain,\n      config,\n      userAgent,\n      timestamp: Date.now(),\n      signals: {},\n      enrichment: {},\n      rawData: {},\n      errors: []\n    }\n  };\n});"
+      },
+      "id": "normalize-inputs",
+      "name": "Normalize Inputs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 500]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {
+          "delayBetweenBatches": 2500
+        }
+      },
+      "id": "loop-domains",
+      "name": "Loop Domains",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [500, 500]
+    },
+    {
+      "parameters": {
+        "url": "=https://www.google.com/search?q=site:{{$json.domain}}+OR+\"{{$json.domain}}\"&num=20",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "User-Agent", "value": "={{$json.userAgent}}" },
+            { "name": "Accept", "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8" },
+            { "name": "Accept-Language", "value": "en-US,en;q=0.9" },
+            { "name": "Accept-Encoding", "value": "gzip, deflate, br" },
+            { "name": "Cache-Control", "value": "no-cache" },
+            { "name": "Sec-Fetch-Dest", "value": "document" },
+            { "name": "Sec-Fetch-Mode", "value": "navigate" },
+            { "name": "Sec-Fetch-Site", "value": "none" },
+            { "name": "Sec-Ch-Ua", "value": "\"Not A(Brand\";v=\"99\", \"Google Chrome\";v=\"121\", \"Chromium\";v=\"121\"" },
+            { "name": "Sec-Ch-Ua-Mobile", "value": "?0" },
+            { "name": "Sec-Ch-Ua-Platform", "value": "\"Windows\"" }
+          ]
+        },
+        "options": { "timeout": 20000, "redirect": { "redirect": { "followRedirects": true, "maxRedirects": 3 } } }
+      },
+      "id": "google-search",
+      "name": "Google Search (Ads Detection)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "=https://www.google.com/search?q=\"{{$json.companyName}}\" hiring OR careers OR jobs site:linkedin.com OR site:indeed.com",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "User-Agent", "value": "={{$json.userAgent}}" },
+            { "name": "Accept", "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" },
+            { "name": "Accept-Language", "value": "en-US,en;q=0.9" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      },
+      "id": "hiring-search",
+      "name": "Google Search (Hiring)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 500],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "=https://www.google.com/search?q=\"{{$json.companyName}}\" site:linkedin.com/company",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "User-Agent", "value": "={{$json.userAgent}}" },
+            { "name": "Accept", "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" },
+            { "name": "Accept-Language", "value": "en-US,en;q=0.9" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      },
+      "id": "linkedin-search",
+      "name": "LinkedIn Company Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 700],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// MERGE PARALLEL SEARCH RESULTS\n// ============================================\nconst items = $input.all();\n\n// Find each type of result\nlet baseItem = null;\nlet serpHtml = '';\nlet hiringHtml = '';\nlet linkedInHtml = '';\n\nfor (const item of items) {\n  const json = item.json;\n  if (json.domain) {\n    baseItem = json;\n  }\n  // Identify by URL pattern in the data\n  const data = json.data || '';\n  if (data.includes('Sponsored') || data.includes('Ad ·') || !data.includes('hiring')) {\n    if (!serpHtml && data.length > 500) serpHtml = data;\n  }\n  if (data.includes('hiring') || data.includes('careers') || data.includes('jobs')) {\n    hiringHtml = data;\n  }\n  if (data.includes('linkedin.com/company')) {\n    linkedInHtml = data;\n  }\n}\n\n// Use first item as base if not found\nif (!baseItem) {\n  baseItem = items[0]?.json || {};\n}\n\nreturn [{\n  json: {\n    ...baseItem,\n    rawData: {\n      ...baseItem.rawData,\n      serpHtml: serpHtml.substring(0, 15000),\n      hiringHtml: hiringHtml.substring(0, 10000),\n      linkedInHtml: linkedInHtml.substring(0, 10000)\n    }\n  }\n}];"
+      },
+      "id": "merge-search-results",
+      "name": "Merge Search Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [950, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// ANALYZE GOOGLE SERP FOR ADS\n// ============================================\nconst item = $input.first().json;\nconst html = item.rawData?.serpHtml || '';\nconst domain = item.domain;\n\nlet googleAdsDetected = false;\nlet adCount = 0;\nlet adIndicators = [];\n\ntry {\n  // Multiple ad detection patterns\n  const adPatterns = [\n    { pattern: /Sponsored/gi, name: 'Sponsored label' },\n    { pattern: /Ad\\s*·/gi, name: 'Ad dot' },\n    { pattern: /data-text-ad/gi, name: 'Text ad data' },\n    { pattern: /class=\"[^\"]*commercial/gi, name: 'Commercial class' },\n    { pattern: /aria-label=\"[^\"]*[Aa]d[s]?\"/gi, name: 'Ad aria label' },\n    { pattern: /data-hveid[^>]*Sponsored/gi, name: 'Sponsored hveid' },\n    { pattern: /class=\"[^\"]*ads-/gi, name: 'Ads class' },\n    { pattern: /\\/aclk\\?/gi, name: 'Ad click URL' },\n    { pattern: /googleadservices/gi, name: 'Google Ad Services' }\n  ];\n  \n  for (const { pattern, name } of adPatterns) {\n    const matches = html.match(pattern);\n    if (matches) {\n      googleAdsDetected = true;\n      adCount += matches.length;\n      adIndicators.push(name);\n    }\n  }\n} catch (e) {\n  item.errors.push(`SERP analysis error: ${e.message}`);\n}\n\n// Calculate score and confidence\nlet googleAdsScore = 0;\nlet googleAdsConfidence = 0;\n\nif (googleAdsDetected) {\n  googleAdsScore = Math.min(60 + (adCount * 3), 95);\n  googleAdsConfidence = Math.min(65 + (adIndicators.length * 5), 90);\n}\n\nreturn [{\n  json: {\n    ...item,\n    signals: {\n      ...item.signals,\n      googleAds: {\n        detected: googleAdsDetected,\n        score: googleAdsScore,\n        confidence: googleAdsConfidence,\n        adCount: Math.min(adCount, 30),\n        indicators: [...new Set(adIndicators)],\n        source: 'google_serp',\n        details: googleAdsDetected \n          ? `Detected ${adCount} ad indicators: ${[...new Set(adIndicators)].slice(0,3).join(', ')}`\n          : 'No Google Ads detected in search results'\n      }\n    }\n  }\n}];"
+      },
+      "id": "analyze-serp",
+      "name": "Analyze SERP (Ads)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1150, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// ANALYZE HIRING SIGNALS\n// ============================================\nconst item = $input.first().json;\nconst html = item.rawData?.hiringHtml || '';\nconst companyName = item.companyName;\n\nlet hiringDetected = false;\nlet jobCount = 0;\nlet hiringRoles = [];\nlet hiringPlatforms = [];\n\ntry {\n  // Check for job listings\n  const jobPatterns = [\n    { pattern: /\\d+\\s*jobs?\\s*(available|open|posted)/gi, name: 'Job count' },\n    { pattern: /hiring|careers|job opening|we're hiring/gi, name: 'Hiring keyword' },\n    { pattern: /apply now|join our team|work with us/gi, name: 'Apply CTA' }\n  ];\n  \n  for (const { pattern, name } of jobPatterns) {\n    const matches = html.match(pattern);\n    if (matches) {\n      hiringDetected = true;\n      jobCount += matches.length;\n    }\n  }\n  \n  // Detect specific roles being hired\n  const rolePatterns = [\n    { pattern: /sales|account executive|ae\\b/gi, role: 'Sales' },\n    { pattern: /sdr|bdr|business development/gi, role: 'SDR/BDR' },\n    { pattern: /customer success|csm/gi, role: 'Customer Success' },\n    { pattern: /marketing|growth/gi, role: 'Marketing' },\n    { pattern: /engineer|developer|software/gi, role: 'Engineering' },\n    { pattern: /support|service rep/gi, role: 'Support' }\n  ];\n  \n  for (const { pattern, role } of rolePatterns) {\n    if (pattern.test(html) && !hiringRoles.includes(role)) {\n      hiringRoles.push(role);\n    }\n  }\n  \n  // Detect platforms\n  if (/linkedin\\.com/i.test(html)) hiringPlatforms.push('LinkedIn');\n  if (/indeed\\.com/i.test(html)) hiringPlatforms.push('Indeed');\n  if (/glassdoor\\.com/i.test(html)) hiringPlatforms.push('Glassdoor');\n  if (/greenhouse\\.io/i.test(html)) hiringPlatforms.push('Greenhouse');\n  if (/lever\\.co/i.test(html)) hiringPlatforms.push('Lever');\n  \n} catch (e) {\n  item.errors.push(`Hiring analysis error: ${e.message}`);\n}\n\n// Calculate score - hiring = growth = good prospect\nlet hiringScore = 0;\nlet hiringConfidence = 0;\n\nif (hiringDetected) {\n  hiringScore = Math.min(50 + (hiringRoles.length * 10) + (jobCount * 2), 90);\n  hiringConfidence = Math.min(50 + (hiringPlatforms.length * 15), 85);\n  \n  // Boost for sales/customer-facing roles (means they care about revenue)\n  if (hiringRoles.includes('Sales') || hiringRoles.includes('SDR/BDR') || hiringRoles.includes('Customer Success')) {\n    hiringScore = Math.min(hiringScore + 15, 95);\n  }\n}\n\nreturn [{\n  json: {\n    ...item,\n    signals: {\n      ...item.signals,\n      hiring: {\n        detected: hiringDetected,\n        score: hiringScore,\n        confidence: hiringConfidence,\n        jobCount: Math.min(jobCount, 50),\n        roles: hiringRoles,\n        platforms: hiringPlatforms,\n        details: hiringDetected \n          ? `Actively hiring: ${hiringRoles.join(', ') || 'various roles'} via ${hiringPlatforms.join(', ') || 'job boards'}`\n          : 'No active hiring signals detected'\n      }\n    }\n  }\n}];"
+      },
+      "id": "analyze-hiring",
+      "name": "Analyze Hiring Signals",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1350, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// EXTRACT LINKEDIN COMPANY DATA\n// ============================================\nconst item = $input.first().json;\nconst html = item.rawData?.linkedInHtml || '';\n\nlet linkedInFound = false;\nlet employeeCount = null;\nlet employeeRange = null;\nlet linkedInUrl = null;\nlet companyDescription = '';\nlet industry = null;\n\ntry {\n  // Try to find LinkedIn company URL\n  const urlMatch = html.match(/linkedin\\.com\\/company\\/([a-zA-Z0-9-]+)/i);\n  if (urlMatch) {\n    linkedInFound = true;\n    linkedInUrl = `https://linkedin.com/company/${urlMatch[1]}`;\n  }\n  \n  // Try to extract employee count from snippet\n  const empPatterns = [\n    /([\\d,]+)\\s*employees/i,\n    /([\\d,]+)\\s*followers/i,\n    /(\\d+)-(\\d+)\\s*employees/i,\n    /company size[:\\s]*([\\d,]+)/i\n  ];\n  \n  for (const pattern of empPatterns) {\n    const match = html.match(pattern);\n    if (match) {\n      if (match[2]) {\n        // Range like 51-200\n        employeeRange = `${match[1]}-${match[2]}`;\n        employeeCount = parseInt(match[2].replace(/,/g, ''));\n      } else {\n        employeeCount = parseInt(match[1].replace(/,/g, ''));\n      }\n      break;\n    }\n  }\n  \n  // Determine employee range bucket\n  if (employeeCount && !employeeRange) {\n    if (employeeCount <= 10) employeeRange = '1-10';\n    else if (employeeCount <= 50) employeeRange = '11-50';\n    else if (employeeCount <= 200) employeeRange = '51-200';\n    else if (employeeCount <= 500) employeeRange = '201-500';\n    else if (employeeCount <= 1000) employeeRange = '501-1000';\n    else employeeRange = '1000+';\n  }\n  \n  // Try to extract description from snippet\n  const descMatch = html.match(/\"([^\"]{50,300})\"/i);\n  if (descMatch) {\n    companyDescription = descMatch[1];\n  }\n  \n} catch (e) {\n  item.errors.push(`LinkedIn analysis error: ${e.message}`);\n}\n\nreturn [{\n  json: {\n    ...item,\n    enrichment: {\n      ...item.enrichment,\n      linkedIn: {\n        found: linkedInFound,\n        url: linkedInUrl,\n        employeeCount,\n        employeeRange,\n        description: companyDescription,\n        industry\n      }\n    }\n  }\n}];"
+      },
+      "id": "analyze-linkedin",
+      "name": "Extract LinkedIn Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1550, 500]
+    },
+    {
+      "parameters": {
+        "url": "=https://adstransparency.google.com/anji/_/rpc/SearchService/SearchCreatives",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/x-www-form-urlencoded" },
+            { "name": "User-Agent", "value": "={{$json.userAgent}}" },
+            { "name": "Origin", "value": "https://adstransparency.google.com" },
+            { "name": "Referer", "value": "https://adstransparency.google.com/" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "f.req", "value": "={{JSON.stringify([[null,null,null,null,null,null,null,[$json.domain]]])}}" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      },
+      "id": "ads-transparency",
+      "name": "Google Ads Transparency",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1750, 500],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// PROCESS ADS TRANSPARENCY + MERGE SIGNALS\n// ============================================\nconst item = $input.first().json;\nconst response = item.data || '';\n\nlet adsFromTransparency = false;\nlet transparencyConfidence = 0;\nlet adCreativeCount = 0;\nlet adDetails = null;\n\ntry {\n  const data = typeof response === 'string' ? response : JSON.stringify(response);\n  \n  if (data.length > 200) {\n    // Look for ad creative indicators\n    const creativePatterns = [\n      /creative_id/gi,\n      /ad_creative/gi,\n      /advertiser/gi,\n      /ad_format/gi\n    ];\n    \n    for (const pattern of creativePatterns) {\n      const matches = data.match(pattern);\n      if (matches) {\n        adsFromTransparency = true;\n        adCreativeCount += matches.length;\n      }\n    }\n    \n    if (adsFromTransparency) {\n      transparencyConfidence = 95;\n      adDetails = `Verified ${Math.min(adCreativeCount, 20)}+ ad creatives in Google Ads Transparency Center`;\n    }\n  }\n} catch (e) {\n  item.errors.push(`Transparency API error: ${e.message}`);\n}\n\n// Merge with existing Google Ads signal\nconst existingAds = item.signals?.googleAds || {};\nconst finalDetected = adsFromTransparency || existingAds.detected;\nconst finalConfidence = Math.max(transparencyConfidence, existingAds.confidence || 0);\n\n// Calculate final score\nlet finalScore = 0;\nif (finalDetected) {\n  if (adsFromTransparency) {\n    finalScore = 90; // Verified = high confidence\n  } else {\n    finalScore = existingAds.score || 65;\n  }\n}\n\nreturn [{\n  json: {\n    ...item,\n    data: undefined, // Clear raw response\n    signals: {\n      ...item.signals,\n      googleAds: {\n        detected: finalDetected,\n        score: finalScore,\n        confidence: finalConfidence,\n        adCount: existingAds.adCount || 0,\n        adCreativeCount,\n        indicators: existingAds.indicators || [],\n        verifiedByTransparency: adsFromTransparency,\n        source: adsFromTransparency ? 'transparency_api' : 'google_serp',\n        details: adDetails || existingAds.details\n      }\n    }\n  }\n}];"
+      },
+      "id": "process-transparency",
+      "name": "Process Ads Transparency",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1950, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// BUILD WEBSITE SCRAPE URL\n// ============================================\nconst item = $input.first().json;\nconst config = item.config || {};\nconst domain = item.domain;\n\nlet scrapeUrl;\n\nif (config.useScraperApi && config.scraperApiKey) {\n  const targetUrl = encodeURIComponent(`https://${domain}`);\n  scrapeUrl = `http://api.scraperapi.com?api_key=${config.scraperApiKey}&url=${targetUrl}&render=true&country_code=us&device_type=desktop`;\n} else {\n  scrapeUrl = `https://${domain}`;\n}\n\nreturn [{\n  json: {\n    ...item,\n    scrapeUrl,\n    usingScraperApi: !!config.useScraperApi\n  }\n}];"
+      },
+      "id": "build-scrape-url",
+      "name": "Build Scrape URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2150, 500]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.scrapeUrl}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "User-Agent", "value": "={{$json.userAgent}}" },
+            { "name": "Accept", "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8" },
+            { "name": "Accept-Language", "value": "en-US,en;q=0.9" },
+            { "name": "Accept-Encoding", "value": "gzip, deflate, br" },
+            { "name": "Connection", "value": "keep-alive" },
+            { "name": "Upgrade-Insecure-Requests", "value": "1" },
+            { "name": "Sec-Fetch-Dest", "value": "document" },
+            { "name": "Sec-Fetch-Mode", "value": "navigate" },
+            { "name": "Sec-Fetch-Site", "value": "none" },
+            { "name": "Sec-Fetch-User", "value": "?1" },
+            { "name": "Cache-Control", "value": "max-age=0" },
+            { "name": "Sec-Ch-Ua", "value": "\"Not A(Brand\";v=\"99\", \"Google Chrome\";v=\"121\"" }
+          ]
+        },
+        "options": { "timeout": 30000, "redirect": { "redirect": { "followRedirects": true, "maxRedirects": 5 } } }
+      },
+      "id": "scrape-website",
+      "name": "Scrape Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2350, 500],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// COMPREHENSIVE WEBSITE ANALYSIS\n// ============================================\nconst item = $input.first().json;\nconst rawHtml = item.data || '';\nconst html = rawHtml.toLowerCase();\nconst domain = item.domain;\n\n// Check scrape success\nconst scrapeSuccess = rawHtml.length > 1000 && \n  !rawHtml.includes('403 Forbidden') && \n  !rawHtml.includes('Access Denied') &&\n  !rawHtml.includes('Just a moment') && \n  !rawHtml.includes('checking your browser') &&\n  !rawHtml.includes('captcha') &&\n  !rawHtml.includes('blocked');\n\nif (!scrapeSuccess) {\n  return [{\n    json: {\n      ...item,\n      data: undefined,\n      scrapeSuccess: false,\n      scrapeError: rawHtml.length < 1000 ? 'Empty response' : 'Bot protection',\n      websiteAnalysis: {\n        hasChatWidget: false, hasBookingTool: false, hasContactForm: false,\n        hasPhone: false, hasEmail: false, has24x7: false, hasWeekendHours: false,\n        contactMethods: [], urgencyScore: 0, responseScore: 70\n      },\n      techStack: { detected: [], confidence: 0 }\n    }\n  }];\n}\n\n// ===== CHAT WIDGETS =====\nconst chatWidgets = {\n  intercom: /intercom|widget\\.intercom|intercomcdn/i,\n  drift: /drift\\.com|driftt|drift-frame/i,\n  zendesk: /zendesk|zopim|zdassets|ze-snippet/i,\n  hubspot: /hubspot.*conversations|hs-scripts.*conversations|hubspot-messages/i,\n  crisp: /crisp\\.chat|client\\.crisp/i,\n  livechat: /livechatinc|cdn\\.livechatinc/i,\n  freshdesk: /freshdesk|freshchat|wchat\\.freshchat/i,\n  tawk: /tawk\\.to|embed\\.tawk/i,\n  olark: /olark\\.com|static\\.olark/i,\n  helpscout: /beacon.*helpscout|helpscout\\.net/i,\n  tidio: /tidio\\.co|code\\.tidio/i,\n  podium: /podium\\.com.*webchat/i,\n  birdeye: /birdeye.*chat/i,\n  qualified: /qualified\\.com/i\n};\n\nlet chatWidget = null;\nlet chatCount = 0;\nfor (const [name, pattern] of Object.entries(chatWidgets)) {\n  if (pattern.test(rawHtml)) {\n    chatWidget = chatWidget || name;\n    chatCount++;\n  }\n}\n\n// ===== BOOKING TOOLS =====\nconst bookingTools = {\n  calendly: /calendly\\.com/i,\n  hubspotMeetings: /meetings\\.hubspot\\.com/i,\n  chilipiper: /chilipiper|js\\.chilipiper/i,\n  acuity: /acuityscheduling/i,\n  savvycal: /savvycal\\.com/i,\n  cal: /cal\\.com\\//i,\n  oncehub: /oncehub|scheduleonce/i,\n  square: /squareup.*appointment/i\n};\n\nlet bookingTool = null;\nfor (const [name, pattern] of Object.entries(bookingTools)) {\n  if (pattern.test(rawHtml)) {\n    bookingTool = name;\n    break;\n  }\n}\n\n// ===== CONTACT FORMS =====\nconst formPatterns = [\n  /<form[^>]*(?:contact|inquiry|lead|quote)[^>]*>/gi,\n  /contact-form|contactform|wpcf7/gi,\n  /hubspot.*form|hs-form/gi,\n  /typeform\\.com/gi,\n  /jotform|gravity-form|wpforms/gi\n];\nlet formCount = 0;\nfor (const p of formPatterns) {\n  const m = rawHtml.match(p);\n  if (m) formCount += m.length;\n}\n\n// ===== PHONE =====\nconst phonePatterns = [\n  /(?:\\+1[\\s.-]?)?\\(?\\d{3}\\)?[\\s.-]?\\d{3}[\\s.-]?\\d{4}/g,\n  /href=\"tel:/gi,\n  /1-8[0-9]{2}-[\\d-]+/gi\n];\nlet phones = [];\nfor (const p of phonePatterns) {\n  const m = rawHtml.match(p);\n  if (m) phones = phones.concat(m);\n}\nconst hasPhone = phones.length > 0;\nconst hasClickToCall = /href=\"tel:/i.test(rawHtml);\nconst hasTollFree = /1-8[0-9]{2}-/i.test(rawHtml);\n\n// ===== EMAIL =====\nconst emails = rawHtml.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/g) || [];\nconst validEmails = emails.filter(e => !e.includes('example') && !e.includes('test@') && !e.includes('wixpress'));\n\n// ===== HOURS =====\nconst has24x7 = /24\\/7|24 hours|always open|round.the.clock/i.test(html);\nconst hasWeekendHours = /saturday|sunday|weekend|sat.*sun/i.test(html);\n\n// ===== URGENCY =====\nconst urgencyTerms = [\n  /emergency/gi, /urgent/gi, /24\\/7/gi, /same.day/gi, \n  /immediate/gi, /call now/gi, /fast response/gi\n];\nlet urgencyScore = 0;\nfor (const p of urgencyTerms) {\n  if (p.test(html)) urgencyScore += 15;\n}\nurgencyScore = Math.min(urgencyScore, 100);\n\n// ===== RESPONSE SPEED =====\nlet responseScore = 70;\nif (/respond.*within.*minute/i.test(html)) responseScore = 5;\nelse if (/respond.*within.*hour/i.test(html)) responseScore = 15;\nelse if (/respond.*within.*24/i.test(html)) responseScore = 30;\n\n// ===== TECH STACK =====\nconst techPatterns = {\n  hubspot: /hubspot|hs-scripts|hbspt/i,\n  salesforce: /salesforce|pardot|sfdc/i,\n  marketo: /marketo|munchkin/i,\n  intercom: /intercom/i,\n  segment: /segment\\.com|analytics\\.js.*segment/i,\n  mixpanel: /mixpanel/i,\n  googleAnalytics: /google-analytics|gtag|googletagmanager/i,\n  hotjar: /hotjar/i,\n  stripe: /stripe\\.com|js\\.stripe/i,\n  shopify: /shopify|cdn\\.shopify/i,\n  wordpress: /wp-content|wordpress/i,\n  react: /react|__REACT/i,\n  vue: /vue\\.js|__VUE/i,\n  angular: /angular|ng-version/i\n};\n\nlet techStack = [];\nfor (const [name, pattern] of Object.entries(techPatterns)) {\n  if (pattern.test(rawHtml)) techStack.push(name);\n}\n\n// Build contact methods\nconst contactMethods = [];\nif (hasPhone) contactMethods.push('phone');\nif (validEmails.length > 0) contactMethods.push('email');\nif (chatWidget) contactMethods.push('chat');\nif (formCount > 0) contactMethods.push('form');\nif (bookingTool) contactMethods.push('booking');\n\nreturn [{\n  json: {\n    ...item,\n    data: undefined,\n    scrapeSuccess: true,\n    websiteAnalysis: {\n      chatWidget,\n      hasChatWidget: !!chatWidget,\n      chatWidgetCount: chatCount,\n      bookingTool,\n      hasBookingTool: !!bookingTool,\n      hasContactForm: formCount > 0,\n      formCount,\n      hasPhone,\n      phoneCount: phones.length,\n      hasClickToCall,\n      hasTollFree,\n      hasEmail: validEmails.length > 0,\n      emailCount: validEmails.length,\n      contactMethods,\n      contactMethodCount: contactMethods.length,\n      has24x7,\n      hasWeekendHours,\n      urgencyScore,\n      responseScore\n    },\n    techStack: {\n      detected: techStack,\n      count: techStack.length,\n      confidence: techStack.length > 0 ? Math.min(60 + techStack.length * 8, 95) : 0\n    }\n  }\n}];"
+      },
+      "id": "analyze-website",
+      "name": "Analyze Website",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2550, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// CALCULATE AFTER-HOURS COVERAGE SIGNAL\n// ============================================\nconst item = $input.first().json;\nconst wa = item.websiteAnalysis || {};\n\nlet score = 0;\nlet details = [];\n\nif (!item.scrapeSuccess) {\n  score = 45;\n  details.push('Coverage verification pending (site protected)');\n} else {\n  if (!wa.has24x7) { score += 25; details.push('No 24/7 coverage'); }\n  if (!wa.hasWeekendHours) { score += 15; details.push('No weekend hours'); }\n  if (!wa.hasChatWidget) { score += 25; details.push('No live chat'); }\n  else score -= 10;\n  if (!wa.hasBookingTool) { score += 15; details.push('No self-service booking'); }\n  if (wa.urgencyScore > 30 && !wa.has24x7) {\n    score += 15;\n    details.push('Urgency messaging without 24/7 coverage');\n  }\n  if (wa.hasTollFree && !wa.has24x7) {\n    score += 10;\n    details.push('Toll-free without 24/7 availability');\n  }\n}\n\nscore = Math.max(0, Math.min(score, 100));\nconst detected = score > 35;\n\nreturn [{\n  json: {\n    ...item,\n    signals: {\n      ...item.signals,\n      afterHoursCoverage: {\n        detected,\n        score,\n        confidence: item.scrapeSuccess ? (score > 50 ? 85 : 70) : 40,\n        details: details.join('; '),\n        reason: score > 60 ? 'Significant coverage gap' : score > 35 ? 'Moderate coverage gap' : 'Adequate coverage'\n      }\n    }\n  }\n}];"
+      },
+      "id": "calc-after-hours",
+      "name": "Calculate After-Hours",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2750, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// CALCULATE INBOUND RESPONSE RISK\n// ============================================\nconst item = $input.first().json;\nconst wa = item.websiteAnalysis || {};\n\nlet score = 0;\nlet details = [];\n\nif (!item.scrapeSuccess) {\n  score = 40;\n  details.push('Response analysis pending');\n} else {\n  if (!wa.hasPhone) { score += 30; details.push('No phone number'); }\n  else if (!wa.hasClickToCall) { score += 15; details.push('No click-to-call'); }\n  \n  if (!wa.hasContactForm) { score += 20; details.push('No contact form'); }\n  if (wa.responseScore > 50) { score += 20; details.push('No fast response commitment'); }\n  \n  const methods = wa.contactMethodCount || 0;\n  if (methods <= 1) { score += 25; details.push('Only 1 contact method'); }\n  else if (methods <= 2) { score += 15; details.push('Limited contact options'); }\n  \n  if (!wa.hasChatWidget) { score += 10; details.push('No instant response option'); }\n}\n\nscore = Math.max(0, Math.min(score, 100));\nconst detected = score > 40;\nconst riskLevel = score >= 70 ? 'high' : score >= 50 ? 'medium' : score >= 30 ? 'low' : 'minimal';\n\nreturn [{\n  json: {\n    ...item,\n    signals: {\n      ...item.signals,\n      inboundRisk: {\n        detected,\n        score,\n        confidence: item.scrapeSuccess ? (score > 50 ? 85 : 70) : 40,\n        riskLevel,\n        details: details.join('; '),\n        reason: riskLevel === 'high' ? 'High risk of losing leads' : riskLevel === 'medium' ? 'Moderate response risk' : 'Good response setup'\n      }\n    }\n  }\n}];"
+      },
+      "id": "calc-inbound-risk",
+      "name": "Calculate Inbound Risk",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2950, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// CALCULATE TECH STACK SIGNAL\n// ============================================\nconst item = $input.first().json;\nconst ts = item.techStack || {};\nconst detected = ts.detected || [];\n\nlet score = 0;\nlet details = [];\n\n// High-value tech = sophisticated buyer\nconst premiumTech = ['hubspot', 'salesforce', 'marketo', 'intercom', 'segment'];\nconst growthTech = ['mixpanel', 'hotjar', 'stripe'];\n\nlet premiumCount = 0;\nlet growthCount = 0;\n\nfor (const tech of detected) {\n  if (premiumTech.includes(tech)) {\n    premiumCount++;\n    score += 20;\n  } else if (growthTech.includes(tech)) {\n    growthCount++;\n    score += 10;\n  } else {\n    score += 5;\n  }\n}\n\nif (premiumCount > 0) details.push(`Uses ${premiumCount} enterprise tool(s)`);\nif (growthCount > 0) details.push(`Uses ${growthCount} growth tool(s)`);\nif (detected.length > 5) details.push('Sophisticated tech stack');\n\nscore = Math.min(score, 95);\nconst signalDetected = score > 30 && detected.length > 2;\n\nreturn [{\n  json: {\n    ...item,\n    signals: {\n      ...item.signals,\n      techStack: {\n        detected: signalDetected,\n        score,\n        confidence: ts.confidence || 0,\n        tools: detected,\n        premiumToolCount: premiumCount,\n        details: details.join('; ') || 'Basic tech stack'\n      }\n    }\n  }\n}];"
+      },
+      "id": "calc-tech-stack",
+      "name": "Calculate Tech Stack Signal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3150, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// CALCULATE FINAL SCORE & OUTPUT\n// ============================================\nconst item = $input.first().json;\nconst signals = item.signals || {};\nconst config = item.config || {};\nconst wa = item.websiteAnalysis || {};\nconst enrichment = item.enrichment || {};\n\n// Signal weights\nconst weights = config.signalWeights || {\n  googleAds: 0.30,\n  afterHoursCoverage: 0.25,\n  inboundRisk: 0.20,\n  hiring: 0.15,\n  techStack: 0.10\n};\n\n// Calculate weighted score\nlet totalScore = 0;\nlet detectedSignals = [];\nlet contributions = {};\n\nconst signalMap = {\n  googleAds: signals.googleAds,\n  afterHoursCoverage: signals.afterHoursCoverage,\n  inboundRisk: signals.inboundRisk,\n  hiring: signals.hiring,\n  techStack: signals.techStack\n};\n\nfor (const [key, weight] of Object.entries(weights)) {\n  const signal = signalMap[key];\n  if (signal?.detected) {\n    detectedSignals.push(key);\n    const contribution = Math.round((signal.score || 0) * weight * (signal.confidence || 50) / 100);\n    contributions[key] = contribution;\n    totalScore += contribution;\n  }\n}\n\n// Compound signal bonuses\nif (detectedSignals.length >= 2) totalScore += 10;\nif (detectedSignals.length >= 3) totalScore += 10;\nif (detectedSignals.length >= 4) totalScore += 10;\n\n// Golden combos\nif (detectedSignals.includes('googleAds') && detectedSignals.includes('afterHoursCoverage')) {\n  totalScore += 12; // Paying for ads + coverage gap = prime target\n}\nif (detectedSignals.includes('hiring') && detectedSignals.includes('googleAds')) {\n  totalScore += 8; // Growing + spending = hot\n}\n\ntotalScore = Math.max(0, Math.min(Math.round(totalScore), 100));\n\n// Confidence\nlet confidenceSum = 0;\nlet confidenceCount = 0;\nfor (const signal of Object.values(signals)) {\n  if (signal?.confidence) {\n    confidenceSum += signal.confidence;\n    confidenceCount++;\n  }\n}\nconst avgConfidence = confidenceCount > 0 ? Math.round(confidenceSum / confidenceCount) : 30;\nlet confidenceLevel = avgConfidence >= 80 ? 'high' : avgConfidence >= 60 ? 'medium' : avgConfidence >= 40 ? 'low' : 'very_low';\n\n// Ready state\nlet readyState = 'cold';\nlet readyReason = 'Limited signals - add to nurture';\n\nif (totalScore >= 80 && detectedSignals.length >= 3) {\n  readyState = 'hot';\n  readyReason = 'Multiple strong buying signals - prioritize outreach';\n} else if (totalScore >= 65 && detectedSignals.length >= 2) {\n  readyState = 'hot';\n  readyReason = 'High-intent with verified signals';\n} else if (totalScore >= 50) {\n  readyState = 'warm';\n  readyReason = 'Good potential - verified opportunity';\n} else if (totalScore >= 30) {\n  readyState = 'nurture';\n  readyReason = 'Some signals - worth monitoring';\n}\n\n// Why Now explanation\nlet whyNowParts = [];\nif (signals.googleAds?.verifiedByTransparency) whyNowParts.push('Verified Google Ads spend');\nelse if (signals.googleAds?.detected) whyNowParts.push('Active Google Ads');\nif (signals.afterHoursCoverage?.score > 60) whyNowParts.push('Major coverage gap');\nelse if (signals.afterHoursCoverage?.detected) whyNowParts.push('After-hours opportunity');\nif (signals.inboundRisk?.riskLevel === 'high') whyNowParts.push('High lead loss risk');\nelse if (signals.inboundRisk?.detected) whyNowParts.push('Response gaps');\nif (signals.hiring?.detected) whyNowParts.push(`Hiring ${signals.hiring.roles?.slice(0,2).join(', ') || 'actively'}`);\nif (signals.techStack?.premiumToolCount > 0) whyNowParts.push('Sophisticated buyer');\n\nconst whyNow = whyNowParts.length > 0 ? whyNowParts.join(' + ') : 'Limited signals detected';\n\n// Key insights\nlet insights = [];\nif (signals.googleAds?.verifiedByTransparency) insights.push('Google Ads verified via Transparency Center');\nif (wa.hasChatWidget) insights.push(`Uses ${wa.chatWidget} chat`);\nelse if (item.scrapeSuccess) insights.push('No live chat - instant response opportunity');\nif (wa.hasBookingTool) insights.push(`Self-service booking: ${wa.bookingTool}`);\nif (signals.hiring?.platforms?.length > 0) insights.push(`Hiring on ${signals.hiring.platforms.join(', ')}`);\nif (enrichment.linkedIn?.employeeRange) insights.push(`Company size: ${enrichment.linkedIn.employeeRange} employees`);\nif (item.techStack?.detected?.length > 3) insights.push(`Tech stack: ${item.techStack.detected.slice(0,4).join(', ')}`);\nif (!item.scrapeSuccess) insights.push('Website protected - using SERP/Ads data');\n\n// Recommended approach\nlet contactMethod = 'nurture_campaign';\nlet contactReason = 'Add to email nurture';\n\nif (signals.googleAds?.detected && signals.afterHoursCoverage?.score > 50) {\n  contactMethod = 'phone_priority';\n  contactReason = 'Spending on ads but losing after-hours leads';\n} else if (readyState === 'hot') {\n  contactMethod = 'phone_call';\n  contactReason = 'Hot lead - direct outreach';\n} else if (signals.inboundRisk?.riskLevel === 'high') {\n  contactMethod = 'email_sequence';\n  contactReason = 'Show faster response solutions';\n} else if (readyState === 'warm') {\n  contactMethod = 'email_sequence';\n  contactReason = 'Warm lead - value-focused nurture';\n}\n\n// Build signal array for frontend\nconst signalArray = [];\n\nif (signals.googleAds?.detected) {\n  signalArray.push({\n    id: 'googlePaidTraffic',\n    label: 'Google Paid Traffic Active',\n    detected: true,\n    value: signals.googleAds.details,\n    confidence: signals.googleAds.confidence,\n    score: signals.googleAds.score\n  });\n}\n\nif (signals.afterHoursCoverage?.detected) {\n  signalArray.push({\n    id: 'afterHoursCoverage',\n    label: 'After Hours Coverage Gap',\n    detected: true,\n    value: signals.afterHoursCoverage.details,\n    confidence: signals.afterHoursCoverage.confidence,\n    score: signals.afterHoursCoverage.score\n  });\n}\n\nif (signals.inboundRisk?.detected) {\n  signalArray.push({\n    id: 'inboundResponseRisk',\n    label: 'Inbound Response Risk',\n    detected: true,\n    value: signals.inboundRisk.details,\n    confidence: signals.inboundRisk.confidence,\n    score: signals.inboundRisk.score\n  });\n}\n\nif (signals.hiring?.detected) {\n  signalArray.push({\n    id: 'hiringSignal',\n    label: 'Active Hiring',\n    detected: true,\n    value: signals.hiring.details,\n    confidence: signals.hiring.confidence,\n    score: signals.hiring.score\n  });\n}\n\nif (signals.techStack?.detected) {\n  signalArray.push({\n    id: 'techStackSignal',\n    label: 'Sophisticated Tech Stack',\n    detected: true,\n    value: signals.techStack.details,\n    confidence: signals.techStack.confidence,\n    score: signals.techStack.score\n  });\n}\n\nreturn [{\n  json: {\n    domain: item.domain,\n    companyName: item.companyName,\n    score: totalScore,\n    signals: signalArray,\n    signalCount: signalArray.length,\n    whyNow,\n    keyInsights: insights,\n    readyState,\n    readyReason,\n    confidence: {\n      level: confidenceLevel,\n      score: avgConfidence,\n      dataPoints: confidenceCount\n    },\n    recommendedContact: {\n      method: contactMethod,\n      reason: contactReason\n    },\n    enrichment: {\n      linkedIn: enrichment.linkedIn || {},\n      employeeRange: enrichment.linkedIn?.employeeRange,\n      techStack: item.techStack?.detected || [],\n      hiringRoles: signals.hiring?.roles || [],\n      hiringPlatforms: signals.hiring?.platforms || []\n    },\n    websiteAnalysis: {\n      chatWidget: wa.chatWidget,\n      hasChatWidget: wa.hasChatWidget || false,\n      bookingTool: wa.bookingTool,\n      hasBookingTool: wa.hasBookingTool || false,\n      hasContactForm: wa.hasContactForm || false,\n      hasPhone: wa.hasPhone || false,\n      contactMethods: wa.contactMethods || [],\n      has24x7: wa.has24x7 || false,\n      scrapeSuccess: item.scrapeSuccess || false\n    },\n    timestamps: {\n      scrapedAt: new Date().toISOString(),\n      expiresAt: new Date(Date.now() + 86400000).toISOString()\n    },\n    debug: {\n      contributions,\n      detectedSignals,\n      rawSignals: signals,\n      scrapeSuccess: item.scrapeSuccess,\n      errors: item.errors || []\n    }\n  }\n}];"
+      },
+      "id": "final-score",
+      "name": "Calculate Final Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3350, 500]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "aggregate-results",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [3550, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" },
+              { "name": "Access-Control-Allow-Origin", "value": "*" }
+            ]
+          }
+        }
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [3750, 500]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Normalize Inputs", "type": "main", "index": 0 }]]
+    },
+    "Normalize Inputs": {
+      "main": [[{ "node": "Loop Domains", "type": "main", "index": 0 }]]
+    },
+    "Loop Domains": {
+      "main": [
+        [
+          { "node": "Google Search (Ads Detection)", "type": "main", "index": 0 },
+          { "node": "Google Search (Hiring)", "type": "main", "index": 0 },
+          { "node": "LinkedIn Company Search", "type": "main", "index": 0 }
+        ],
+        [{ "node": "Aggregate Results", "type": "main", "index": 0 }]
+      ]
+    },
+    "Google Search (Ads Detection)": {
+      "main": [[{ "node": "Merge Search Results", "type": "main", "index": 0 }]]
+    },
+    "Google Search (Hiring)": {
+      "main": [[{ "node": "Merge Search Results", "type": "main", "index": 0 }]]
+    },
+    "LinkedIn Company Search": {
+      "main": [[{ "node": "Merge Search Results", "type": "main", "index": 0 }]]
+    },
+    "Merge Search Results": {
+      "main": [[{ "node": "Analyze SERP (Ads)", "type": "main", "index": 0 }]]
+    },
+    "Analyze SERP (Ads)": {
+      "main": [[{ "node": "Analyze Hiring Signals", "type": "main", "index": 0 }]]
+    },
+    "Analyze Hiring Signals": {
+      "main": [[{ "node": "Extract LinkedIn Data", "type": "main", "index": 0 }]]
+    },
+    "Extract LinkedIn Data": {
+      "main": [[{ "node": "Google Ads Transparency", "type": "main", "index": 0 }]]
+    },
+    "Google Ads Transparency": {
+      "main": [[{ "node": "Process Ads Transparency", "type": "main", "index": 0 }]]
+    },
+    "Process Ads Transparency": {
+      "main": [[{ "node": "Build Scrape URL", "type": "main", "index": 0 }]]
+    },
+    "Build Scrape URL": {
+      "main": [[{ "node": "Scrape Website", "type": "main", "index": 0 }]]
+    },
+    "Scrape Website": {
+      "main": [[{ "node": "Analyze Website", "type": "main", "index": 0 }]]
+    },
+    "Analyze Website": {
+      "main": [[{ "node": "Calculate After-Hours", "type": "main", "index": 0 }]]
+    },
+    "Calculate After-Hours": {
+      "main": [[{ "node": "Calculate Inbound Risk", "type": "main", "index": 0 }]]
+    },
+    "Calculate Inbound Risk": {
+      "main": [[{ "node": "Calculate Tech Stack Signal", "type": "main", "index": 0 }]]
+    },
+    "Calculate Tech Stack Signal": {
+      "main": [[{ "node": "Calculate Final Score", "type": "main", "index": 0 }]]
+    },
+    "Calculate Final Score": {
+      "main": [[{ "node": "Loop Domains", "type": "main", "index": 0 }]]
+    },
+    "Aggregate Results": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [{ "name": "SAI Scraper" }, { "name": "Advanced" }, { "name": "Production" }]
+}
