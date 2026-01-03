@@ -230,11 +230,16 @@ function processResults(organic, filters, maxResults) {
     'crunchbase.com', 'pitchbook.com', 'owler.com', 'zoominfo.com',
     'g2.com', 'capterra.com', 'trustradius.com', 'getapp.com',
     'clutch.co', 'goodfirms.co', 'sortlist.com',
+    'topstartups.io', 'wellfound.com', 'ycombinator.com', 'techcrunch.com',
+    'publicsaascompanies.com', 'omnius.so', 'ascendixtech.com', 'mikesonders.com',
+    'advancedclient.io', 'semrush.com', 'technologyadvice.com', 'digitalsilk.com',
+    'builtin.com', 'angel.co', 'producthunt.com', 'betalist.com',
     'gov', 'edu', 'org'
   ]);
 
-  // Skip patterns in domains
-  const skipPatterns = ['wiki', 'news', 'blog', 'list', 'directory', 'review', 'rating', 'compare', 'top10', 'best'];
+  // Skip patterns in domains and titles
+  const skipPatterns = ['wiki', 'news', 'blog', 'list', 'directory', 'review', 'rating', 'compare', 'top10', 'best', 'startup', 'agencies'];
+  const skipTitlePatterns = ['top ', 'best ', ' list', 'companies to', 'startups to', 'agencies in', 'funded by', 'biggest ', 'largest '];
 
   const companies = [];
   const seenDomains = new Set();
@@ -277,6 +282,15 @@ function processResults(organic, filters, maxResults) {
     // Skip government and education sites
     if (domain.endsWith('.gov') || domain.endsWith('.edu') || domain.endsWith('.mil')) {
       shouldSkip = true;
+    }
+
+    // Skip list/directory articles based on title
+    const titleLower = (result.title || '').toLowerCase();
+    for (const pattern of skipTitlePatterns) {
+      if (titleLower.includes(pattern)) {
+        shouldSkip = true;
+        break;
+      }
     }
 
     if (shouldSkip) continue;
