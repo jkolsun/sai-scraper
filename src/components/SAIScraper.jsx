@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { scrapeWithN8n, discoverCompanies } from '../services/n8nService';
+import { discoverCompanies, enrichCompanies } from '../services/n8nService';
 
 // ==================== CONSTANTS ====================
 const INDUSTRIES = [
@@ -370,84 +370,74 @@ const SAIScraper = () => {
     }
 
     try {
-      setCurrentStatus('Processing domains through n8n...');
+      setCurrentStatus('Enriching companies with multi-signal analysis...');
       setProgress(50);
 
-      const n8nResults = await scrapeWithN8n(domains);
+      // Use new enrichment API instead of n8n
+      const enrichmentResults = await enrichCompanies(eligibleCompanies, (progress) => {
+        setProgress(50 + Math.round(progress.percent * 0.4)); // Progress from 50% to 90%
+        setCurrentStatus(`Enriching ${progress.completed}/${progress.total} companies...`);
+      });
 
-      setCurrentStatus('Processing n8n results...');
-      setProgress(80);
+      setCurrentStatus('Processing enrichment results...');
+      setProgress(90);
 
-      // Ensure we have an array
-      const resultsArray = Array.isArray(n8nResults) ? n8nResults : [n8nResults];
+      console.log('Enrichment results:', enrichmentResults);
 
-      console.log('Raw n8n results array:', JSON.stringify(resultsArray, null, 2));
+      // Map enrichment results to our display format
+      const processedResults = enrichmentResults.map((result, index) => {
+        const company = eligibleCompanies.find(c => c.domain === result.domain) || eligibleCompanies[index];
 
-      // Map n8n results back to our format
-      const processedResults = resultsArray.map((result, index) => {
-        // Handle case where result might be wrapped
-        const r = result?.json || result;
+        // Extract buying signals
+        const signalsList = (result.buyingSignals || [])
+          .filter(s => s.detected)
+          .map(s => s.id);
 
-        console.log(`Processing item ${index}:`, JSON.stringify(r, null, 2));
-
-        const company = eligibleCompanies.find(c => c.domain === r.domain) || eligibleCompanies[index];
-
-        // Extract signals - handle both array and object formats
-        let signalsList = [];
-        let signalDetails = [];
-
-        if (Array.isArray(r.signals)) {
-          console.log(`Item ${index} has signals array:`, r.signals);
-          signalsList = r.signals.filter(s => s && s.detected).map(s => s.id);
-          signalDetails = r.signals.filter(s => s && s.detected).map(s => ({
-            type: s.label || s.id,
-            value: s.value || s.reason,
-            detected: r.checkedAt || r.timestamps?.scrapedAt
+        const signalDetails = (result.buyingSignals || [])
+          .filter(s => s.detected)
+          .map(s => ({
+            type: s.label,
+            value: s.id,
+            detected: result.metadata?.enrichedAt
           }));
-        } else if (r.signals && typeof r.signals === 'object') {
-          console.log(`Item ${index} has signals object:`, r.signals);
-          // Handle signals as object with keys like googleAds, afterHoursCoverage, etc.
-          Object.entries(r.signals).forEach(([key, val]) => {
-            if (val?.detected) {
-              signalsList.push(key);
-              signalDetails.push({
-                type: val.label || key,
-                value: val.value || val.reason || val.details,
-                detected: r.checkedAt || r.timestamps?.scrapedAt
-              });
-            }
+
+        // Add signals from enrichment data
+        if (result.signals) {
+          result.signals.forEach(s => {
+            signalDetails.push({
+              type: s.type,
+              value: s.message,
+              source: s.source
+            });
           });
         }
 
-        const score = r.score || r.totalScore || 0;
-        console.log(`Item ${index} - domain: ${r.domain}, score: ${score}, signals: ${signalsList.length}, disqualified: ${r.disqualified}`);
-
         return {
           id: Date.now() + index,
-          name: company?.name || r.domain || 'Unknown',
-          domain: r.domain || company?.domain || 'unknown.com',
+          name: result.companyName || company?.name || result.domain,
+          domain: result.domain || company?.domain,
           industry: company?.industry || 'Unknown',
-          employees: company?.employees || 'Unknown',
-          location: company?.location || 'Unknown',
+          employees: result.enrichment?.linkedin?.employeeCount || company?.employees || 'Unknown',
+          location: result.enrichment?.linkedin?.location || company?.location || 'Unknown',
           revenue: company?.revenue || 'Unknown',
-          score: score,
+          score: result.score || 0,
           signals: signalsList,
           signalDetails: signalDetails,
-          whyNow: r.whyNow || r.explanation || r.disqualifyReason || 'Signal detected',
-          scrapedAt: r.checkedAt || r.timestamps?.scrapedAt,
-          disqualified: r.disqualified || false,
-          readyState: r.readyState
+          whyNow: result.whyNow || 'Company shows growth indicators',
+          scrapedAt: result.metadata?.enrichedAt,
+          enrichment: result.enrichment,
+          disqualified: !result.success
         };
       });
 
-      console.log('All processed results before filter:', processedResults);
+      console.log('Processed results:', processedResults);
 
-      // Show all results including disqualified (score 0) for now - filter less aggressively
-      const filteredResults = processedResults.filter(r => r.domain && r.domain !== 'unknown.com');
+      // Filter and sort by score
+      const filteredResults = processedResults
+        .filter(r => r.domain && r.score >= minScore)
+        .sort((a, b) => b.score - a.score);
 
-      console.log('Filtered results:', filteredResults.length);
-
-      setResults(filteredResults.sort((a, b) => b.score - a.score));
+      setResults(filteredResults);
       setCompaniesFound(filteredResults.length);
       setProgress(100);
       setCurrentStatus('Complete');
