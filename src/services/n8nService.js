@@ -4,6 +4,9 @@
 const N8N_WEBHOOK_URL = process.env.REACT_APP_N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/sai-scraper-serper';
 const SERPER_API_KEY = process.env.REACT_APP_SERPER_API_KEY || '';
 
+// Discovery webhook - hardcoded to bypass Vercel env var issue
+const N8N_DISCOVERY_WEBHOOK_URL = 'https://jkolsun.app.n8n.cloud/webhook/9eb378a8-997d-4d86-942c-3538ce14154d';
+
 /**
  * Send domains to n8n for scraping
  * @param {string[]} domains - Array of domain names to scrape
@@ -109,7 +112,64 @@ export async function checkN8nConnection() {
   }
 }
 
+/**
+ * Discover companies using ICP filters via Serper
+ * @param {Object} filters - ICP filters (industries, locations, employeeRange, etc.)
+ * @param {number} maxResults - Maximum number of companies to discover
+ * @returns {Promise<Array>} - Array of discovered companies
+ */
+export async function discoverCompanies(filters, maxResults = 25) {
+  try {
+    const response = await fetch(N8N_DISCOVERY_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        filters,
+        maxResults,
+        options: {
+          serperApiKey: SERPER_API_KEY
+        }
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`n8n discovery webhook error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    console.log('n8n discovery raw response:', JSON.stringify(data, null, 2));
+
+    // Extract companies array from response
+    if (data.companies && Array.isArray(data.companies)) {
+      return data.companies;
+    }
+
+    // Handle wrapped response
+    if (data.json && data.json.companies) {
+      return data.json.companies;
+    }
+
+    // Handle array response with companies inside
+    if (Array.isArray(data) && data.length > 0) {
+      const first = data[0].json || data[0];
+      if (first.companies) {
+        return first.companies;
+      }
+    }
+
+    console.warn('Could not extract companies from response');
+    return [];
+  } catch (error) {
+    console.error('Error calling n8n discovery webhook:', error);
+    throw error;
+  }
+}
+
 export default {
   scrapeWithN8n,
   checkN8nConnection,
+  discoverCompanies,
 };
