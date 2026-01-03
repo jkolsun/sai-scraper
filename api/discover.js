@@ -286,6 +286,14 @@ function processResults(organic, filters, maxResults) {
       shouldSkip = true;
     }
 
+    // Skip list/roundup articles (check URL path for list patterns)
+    const urlPath = url.toLowerCase();
+    if (urlPath.includes('/top-') || urlPath.includes('/best-') ||
+        urlPath.includes('-agencies') || urlPath.includes('/list') ||
+        urlPath.includes('/blog/') || urlPath.includes('/articles/')) {
+      shouldSkip = true;
+    }
+
     if (shouldSkip) continue;
 
     seenDomains.add(domain);
