@@ -23,16 +23,16 @@ export default async function handler(req, res) {
     const industries = filters.industries || [];
     const locations = filters.locations || [];
 
-    // Build search query
+    // Build search query - simple queries work best with Serper
     let query;
     if (industries.length > 0 && locations.length > 0) {
-      query = `${industries[0]} company ${locations[0]} "contact us"`;
+      query = `${industries[0]} ${locations[0]}`;
     } else if (industries.length > 0) {
-      query = `${industries[0]} company "contact us"`;
+      query = `${industries[0]} services`;
     } else if (locations.length > 0) {
-      query = `local business ${locations[0]} "contact us"`;
+      query = `local business ${locations[0]}`;
     } else {
-      query = 'small business company "contact us"';
+      query = 'small business services';
     }
 
     console.log('Discovery query:', query);
