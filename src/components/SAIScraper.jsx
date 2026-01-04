@@ -370,11 +370,27 @@ const EXCLUDE_TYPES = [
   'Competitors', 'Existing Customers', 'Recently Contacted', 'Unsubscribed', 'Bad Fit'
 ];
 
-// Core 3 Buying Signals - Primary focus for scraping
+// All Buying Signals - matches backend detection capabilities
 const SIGNAL_TYPES = [
-  { id: 'afterHoursCoverage', label: 'After Hours Coverage Gap', description: 'No live chat or response capability after business hours - missing leads from evening/weekend visitors.', icon: '*' },
-  { id: 'googlePaidTraffic', label: 'Google Paid Traffic Active', description: 'Currently paying for Google Ads - spending money to drive traffic to their website.', icon: 'G' },
-  { id: 'inboundResponseRisk', label: 'Inbound Response Risk', description: 'Slow response times or no immediate engagement - losing leads they paid to acquire.', icon: '!' }
+  // Core 3 - Primary focus for scraping
+  { id: 'afterHoursCoverage', label: 'After Hours Coverage Gap', description: 'No live chat or response capability after business hours - missing leads from evening/weekend visitors.', icon: '🌙' },
+  { id: 'googlePaidTraffic', label: 'Google Paid Traffic Active', description: 'Currently paying for Google Ads - spending money to drive traffic to their website.', icon: '💰' },
+  { id: 'inboundResponseRisk', label: 'Inbound Response Risk', description: 'Slow response times or no immediate engagement - losing leads they paid to acquire.', icon: '⚡' },
+  // Hiring & Growth Signals
+  { id: 'activelyHiring', label: 'Actively Hiring', description: 'Company has open job postings - indicates growth and budget availability.', icon: '👥' },
+  { id: 'recentFunding', label: 'Recent Funding Round', description: 'Recently raised venture capital or PE funding - flush with capital to spend.', icon: '💵' },
+  { id: 'trafficGrowth', label: 'Website Traffic Growing', description: 'Website traffic trending upward - business momentum indicator.', icon: '📈' },
+  // Technology & Intent Signals
+  { id: 'hasCRM', label: 'Uses CRM Software', description: 'Has CRM in tech stack - organized sales process, may need complementary tools.', icon: '🔧' },
+  { id: 'highIntent', label: 'High Buying Intent', description: 'Multiple buying intent signals detected - actively in market.', icon: '🎯' },
+  { id: 'competitorUser', label: 'Uses Competitor Products', description: 'Currently using competitor solutions - potential switch opportunity.', icon: '🔄' },
+  // Organizational Signals
+  { id: 'leadershipChange', label: 'Recent Leadership Change', description: 'New executives or leadership - often means vendor evaluations.', icon: '👔' },
+  { id: 'decisionMakersFound', label: 'Decision Makers Identified', description: 'Key decision makers found - can target the right contacts.', icon: '🎖️' },
+  // Presence & Activity Signals
+  { id: 'activeNews', label: 'Active in News/PR', description: 'Recent press coverage or news mentions - company is active and visible.', icon: '📰' },
+  { id: 'b2bPresence', label: 'B2B Review Site Presence', description: 'Listed on G2, Capterra, etc. - B2B focused company.', icon: '⭐' },
+  { id: 'socialActive', label: 'Active Social Media', description: 'Active on social platforms - engaged in digital marketing.', icon: '📱' }
 ];
 
 // High-value target companies - mix of industries known to spend on Google Ads
@@ -627,8 +643,28 @@ const SAIScraper = () => {
   // Active filter tab
   const [activeFilterTab, setActiveFilterTab] = useState('firmographic');
 
-  // Signal Filters
-  const [enabledSignals, setEnabledSignals] = useState({ afterHoursCoverage: true, googlePaidTraffic: true, inboundResponseRisk: false });
+  // Signal Filters - all 14 signals available, core 3 enabled by default
+  const [enabledSignals, setEnabledSignals] = useState({
+    // Core 3 - enabled by default
+    afterHoursCoverage: true,
+    googlePaidTraffic: true,
+    inboundResponseRisk: true,
+    // Hiring & Growth - disabled by default
+    activelyHiring: false,
+    recentFunding: false,
+    trafficGrowth: false,
+    // Technology & Intent
+    hasCRM: false,
+    highIntent: false,
+    competitorUser: false,
+    // Organizational
+    leadershipChange: false,
+    decisionMakersFound: false,
+    // Presence & Activity
+    activeNews: false,
+    b2bPresence: false,
+    socialActive: false
+  });
 
   // Search Settings
   const [maxResults, setMaxResults] = useState(100);
