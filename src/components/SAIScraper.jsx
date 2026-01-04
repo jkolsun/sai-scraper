@@ -44,21 +44,21 @@ const TECH_STACK_OPTIONS = [
 
 const SIGNAL_TYPES = [
   // Core Intent Signals
-  { id: 'afterHoursCoverage', label: 'After Hours Coverage Gap', description: 'Visitors reach the site after business hours, but there is no immediate way to respond or capture them.', icon: '🌙', color: '#6366F1' },
-  { id: 'googlePaidTraffic', label: 'Google Paid Traffic Active', description: 'This business is currently paying for search ads to drive visitors to their website.', icon: 'G', color: '#EA4335' },
-  { id: 'inboundResponseRisk', label: 'Inbound Response Risk', description: 'Slow or no response to inbound inquiries, risking lost opportunities from paid and organic traffic.', icon: '⚠', color: '#F59E0B' },
-  { id: 'activelyHiring', label: 'Actively Hiring', description: 'Company is actively hiring, indicating growth and potential budget for new tools/services.', icon: '👥', color: '#10B981' },
-  { id: 'hasCRM', label: 'Uses CRM Software', description: 'Company uses enterprise CRM tools, indicating structured sales process and tech maturity.', icon: '💼', color: '#8B5CF6' },
-  { id: 'recentFunding', label: 'Recent Funding Round', description: 'Company recently raised funding, indicating growth capital and likely increased spending.', icon: '💰', color: '#F59E0B' },
-  { id: 'activeNews', label: 'Active in News/PR', description: 'Company has recent news mentions, indicating active growth or market presence.', icon: '📰', color: '#3B82F6' },
-  { id: 'b2bPresence', label: 'B2B Review Site Presence', description: 'Listed on G2, Capterra, or Trustpilot - indicates B2B software maturity.', icon: '⭐', color: '#EC4899' },
-  { id: 'socialActive', label: 'Active Social Media', description: 'Active across multiple social platforms, indicating marketing investment.', icon: '📱', color: '#06B6D4' },
+  { id: 'afterHoursCoverage', label: 'After Hours Coverage Gap', description: 'Visitors reach the site after business hours, but there is no immediate way to respond or capture them.', icon: '*', color: '#F97316' },
+  { id: 'googlePaidTraffic', label: 'Google Paid Traffic Active', description: 'This business is currently paying for search ads to drive visitors to their website.', icon: 'G', color: '#F97316' },
+  { id: 'inboundResponseRisk', label: 'Inbound Response Risk', description: 'Slow or no response to inbound inquiries, risking lost opportunities from paid and organic traffic.', icon: '!', color: '#F97316' },
+  { id: 'activelyHiring', label: 'Actively Hiring', description: 'Company is actively hiring, indicating growth and potential budget for new tools/services.', icon: '+', color: '#F97316' },
+  { id: 'hasCRM', label: 'Uses CRM Software', description: 'Company uses enterprise CRM tools, indicating structured sales process and tech maturity.', icon: '#', color: '#F97316' },
+  { id: 'recentFunding', label: 'Recent Funding Round', description: 'Company recently raised funding, indicating growth capital and likely increased spending.', icon: '$', color: '#F97316' },
+  { id: 'activeNews', label: 'Active in News/PR', description: 'Company has recent news mentions, indicating active growth or market presence.', icon: '@', color: '#F97316' },
+  { id: 'b2bPresence', label: 'B2B Review Site Presence', description: 'Listed on G2, Capterra, or Trustpilot - indicates B2B software maturity.', icon: '*', color: '#F97316' },
+  { id: 'socialActive', label: 'Active Social Media', description: 'Active across multiple social platforms, indicating marketing investment.', icon: '&', color: '#F97316' },
   // Advanced Intent Signals
-  { id: 'decisionMakersFound', label: 'Decision Makers Identified', description: 'Key decision makers (C-Suite, VPs, Directors) have been identified at this company.', icon: '🎯', color: '#EF4444' },
-  { id: 'highIntent', label: 'High Buying Intent', description: 'Multiple buying signals detected - company shows strong indicators of being in-market.', icon: '🔥', color: '#F97316' },
-  { id: 'leadershipChange', label: 'Recent Leadership Change', description: 'New executives or leadership changes detected - new decision makers often evaluate vendors.', icon: '👔', color: '#8B5CF6' },
-  { id: 'competitorUser', label: 'Uses Competitor Products', description: 'Company is using competitor products - potential switch opportunity.', icon: '🔄', color: '#14B8A6' },
-  { id: 'trafficGrowth', label: 'Website Traffic Growing', description: 'Website traffic is trending upward - business momentum indicator.', icon: '📈', color: '#22C55E' }
+  { id: 'decisionMakersFound', label: 'Decision Makers Identified', description: 'Key decision makers (C-Suite, VPs, Directors) have been identified at this company.', icon: '>', color: '#F97316' },
+  { id: 'highIntent', label: 'High Buying Intent', description: 'Multiple buying signals detected - company shows strong indicators of being in-market.', icon: '^', color: '#F97316' },
+  { id: 'leadershipChange', label: 'Recent Leadership Change', description: 'New executives or leadership changes detected - new decision makers often evaluate vendors.', icon: '%', color: '#F97316' },
+  { id: 'competitorUser', label: 'Uses Competitor Products', description: 'Company is using competitor products - potential switch opportunity.', icon: '<>', color: '#F97316' },
+  { id: 'trafficGrowth', label: 'Website Traffic Growing', description: 'Website traffic is trending upward - business momentum indicator.', icon: '/', color: '#F97316' }
 ];
 
 // High-value target companies - mix of industries known to spend on Google Ads
@@ -141,8 +141,8 @@ const Checkbox = ({ checked, indeterminate, onChange, disabled }) => (
     onClick={(e) => { e.stopPropagation(); if (!disabled) onChange(!checked); }}
     style={{
       width: '18px', height: '18px', borderRadius: '4px',
-      border: checked || indeterminate ? 'none' : '2px solid #475569',
-      background: checked || indeterminate ? '#3B82F6' : 'transparent',
+      border: checked || indeterminate ? 'none' : '2px solid #525252',
+      background: checked || indeterminate ? '#F97316' : 'transparent',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       cursor: disabled ? 'not-allowed' : 'pointer', flexShrink: 0,
       opacity: disabled ? 0.5 : 1
@@ -162,19 +162,19 @@ const MultiSelect = ({ label, options, selected, onChange, placeholder }) => {
   };
   return (
     <div style={{ position: 'relative' }}>
-      {label && <label style={{ display: 'block', color: '#94A3B8', fontSize: '11px', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>{label}</label>}
+      {label && <label style={{ display: 'block', color: '#A3A3A3', fontSize: '11px', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>{label}</label>}
       <button onClick={() => setIsOpen(!isOpen)}
-        style={{ width: '100%', padding: '12px 14px', background: 'rgba(255, 255, 255, 0.03)', border: isOpen ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: selected.length > 0 ? '#E2E8F0' : '#64748B', fontSize: '13px', fontWeight: 500, textAlign: 'left', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s ease' }}>
+        style={{ width: '100%', padding: '12px 14px', background: 'rgba(255, 255, 255, 0.03)', border: isOpen ? '1px solid rgba(249, 115, 22, 0.5)' : '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: selected.length > 0 ? '#FAFAFA' : '#737373', fontSize: '13px', fontWeight: 500, textAlign: 'left', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s ease' }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.length > 0 ? `${selected.length} selected` : placeholder}</span>
-        <span style={{ color: '#64748B', transition: 'transform 0.2s ease', transform: isOpen ? 'rotate(180deg)' : 'rotate(0)' }}>{Icons.chevronDown}</span>
+        <span style={{ color: '#737373', transition: 'transform 0.2s ease', transform: isOpen ? 'rotate(180deg)' : 'rotate(0)' }}>{Icons.chevronDown}</span>
       </button>
       {isOpen && (
         <>
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }} onClick={() => setIsOpen(false)} />
-          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '6px', background: 'rgba(17, 24, 39, 0.98)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', maxHeight: '220px', overflowY: 'auto', zIndex: 50, boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)' }}>
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '6px', background: 'rgba(0, 0, 0, 0.98)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', maxHeight: '220px', overflowY: 'auto', zIndex: 50, boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)' }}>
             {options.map((option, i) => (
-              <div key={option} onClick={() => toggleOption(option)} style={{ padding: '11px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', background: selected.includes(option) ? 'rgba(59, 130, 246, 0.1)' : 'transparent', color: '#E2E8F0', fontSize: '13px', fontWeight: 500, borderBottom: i < options.length - 1 ? '1px solid rgba(255, 255, 255, 0.04)' : 'none', transition: 'background 0.15s ease' }}>
-                <span style={{ width: '18px', height: '18px', border: selected.includes(option) ? 'none' : '2px solid rgba(255, 255, 255, 0.2)', borderRadius: '5px', background: selected.includes(option) ? 'linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s ease', flexShrink: 0 }}>
+              <div key={option} onClick={() => toggleOption(option)} style={{ padding: '11px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', background: selected.includes(option) ? 'rgba(249, 115, 22, 0.15)' : 'transparent', color: '#FAFAFA', fontSize: '13px', fontWeight: 500, borderBottom: i < options.length - 1 ? '1px solid rgba(255, 255, 255, 0.04)' : 'none', transition: 'background 0.15s ease' }}>
+                <span style={{ width: '18px', height: '18px', border: selected.includes(option) ? 'none' : '2px solid rgba(255, 255, 255, 0.2)', borderRadius: '5px', background: selected.includes(option) ? '#F97316' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s ease', flexShrink: 0 }}>
                   {selected.includes(option) && <span style={{ color: 'white' }}>{Icons.check}</span>}
                 </span>
                 {option}
@@ -191,20 +191,20 @@ const Select = ({ label, options, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <div style={{ position: 'relative' }}>
-      {label && <label style={{ display: 'block', color: '#94A3B8', fontSize: '11px', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>{label}</label>}
+      {label && <label style={{ display: 'block', color: '#A3A3A3', fontSize: '11px', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>{label}</label>}
       <button onClick={() => setIsOpen(!isOpen)}
-        style={{ width: '100%', padding: '12px 14px', background: 'rgba(255, 255, 255, 0.03)', border: isOpen ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: value ? '#E2E8F0' : '#64748B', fontSize: '13px', fontWeight: 500, textAlign: 'left', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s ease' }}>
+        style={{ width: '100%', padding: '12px 14px', background: 'rgba(255, 255, 255, 0.03)', border: isOpen ? '1px solid rgba(249, 115, 22, 0.5)' : '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: value ? '#FAFAFA' : '#737373', fontSize: '13px', fontWeight: 500, textAlign: 'left', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s ease' }}>
         {value || placeholder}
-        <span style={{ color: '#64748B', transition: 'transform 0.2s ease', transform: isOpen ? 'rotate(180deg)' : 'rotate(0)' }}>{Icons.chevronDown}</span>
+        <span style={{ color: '#737373', transition: 'transform 0.2s ease', transform: isOpen ? 'rotate(180deg)' : 'rotate(0)' }}>{Icons.chevronDown}</span>
       </button>
       {isOpen && (
         <>
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }} onClick={() => setIsOpen(false)} />
-          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '6px', background: 'rgba(17, 24, 39, 0.98)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', maxHeight: '220px', overflowY: 'auto', zIndex: 50, boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)' }}>
-            <div onClick={() => { onChange(null); setIsOpen(false); }} style={{ padding: '11px 14px', cursor: 'pointer', background: !value ? 'rgba(59, 130, 246, 0.1)' : 'transparent', color: '#64748B', fontSize: '13px', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>{placeholder}</div>
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '6px', background: 'rgba(0, 0, 0, 0.98)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', maxHeight: '220px', overflowY: 'auto', zIndex: 50, boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)' }}>
+            <div onClick={() => { onChange(null); setIsOpen(false); }} style={{ padding: '11px 14px', cursor: 'pointer', background: !value ? 'rgba(249, 115, 22, 0.15)' : 'transparent', color: '#737373', fontSize: '13px', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>{placeholder}</div>
             {options.map((option, i) => (
               <div key={typeof option === 'object' ? option.label : option} onClick={() => { onChange(typeof option === 'object' ? option.label : option); setIsOpen(false); }}
-                style={{ padding: '11px 14px', cursor: 'pointer', background: (typeof option === 'object' ? option.label : option) === value ? 'rgba(59, 130, 246, 0.1)' : 'transparent', color: '#E2E8F0', fontSize: '13px', fontWeight: 500, borderBottom: i < options.length - 1 ? '1px solid rgba(255, 255, 255, 0.04)' : 'none', transition: 'background 0.15s ease' }}>
+                style={{ padding: '11px 14px', cursor: 'pointer', background: (typeof option === 'object' ? option.label : option) === value ? 'rgba(249, 115, 22, 0.15)' : 'transparent', color: '#FAFAFA', fontSize: '13px', fontWeight: 500, borderBottom: i < options.length - 1 ? '1px solid rgba(255, 255, 255, 0.04)' : 'none', transition: 'background 0.15s ease' }}>
                 {typeof option === 'object' ? option.label : option}
               </div>
             ))}
@@ -217,13 +217,13 @@ const Select = ({ label, options, value, onChange, placeholder }) => {
 
 const SignalCard = ({ signal, enabled, onChange }) => (
   <div onClick={() => onChange(!enabled)}
-    style={{ padding: '16px 18px', background: enabled ? `${signal.color}15` : 'rgba(255, 255, 255, 0.02)', border: enabled ? `1px solid ${signal.color}40` : '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '16px', transition: 'all 0.2s ease', boxShadow: enabled ? `0 4px 20px ${signal.color}15` : 'none' }}>
-    <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: enabled ? signal.color : 'rgba(255, 255, 255, 0.06)', color: enabled ? 'white' : '#94A3B8', fontSize: signal.icon.length > 1 ? '17px' : '15px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s ease', boxShadow: enabled ? `0 4px 12px ${signal.color}30` : 'none' }}>{signal.icon}</div>
+    style={{ padding: '16px 18px', background: enabled ? 'rgba(249, 115, 22, 0.1)' : 'rgba(255, 255, 255, 0.02)', border: enabled ? '1px solid rgba(249, 115, 22, 0.4)' : '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '16px', transition: 'all 0.2s ease', boxShadow: enabled ? '0 4px 20px rgba(249, 115, 22, 0.15)' : 'none' }}>
+    <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: enabled ? '#F97316' : 'rgba(255, 255, 255, 0.06)', color: enabled ? 'white' : '#A3A3A3', fontSize: signal.icon.length > 1 ? '17px' : '20px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s ease', boxShadow: enabled ? '0 4px 12px rgba(249, 115, 22, 0.3)' : 'none' }}>{signal.icon}</div>
     <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ color: enabled ? '#F8FAFC' : '#94A3B8', fontSize: '14px', fontWeight: 600, marginBottom: '6px', letterSpacing: '-0.2px', transition: 'color 0.2s ease' }}>{signal.label}</div>
-      <div style={{ color: '#64748B', fontSize: '12px', lineHeight: '1.5' }}>{signal.description}</div>
+      <div style={{ color: enabled ? '#FAFAFA' : '#A3A3A3', fontSize: '14px', fontWeight: 600, marginBottom: '6px', letterSpacing: '-0.2px', transition: 'color 0.2s ease' }}>{signal.label}</div>
+      <div style={{ color: '#737373', fontSize: '12px', lineHeight: '1.5' }}>{signal.description}</div>
     </div>
-    <div style={{ width: '22px', height: '22px', borderRadius: '6px', border: enabled ? 'none' : '2px solid rgba(255, 255, 255, 0.15)', background: enabled ? 'linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '4px', transition: 'all 0.2s ease', boxShadow: enabled ? '0 2px 8px rgba(59, 130, 246, 0.3)' : 'none' }}>
+    <div style={{ width: '22px', height: '22px', borderRadius: '6px', border: enabled ? 'none' : '2px solid rgba(255, 255, 255, 0.15)', background: enabled ? '#F97316' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '4px', transition: 'all 0.2s ease', boxShadow: enabled ? '0 2px 8px rgba(249, 115, 22, 0.3)' : 'none' }}>
       {enabled && <span style={{ color: 'white' }}>{Icons.check}</span>}
     </div>
   </div>
@@ -241,9 +241,9 @@ const SAIScraper = () => {
 
   // Lists
   const [lists, setLists] = useState([
-    { id: 1, name: 'Hot Leads', color: '#EF4444', leads: [], createdAt: '2024-01-15' },
-    { id: 2, name: 'To Follow Up', color: '#F59E0B', leads: [], createdAt: '2024-01-14' },
-    { id: 3, name: 'Qualified', color: '#10B981', leads: [], createdAt: '2024-01-12' }
+    { id: 1, name: 'Hot Leads', color: '#F97316', leads: [], createdAt: '2024-01-15' },
+    { id: 2, name: 'To Follow Up', color: '#FB923C', leads: [], createdAt: '2024-01-14' },
+    { id: 3, name: 'Qualified', color: '#FDBA74', leads: [], createdAt: '2024-01-12' }
   ]);
   const [editingListId, setEditingListId] = useState(null);
   const [editingListName, setEditingListName] = useState('');
@@ -787,7 +787,7 @@ const SAIScraper = () => {
 
   const handleCreateList = () => {
     if (!newListName.trim()) return;
-    const colors = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899'];
+    const colors = ['#EF4444', '#FB923C', '#F97316', '#F97316', '#F97316', '#F97316'];
     const newList = { id: Date.now(), name: newListName.trim(), color: colors[lists.length % colors.length], leads: [], createdAt: new Date().toISOString().split('T')[0] };
     setLists([...lists, newList]);
     setNewListName('');
@@ -818,15 +818,15 @@ const SAIScraper = () => {
           {/* n8n Toggle */}
           <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255, 255, 255, 0.02)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: useN8n ? '#10B981' : '#475569', boxShadow: useN8n ? '0 0 12px rgba(16, 185, 129, 0.5)' : 'none', transition: 'all 0.3s ease' }} />
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: useN8n ? '#F97316' : '#475569', boxShadow: useN8n ? '0 0 12px rgba(16, 185, 129, 0.5)' : 'none', transition: 'all 0.3s ease' }} />
               <span style={{ color: useN8n ? '#F1F5F9' : '#94A3B8', fontSize: '13px', fontWeight: 600, letterSpacing: '-0.2px' }}>Live Scraping</span>
-              {useN8n && <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34D399', padding: '3px 10px', borderRadius: '100px', fontSize: '10px', fontWeight: 700, border: '1px solid rgba(16, 185, 129, 0.2)', letterSpacing: '0.5px' }}>ACTIVE</span>}
+              {useN8n && <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#FB923C', padding: '3px 10px', borderRadius: '100px', fontSize: '10px', fontWeight: 700, border: '1px solid rgba(16, 185, 129, 0.2)', letterSpacing: '0.5px' }}>ACTIVE</span>}
             </div>
             <button
               onClick={() => setUseN8n(!useN8n)}
               style={{
                 width: '48px', height: '26px', borderRadius: '13px', border: 'none',
-                background: useN8n ? 'linear-gradient(135deg, #10B981 0%, #059669 100%)' : 'rgba(255, 255, 255, 0.1)',
+                background: useN8n ? 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)' : 'rgba(255, 255, 255, 0.1)',
                 cursor: 'pointer', position: 'relative', transition: 'all 0.3s ease',
                 boxShadow: useN8n ? '0 2px 8px rgba(16, 185, 129, 0.3)' : 'inset 0 1px 3px rgba(0, 0, 0, 0.3)'
               }}
@@ -843,9 +843,9 @@ const SAIScraper = () => {
           <div style={{ padding: '24px', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60A5FA' }}>{Icons.target}</div>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FB923C' }}>{Icons.target}</div>
                 <span style={{ color: '#F8FAFC', fontSize: '14px', fontWeight: 700, letterSpacing: '-0.3px' }}>ICP Filters</span>
-                {activeIcpCount > 0 && <span style={{ background: 'linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)', color: 'white', padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 700 }}>{activeIcpCount}</span>}
+                {activeIcpCount > 0 && <span style={{ background: 'linear-gradient(135deg, #F97316 0%, #F97316 100%)', color: 'white', padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 700 }}>{activeIcpCount}</span>}
               </div>
               {activeIcpCount > 0 && <button onClick={handleClearFilters} style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '6px', padding: '6px 12px', color: '#94A3B8', fontSize: '11px', cursor: 'pointer', fontWeight: 500, transition: 'all 0.2s ease' }}>Clear all</button>}
             </div>
@@ -864,9 +864,9 @@ const SAIScraper = () => {
           {/* Signal Filters */}
           <div style={{ padding: '24px', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34D399' }}>{Icons.zap}</div>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FB923C' }}>{Icons.zap}</div>
               <span style={{ color: '#F8FAFC', fontSize: '14px', fontWeight: 700, letterSpacing: '-0.3px' }}>Buying Signals</span>
-              {activeSignalCount > 0 && <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34D399', padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 700, border: '1px solid rgba(16, 185, 129, 0.2)' }}>{activeSignalCount} active</span>}
+              {activeSignalCount > 0 && <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#FB923C', padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 700, border: '1px solid rgba(16, 185, 129, 0.2)' }}>{activeSignalCount} active</span>}
             </div>
             <p style={{ color: '#64748B', fontSize: '12px', marginBottom: '18px', marginLeft: '42px', lineHeight: '1.5' }}>Find companies showing these intent signals</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -877,19 +877,19 @@ const SAIScraper = () => {
           {/* Search Settings */}
           <div style={{ padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#A78BFA' }}>{Icons.sliders}</div>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FB923C' }}>{Icons.sliders}</div>
               <span style={{ color: '#F8FAFC', fontSize: '14px', fontWeight: 700, letterSpacing: '-0.3px' }}>Search Settings</span>
             </div>
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', color: '#94A3B8', fontSize: '11px', marginBottom: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Max Results</label>
               <div style={{ display: 'flex', gap: '8px' }}>
                 {[10, 25, 50, 100].map(num => (
-                  <button key={num} onClick={() => setMaxResults(num)} style={{ flex: 1, padding: '12px', background: maxResults === num ? 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)' : 'rgba(255, 255, 255, 0.03)', border: maxResults === num ? 'none' : '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', color: maxResults === num ? 'white' : '#94A3B8', fontSize: '13px', fontWeight: maxResults === num ? 700 : 500, cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: maxResults === num ? '0 2px 8px rgba(59, 130, 246, 0.3)' : 'none' }}>{num}</button>
+                  <button key={num} onClick={() => setMaxResults(num)} style={{ flex: 1, padding: '12px', background: maxResults === num ? 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)' : 'rgba(255, 255, 255, 0.03)', border: maxResults === num ? 'none' : '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', color: maxResults === num ? 'white' : '#94A3B8', fontSize: '13px', fontWeight: maxResults === num ? 700 : 500, cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: maxResults === num ? '0 2px 8px rgba(59, 130, 246, 0.3)' : 'none' }}>{num}</button>
                 ))}
               </div>
             </div>
             <div>
-              <label style={{ display: 'block', color: '#94A3B8', fontSize: '11px', marginBottom: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Minimum Score: <span style={{ color: '#60A5FA', fontWeight: 700 }}>{minScore}</span></label>
+              <label style={{ display: 'block', color: '#94A3B8', fontSize: '11px', marginBottom: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Minimum Score: <span style={{ color: '#FB923C', fontWeight: 700 }}>{minScore}</span></label>
               <input type="range" min="0" max="80" value={minScore} onChange={(e) => setMinScore(Number(e.target.value))} style={{ width: '100%' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B', fontSize: '10px', marginTop: '8px', fontWeight: 500 }}><span>All results</span><span>High intent only</span></div>
             </div>
@@ -915,17 +915,17 @@ const SAIScraper = () => {
               <div style={{ marginBottom: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                   <span style={{ color: '#E2E8F0', fontSize: '13px', fontWeight: 500 }}>{currentStatus}</span>
-                  <span style={{ color: '#60A5FA', fontSize: '13px', fontWeight: 700 }}>{Math.round(progress)}%</span>
+                  <span style={{ color: '#FB923C', fontSize: '13px', fontWeight: 700 }}>{Math.round(progress)}%</span>
                 </div>
                 <div style={{ background: 'rgba(255, 255, 255, 0.05)', borderRadius: '100px', height: '8px', overflow: 'hidden' }}>
-                  <div style={{ width: `${progress}%`, height: '100%', background: 'linear-gradient(90deg, #3B82F6 0%, #10B981 100%)', borderRadius: '100px', transition: 'width 0.3s ease', boxShadow: '0 0 20px rgba(59, 130, 246, 0.4)' }} />
+                  <div style={{ width: `${progress}%`, height: '100%', background: 'linear-gradient(90deg, #F97316 0%, #F97316 100%)', borderRadius: '100px', transition: 'width 0.3s ease', boxShadow: '0 0 20px rgba(59, 130, 246, 0.4)' }} />
                 </div>
                 <div style={{ color: '#64748B', fontSize: '12px', marginTop: '10px', fontWeight: 500 }}>{companiesFound} companies scanned</div>
               </div>
               <button onClick={handleStopScrape} style={{ width: '100%', padding: '16px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '12px', color: '#F87171', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.2s ease' }}>{Icons.stop} Stop Scraping</button>
             </div>
           ) : (
-            <button onClick={handleStartScrape} disabled={!canStartScraping} style={{ width: '100%', padding: '18px', background: !canStartScraping ? 'rgba(255, 255, 255, 0.05)' : 'linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)', border: 'none', borderRadius: '12px', color: !canStartScraping ? '#64748B' : 'white', fontSize: '15px', fontWeight: 700, cursor: !canStartScraping ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: canStartScraping ? '0 4px 20px rgba(59, 130, 246, 0.35), 0 0 40px rgba(139, 92, 246, 0.15)' : 'none', transition: 'all 0.3s ease', letterSpacing: '-0.3px' }}>
+            <button onClick={handleStartScrape} disabled={!canStartScraping} style={{ width: '100%', padding: '18px', background: !canStartScraping ? 'rgba(255, 255, 255, 0.05)' : 'linear-gradient(135deg, #F97316 0%, #F97316 100%)', border: 'none', borderRadius: '12px', color: !canStartScraping ? '#64748B' : 'white', fontSize: '15px', fontWeight: 700, cursor: !canStartScraping ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: canStartScraping ? '0 4px 20px rgba(59, 130, 246, 0.35), 0 0 40px rgba(139, 92, 246, 0.15)' : 'none', transition: 'all 0.3s ease', letterSpacing: '-0.3px' }}>
               {Icons.search} Find Companies {useN8n && <span style={{ opacity: 0.8, fontWeight: 500 }}>(Live)</span>}
             </button>
           )}
@@ -940,13 +940,13 @@ const SAIScraper = () => {
             <div style={{ color: '#F8FAFC', fontSize: '20px', fontWeight: 700, letterSpacing: '-0.4px' }}>Discovered Companies</div>
             <div style={{ color: '#64748B', fontSize: '13px', marginTop: '6px', fontWeight: 500 }}>
               {results.length > 0 ? (
-                <><span style={{ color: '#E2E8F0' }}>{results.length}</span> companies found <span style={{ color: '#475569' }}>•</span> Avg score: <span style={{ color: '#60A5FA' }}>{Math.round(results.reduce((a, r) => a + r.score, 0) / results.length)}</span></>
+                <><span style={{ color: '#E2E8F0' }}>{results.length}</span> companies found <span style={{ color: '#475569' }}>•</span> Avg score: <span style={{ color: '#FB923C' }}>{Math.round(results.reduce((a, r) => a + r.score, 0) / results.length)}</span></>
               ) : 'Configure filters and start searching'}
             </div>
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={() => { setResults([]); setSelectedIds(new Set()); }} disabled={results.length === 0} style={{ padding: '10px 18px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: results.length === 0 ? '#475569' : '#94A3B8', fontSize: '13px', fontWeight: 600, cursor: results.length === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.refresh} Clear</button>
-            <button onClick={handleExport} disabled={results.length === 0} style={{ padding: '10px 20px', background: results.length > 0 ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255, 255, 255, 0.03)', border: results.length > 0 ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: results.length === 0 ? '#475569' : '#60A5FA', fontSize: '13px', fontWeight: 600, cursor: results.length === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.download} Export {selectedIds.size > 0 ? `(${selectedIds.size})` : ''}</button>
+            <button onClick={handleExport} disabled={results.length === 0} style={{ padding: '10px 20px', background: results.length > 0 ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255, 255, 255, 0.03)', border: results.length > 0 ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: results.length === 0 ? '#475569' : '#FB923C', fontSize: '13px', fontWeight: 600, cursor: results.length === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.download} Export {selectedIds.size > 0 ? `(${selectedIds.size})` : ''}</button>
           </div>
         </div>
 
@@ -955,7 +955,7 @@ const SAIScraper = () => {
           {results.length === 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748B' }}>
               <div style={{ width: '80px', height: '80px', borderRadius: '20px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px' }}>
-                <span style={{ color: '#60A5FA', transform: 'scale(2)' }}>{Icons.database}</span>
+                <span style={{ color: '#FB923C', transform: 'scale(2)' }}>{Icons.database}</span>
               </div>
               <div style={{ fontSize: '18px', marginBottom: '10px', color: '#E2E8F0', fontWeight: 600, letterSpacing: '-0.3px' }}>No companies discovered yet</div>
               <div style={{ fontSize: '14px', textAlign: 'center', maxWidth: '380px', lineHeight: '1.6', color: '#64748B' }}>Configure your ICP filters and signal requirements, then click "Find Companies" to start discovering high-intent leads</div>
@@ -983,15 +983,15 @@ const SAIScraper = () => {
                       </td>
                       <td style={{ padding: '18px' }} onClick={() => setSelectedCompany(result)}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: result.score >= 70 ? '#10B981' : result.score >= 50 ? '#F59E0B' : '#EF4444', boxShadow: result.score >= 70 ? '0 0 8px rgba(16, 185, 129, 0.5)' : result.score >= 50 ? '0 0 8px rgba(245, 158, 11, 0.5)' : 'none' }} />
+                          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: result.score >= 70 ? '#F97316' : result.score >= 50 ? '#FB923C' : '#EF4444', boxShadow: result.score >= 70 ? '0 0 8px rgba(16, 185, 129, 0.5)' : result.score >= 50 ? '0 0 8px rgba(245, 158, 11, 0.5)' : 'none' }} />
                           <div>
                             <div style={{ color: '#F8FAFC', fontSize: '14px', fontWeight: 600, letterSpacing: '-0.2px' }}>{result.name}</div>
-                            <div style={{ color: '#64748B', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>{result.domain} <span style={{ color: '#60A5FA', opacity: 0.7 }}>{Icons.externalLink}</span></div>
+                            <div style={{ color: '#64748B', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>{result.domain} <span style={{ color: '#FB923C', opacity: 0.7 }}>{Icons.externalLink}</span></div>
                           </div>
                         </div>
                       </td>
                       <td style={{ padding: '18px' }} onClick={() => setSelectedCompany(result)}>
-                        <span style={{ background: result.score >= 70 ? 'rgba(16, 185, 129, 0.15)' : result.score >= 50 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)', color: result.score >= 70 ? '#34D399' : result.score >= 50 ? '#FBBF24' : '#F87171', padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 700, border: result.score >= 70 ? '1px solid rgba(16, 185, 129, 0.2)' : result.score >= 50 ? '1px solid rgba(245, 158, 11, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)' }}>{result.score}</span>
+                        <span style={{ background: result.score >= 70 ? 'rgba(16, 185, 129, 0.15)' : result.score >= 50 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)', color: result.score >= 70 ? '#FB923C' : result.score >= 50 ? '#FB923C' : '#F87171', padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 700, border: result.score >= 70 ? '1px solid rgba(16, 185, 129, 0.2)' : result.score >= 50 ? '1px solid rgba(245, 158, 11, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)' }}>{result.score}</span>
                       </td>
                       <td style={{ padding: '18px' }} onClick={() => setSelectedCompany(result)}>
                         <div style={{ display: 'flex', gap: '6px' }}>
@@ -1016,7 +1016,7 @@ const SAIScraper = () => {
           <div style={{ padding: '20px 28px', borderTop: '1px solid rgba(255, 255, 255, 0.06)', display: 'flex', gap: '48px', background: 'rgba(255, 255, 255, 0.02)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
               <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ color: '#60A5FA' }}>{Icons.users}</span>
+                <span style={{ color: '#FB923C' }}>{Icons.users}</span>
               </div>
               <div>
                 <div style={{ color: '#64748B', fontSize: '11px', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 600 }}>Total Found</div>
@@ -1025,20 +1025,20 @@ const SAIScraper = () => {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
               <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ color: '#34D399' }}>{Icons.zap}</span>
+                <span style={{ color: '#FB923C' }}>{Icons.zap}</span>
               </div>
               <div>
                 <div style={{ color: '#64748B', fontSize: '11px', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 600 }}>High Intent (70+)</div>
-                <div style={{ color: '#34D399', fontSize: '22px', fontWeight: 800, letterSpacing: '-0.5px' }}>{results.filter(r => r.score >= 70).length}</div>
+                <div style={{ color: '#FB923C', fontSize: '22px', fontWeight: 800, letterSpacing: '-0.5px' }}>{results.filter(r => r.score >= 70).length}</div>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
               <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ color: '#A78BFA' }}>{Icons.target}</span>
+                <span style={{ color: '#FB923C' }}>{Icons.target}</span>
               </div>
               <div>
                 <div style={{ color: '#64748B', fontSize: '11px', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 600 }}>Avg. Score</div>
-                <div style={{ color: '#A78BFA', fontSize: '22px', fontWeight: 800, letterSpacing: '-0.5px' }}>{Math.round(results.reduce((a, r) => a + r.score, 0) / results.length)}</div>
+                <div style={{ color: '#FB923C', fontSize: '22px', fontWeight: 800, letterSpacing: '-0.5px' }}>{Math.round(results.reduce((a, r) => a + r.score, 0) / results.length)}</div>
               </div>
             </div>
           </div>
@@ -1050,7 +1050,7 @@ const SAIScraper = () => {
             <span style={{ color: '#F1F5F9', fontSize: '14px', fontWeight: 500 }}>{selectedIds.size} selected</span>
             <div style={{ width: '1px', height: '24px', background: '#334155' }} />
             <div style={{ position: 'relative' }}>
-              <button onClick={() => setShowBulkListPicker(!showBulkListPicker)} style={{ background: '#3B82F6', border: 'none', borderRadius: '8px', padding: '10px 16px', color: 'white', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button onClick={() => setShowBulkListPicker(!showBulkListPicker)} style={{ background: '#F97316', border: 'none', borderRadius: '8px', padding: '10px 16px', color: 'white', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {Icons.plus} Add to List {Icons.chevronDown}
               </button>
               {showBulkListPicker && (
@@ -1064,7 +1064,7 @@ const SAIScraper = () => {
                         <span style={{ color: '#64748B', fontSize: '12px' }}>{list.leads.length}</span>
                       </button>
                     ))}
-                    <button onClick={() => { setShowBulkListPicker(false); setShowCreateList(true); }} style={{ width: '100%', padding: '12px 16px', background: '#1E293B', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: '#3B82F6', fontSize: '13px' }}>{Icons.plus} Create new list</button>
+                    <button onClick={() => { setShowBulkListPicker(false); setShowCreateList(true); }} style={{ width: '100%', padding: '12px 16px', background: '#1E293B', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: '#F97316', fontSize: '13px' }}>{Icons.plus} Create new list</button>
                   </div>
                 </>
               )}
@@ -1087,8 +1087,8 @@ const SAIScraper = () => {
               <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: selectedList.color }} />
               {editingListId === selectedList.id ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input type="text" value={editingListName} onChange={(e) => setEditingListName(e.target.value)} autoFocus style={{ padding: '8px 12px', background: '#0F172A', border: '1px solid #3B82F6', borderRadius: '6px', color: '#F1F5F9', fontSize: '18px', fontWeight: 600 }} />
-                  <button onClick={() => handleRenameList(selectedList.id)} style={{ background: '#3B82F6', border: 'none', borderRadius: '6px', padding: '8px 12px', color: 'white', cursor: 'pointer' }}>{Icons.check}</button>
+                  <input type="text" value={editingListName} onChange={(e) => setEditingListName(e.target.value)} autoFocus style={{ padding: '8px 12px', background: '#0F172A', border: '1px solid #F97316', borderRadius: '6px', color: '#F1F5F9', fontSize: '18px', fontWeight: 600 }} />
+                  <button onClick={() => handleRenameList(selectedList.id)} style={{ background: '#F97316', border: 'none', borderRadius: '6px', padding: '8px 12px', color: 'white', cursor: 'pointer' }}>{Icons.check}</button>
                   <button onClick={() => setEditingListId(null)} style={{ background: '#334155', border: 'none', borderRadius: '6px', padding: '8px 12px', color: '#94A3B8', cursor: 'pointer' }}>{Icons.x}</button>
                 </div>
               ) : (
@@ -1126,7 +1126,7 @@ const SAIScraper = () => {
                         <div style={{ color: '#64748B', fontSize: '12px' }}>{lead.domain}</div>
                       </td>
                       <td style={{ padding: '16px' }}>
-                        <span style={{ background: lead.score >= 70 ? '#065F46' : lead.score >= 50 ? '#78350F' : '#7F1D1D', color: lead.score >= 70 ? '#34D399' : lead.score >= 50 ? '#FCD34D' : '#FCA5A5', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: 600 }}>{lead.score}</span>
+                        <span style={{ background: lead.score >= 70 ? '#065F46' : lead.score >= 50 ? '#78350F' : '#7F1D1D', color: lead.score >= 70 ? '#FB923C' : lead.score >= 50 ? '#FCD34D' : '#FCA5A5', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: 600 }}>{lead.score}</span>
                       </td>
                       <td style={{ padding: '16px', color: '#94A3B8', fontSize: '13px' }}>{lead.industry}</td>
                       <td style={{ padding: '16px' }}>
@@ -1166,7 +1166,7 @@ const SAIScraper = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
             <h2 style={{ color: '#F1F5F9', fontSize: '24px', fontWeight: 600, margin: 0 }}>Lead Lists</h2>
-            <button onClick={() => setShowCreateList(true)} style={{ background: '#3B82F6', border: 'none', borderRadius: '8px', padding: '10px 16px', color: 'white', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>{Icons.plus} New List</button>
+            <button onClick={() => setShowCreateList(true)} style={{ background: '#F97316', border: 'none', borderRadius: '8px', padding: '10px 16px', color: 'white', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>{Icons.plus} New List</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
             {lists.map(list => (
@@ -1193,7 +1193,7 @@ const SAIScraper = () => {
             <input type="text" value={newListName} onChange={(e) => setNewListName(e.target.value)} placeholder="List name" autoFocus style={{ width: '100%', padding: '12px', background: '#0F172A', border: '1px solid #334155', borderRadius: '8px', color: '#F1F5F9', fontSize: '14px', marginBottom: '16px', boxSizing: 'border-box' }} />
             <div style={{ display: 'flex', gap: '12px' }}>
               <button onClick={() => setShowCreateList(false)} style={{ flex: 1, padding: '10px', background: '#334155', border: 'none', borderRadius: '8px', color: '#94A3B8', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleCreateList} disabled={!newListName.trim()} style={{ flex: 1, padding: '10px', background: newListName.trim() ? '#3B82F6' : '#334155', border: 'none', borderRadius: '8px', color: newListName.trim() ? 'white' : '#64748B', fontSize: '13px', cursor: newListName.trim() ? 'pointer' : 'not-allowed' }}>Create</button>
+              <button onClick={handleCreateList} disabled={!newListName.trim()} style={{ flex: 1, padding: '10px', background: newListName.trim() ? '#F97316' : '#334155', border: 'none', borderRadius: '8px', color: newListName.trim() ? 'white' : '#64748B', fontSize: '13px', cursor: newListName.trim() ? 'pointer' : 'not-allowed' }}>Create</button>
             </div>
           </div>
         </>
@@ -1211,7 +1211,7 @@ const SAIScraper = () => {
           <div style={{ padding: '20px', borderBottom: '1px solid #1E293B', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <h2 style={{ color: '#F1F5F9', fontSize: '20px', fontWeight: 600, margin: '0 0 4px 0' }}>{selectedCompany.name}</h2>
-              <a href={`https://${selectedCompany.domain}`} target="_blank" rel="noopener noreferrer" style={{ color: '#3B82F6', fontSize: '13px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>{selectedCompany.domain} {Icons.externalLink}</a>
+              <a href={`https://${selectedCompany.domain}`} target="_blank" rel="noopener noreferrer" style={{ color: '#F97316', fontSize: '13px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>{selectedCompany.domain} {Icons.externalLink}</a>
             </div>
             <button onClick={() => setSelectedCompany(null)} style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: '4px' }}>{Icons.x}</button>
           </div>
@@ -1220,7 +1220,7 @@ const SAIScraper = () => {
             <div style={{ background: '#1E293B', borderRadius: '10px', padding: '16px', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ color: '#94A3B8', fontSize: '13px' }}>Intent Score</span>
-                <span style={{ background: selectedCompany.score >= 70 ? '#065F46' : selectedCompany.score >= 50 ? '#78350F' : '#7F1D1D', color: selectedCompany.score >= 70 ? '#34D399' : selectedCompany.score >= 50 ? '#FCD34D' : '#FCA5A5', padding: '8px 16px', borderRadius: '8px', fontSize: '18px', fontWeight: 700 }}>{selectedCompany.score}</span>
+                <span style={{ background: selectedCompany.score >= 70 ? '#065F46' : selectedCompany.score >= 50 ? '#78350F' : '#7F1D1D', color: selectedCompany.score >= 70 ? '#FB923C' : selectedCompany.score >= 50 ? '#FCD34D' : '#FCA5A5', padding: '8px 16px', borderRadius: '8px', fontSize: '18px', fontWeight: 700 }}>{selectedCompany.score}</span>
               </div>
               <div style={{ marginTop: '12px', padding: '12px', background: '#0F172A', borderRadius: '6px' }}>
                 <div style={{ color: '#F1F5F9', fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>Why Now</div>
@@ -1258,7 +1258,7 @@ const SAIScraper = () => {
           {/* Actions */}
           <div style={{ padding: '20px', borderTop: '1px solid #1E293B' }}>
             <div style={{ position: 'relative' }}>
-              <button onClick={() => setShowListPicker(!showListPicker)} style={{ width: '100%', padding: '14px', background: '#3B82F6', border: 'none', borderRadius: '8px', color: 'white', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>{Icons.plus} Add to List</button>
+              <button onClick={() => setShowListPicker(!showListPicker)} style={{ width: '100%', padding: '14px', background: '#F97316', border: 'none', borderRadius: '8px', color: 'white', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>{Icons.plus} Add to List</button>
               {showListPicker && (
                 <>
                   <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 110 }} onClick={() => setShowListPicker(false)} />
@@ -1286,7 +1286,7 @@ const SAIScraper = () => {
       {/* Header */}
       <header style={{ padding: '12px 24px', background: 'rgba(10, 15, 26, 0.8)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '38px', height: '38px', background: 'linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>
+          <div style={{ width: '38px', height: '38px', background: 'linear-gradient(135deg, #F97316 0%, #F97316 100%)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>
             <span style={{ color: 'white', fontWeight: 800, fontSize: '16px', letterSpacing: '-0.5px' }}>S</span>
           </div>
           <div>
@@ -1295,8 +1295,8 @@ const SAIScraper = () => {
           </div>
         </div>
         <nav style={{ display: 'flex', gap: '6px', background: 'rgba(255, 255, 255, 0.03)', padding: '4px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-          <button onClick={() => setCurrentPage('scraper')} style={{ padding: '10px 20px', background: currentPage === 'scraper' ? 'rgba(59, 130, 246, 0.15)' : 'transparent', border: 'none', borderRadius: '8px', color: currentPage === 'scraper' ? '#60A5FA' : '#64748B', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.search} Scraper</button>
-          <button onClick={() => setCurrentPage('lists')} style={{ padding: '10px 20px', background: currentPage === 'lists' ? 'rgba(59, 130, 246, 0.15)' : 'transparent', border: 'none', borderRadius: '8px', color: currentPage === 'lists' ? '#60A5FA' : '#64748B', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.folder} Lists {lists.reduce((a, l) => a + l.leads.length, 0) > 0 && <span style={{ background: 'linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)', color: 'white', padding: '2px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600 }}>{lists.reduce((a, l) => a + l.leads.length, 0)}</span>}</button>
+          <button onClick={() => setCurrentPage('scraper')} style={{ padding: '10px 20px', background: currentPage === 'scraper' ? 'rgba(59, 130, 246, 0.15)' : 'transparent', border: 'none', borderRadius: '8px', color: currentPage === 'scraper' ? '#FB923C' : '#64748B', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.search} Scraper</button>
+          <button onClick={() => setCurrentPage('lists')} style={{ padding: '10px 20px', background: currentPage === 'lists' ? 'rgba(59, 130, 246, 0.15)' : 'transparent', border: 'none', borderRadius: '8px', color: currentPage === 'lists' ? '#FB923C' : '#64748B', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.folder} Lists {lists.reduce((a, l) => a + l.leads.length, 0) > 0 && <span style={{ background: 'linear-gradient(135deg, #F97316 0%, #F97316 100%)', color: 'white', padding: '2px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600 }}>{lists.reduce((a, l) => a + l.leads.length, 0)}</span>}</button>
         </nav>
       </header>
 
