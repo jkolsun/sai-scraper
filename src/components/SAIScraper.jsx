@@ -908,29 +908,26 @@ const SAIScraper = () => {
       const processedResults = enrichmentResults.map((result, index) => {
         const company = eligibleCompanies.find(c => c.domain === result.domain) || eligibleCompanies[index];
 
-        // Extract buying signals
+        // Get the active signals that user selected
+        const activeSignalIds = Object.entries(enabledSignals).filter(([_, e]) => e).map(([k]) => k);
+
+        // Extract buying signals - ONLY the ones the user selected
         const signalsList = (result.buyingSignals || [])
-          .filter(s => s.detected)
+          .filter(s => s.detected && activeSignalIds.includes(s.id))
           .map(s => s.id);
 
         const signalDetails = (result.buyingSignals || [])
-          .filter(s => s.detected)
+          .filter(s => s.detected && activeSignalIds.includes(s.id))
           .map(s => ({
             type: s.label,
             value: s.id,
             detected: result.metadata?.enrichedAt
           }));
 
-        // Add signals from enrichment data
-        if (result.signals) {
-          result.signals.forEach(s => {
-            signalDetails.push({
-              type: s.type,
-              value: s.message,
-              source: s.source
-            });
-          });
-        }
+        // Note: result.signals contains enrichment metadata (email_verified, etc.)
+        // These are NOT buying signals and should not be displayed as signal icons
+        // We store them separately in enrichmentSignals for reference
+        const enrichmentSignals = result.signals || [];
 
         const processedResult = {
           id: Date.now() + index,
@@ -941,8 +938,10 @@ const SAIScraper = () => {
           location: result.enrichment?.linkedin?.location || company?.location || 'Unknown',
           revenue: company?.revenue || 'Unknown',
           score: result.score || 0,
-          signals: signalsList,
+          signals: signalsList,  // Only selected signals that were detected
           signalDetails: signalDetails,
+          enrichmentSignals: enrichmentSignals,  // Metadata signals (email verified, etc.)
+          allDetectedSignals: (result.buyingSignals || []).filter(s => s.detected).map(s => s.id),  // For reference
           whyNow: result.whyNow || 'Company shows growth indicators',
           scrapedAt: result.metadata?.enrichedAt,
           enrichment: result.enrichment,
