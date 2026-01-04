@@ -1,45 +1,191 @@
 import React, { useState } from 'react';
 import { discoverCompanies, enrichCompanies } from '../services/n8nService';
 
-// ==================== CONSTANTS ====================
+// ==================== COMPREHENSIVE ICP FILTER OPTIONS ====================
+
+// FIRMOGRAPHIC FILTERS
 const INDUSTRIES = [
-  'SaaS', 'E-commerce', 'Healthcare', 'FinTech', 'EdTech',
-  'Real Estate', 'Manufacturing', 'Retail', 'Professional Services',
-  'Marketing Agency', 'Logistics', 'Construction', 'Legal', 'Insurance'
+  // Technology
+  'SaaS', 'Software Development', 'IT Services', 'Cybersecurity', 'Cloud Computing', 'AI/ML',
+  // Finance
+  'FinTech', 'Banking', 'Insurance', 'Investment', 'Accounting',
+  // Healthcare
+  'Healthcare', 'Biotech', 'Pharmaceuticals', 'Medical Devices', 'Telehealth',
+  // Commerce
+  'E-commerce', 'Retail', 'Wholesale', 'Consumer Goods',
+  // Services
+  'Professional Services', 'Consulting', 'Marketing Agency', 'Legal', 'Recruiting',
+  // Industrial
+  'Manufacturing', 'Construction', 'Logistics', 'Transportation', 'Energy',
+  // Other
+  'Real Estate', 'EdTech', 'Media/Entertainment', 'Hospitality', 'Non-Profit'
 ];
 
+const SUB_INDUSTRIES = {
+  'SaaS': ['CRM', 'Marketing Automation', 'HR Tech', 'Sales Tech', 'Project Management', 'Analytics', 'Security', 'DevOps'],
+  'Healthcare': ['Hospitals', 'Clinics', 'Dental', 'Mental Health', 'Home Care', 'Medical Equipment', 'Health Insurance'],
+  'FinTech': ['Payments', 'Lending', 'Wealth Management', 'InsurTech', 'RegTech', 'Crypto/Blockchain'],
+  'E-commerce': ['D2C Brands', 'Marketplaces', 'Dropshipping', 'Subscription Commerce', 'B2B E-commerce'],
+  'Marketing Agency': ['Digital Marketing', 'SEO/SEM', 'Social Media', 'Content Marketing', 'PR', 'Branding', 'Performance Marketing'],
+  'Legal': ['Corporate Law', 'Personal Injury', 'Immigration', 'Real Estate Law', 'IP Law', 'Criminal Defense'],
+  'Real Estate': ['Residential', 'Commercial', 'Property Management', 'Real Estate Tech', 'Mortgage'],
+  'Manufacturing': ['Automotive', 'Electronics', 'Food & Beverage', 'Textiles', 'Aerospace', 'Industrial Equipment']
+};
+
 const EMPLOYEE_RANGES = [
-  { label: '1-10', min: 1, max: 10 },
-  { label: '11-50', min: 11, max: 50 },
-  { label: '51-200', min: 51, max: 200 },
-  { label: '201-500', min: 201, max: 500 },
-  { label: '501-1000', min: 501, max: 1000 },
-  { label: '1000+', min: 1001, max: 100000 }
+  { label: '1-10 (Startup)', min: 1, max: 10 },
+  { label: '11-50 (Small)', min: 11, max: 50 },
+  { label: '51-200 (Mid-Market)', min: 51, max: 200 },
+  { label: '201-500 (Growth)', min: 201, max: 500 },
+  { label: '501-1000 (Scale-up)', min: 501, max: 1000 },
+  { label: '1001-5000 (Enterprise)', min: 1001, max: 5000 },
+  { label: '5000+ (Large Enterprise)', min: 5001, max: 1000000 }
 ];
 
 const REVENUE_RANGES = [
+  { label: '$0 - $1M (Pre-Revenue/Seed)', min: 0, max: 1000000 },
+  { label: '$1M - $5M (Early Stage)', min: 1000000, max: 5000000 },
+  { label: '$5M - $10M (Growth)', min: 5000000, max: 10000000 },
+  { label: '$10M - $50M (Scaling)', min: 10000000, max: 50000000 },
+  { label: '$50M - $100M (Mid-Market)', min: 50000000, max: 100000000 },
+  { label: '$100M - $500M (Upper Mid-Market)', min: 100000000, max: 500000000 },
+  { label: '$500M+ (Enterprise)', min: 500000000, max: 100000000000 }
+];
+
+const COMPANY_TYPES = [
+  'Public Company', 'Private Company', 'Startup', 'Non-Profit', 'Government', 'Partnership', 'Sole Proprietorship'
+];
+
+const BUSINESS_MODELS = [
+  'B2B', 'B2C', 'B2B2C', 'D2C', 'Marketplace', 'SaaS', 'Service-based', 'Product-based', 'Subscription', 'Freemium'
+];
+
+// GEOGRAPHIC FILTERS
+const COUNTRIES = [
+  'United States', 'Canada', 'United Kingdom', 'Germany', 'France', 'Australia',
+  'Netherlands', 'Spain', 'Italy', 'Brazil', 'Mexico', 'India', 'Singapore',
+  'Japan', 'South Korea', 'Ireland', 'Sweden', 'Switzerland', 'Israel', 'UAE'
+];
+
+const US_STATES = [
+  'California', 'New York', 'Texas', 'Florida', 'Illinois', 'Pennsylvania',
+  'Ohio', 'Georgia', 'North Carolina', 'Michigan', 'New Jersey', 'Virginia',
+  'Washington', 'Arizona', 'Massachusetts', 'Tennessee', 'Indiana', 'Missouri',
+  'Maryland', 'Wisconsin', 'Colorado', 'Minnesota', 'South Carolina', 'Alabama',
+  'Louisiana', 'Kentucky', 'Oregon', 'Oklahoma', 'Connecticut', 'Utah', 'Nevada',
+  'Iowa', 'Arkansas', 'Mississippi', 'Kansas', 'New Mexico', 'Nebraska', 'Idaho',
+  'West Virginia', 'Hawaii', 'New Hampshire', 'Maine', 'Montana', 'Rhode Island',
+  'Delaware', 'South Dakota', 'North Dakota', 'Alaska', 'Vermont', 'Wyoming', 'DC'
+];
+
+const US_METRO_AREAS = [
+  'San Francisco Bay Area', 'New York City', 'Los Angeles', 'Chicago', 'Boston',
+  'Seattle', 'Austin', 'Denver', 'Atlanta', 'Dallas-Fort Worth', 'Miami',
+  'Washington DC', 'Philadelphia', 'Phoenix', 'San Diego', 'Portland',
+  'Minneapolis', 'Detroit', 'Houston', 'Nashville', 'Charlotte', 'Salt Lake City'
+];
+
+// CONTACT/DEMOGRAPHIC FILTERS
+const JOB_TITLES = [
+  // C-Suite
+  'CEO', 'CTO', 'CFO', 'CMO', 'COO', 'CRO', 'CISO', 'CIO', 'CPO',
+  // VP Level
+  'VP Sales', 'VP Marketing', 'VP Engineering', 'VP Operations', 'VP Product', 'VP Customer Success', 'VP Finance', 'VP HR',
+  // Director Level
+  'Director of Sales', 'Director of Marketing', 'Director of Engineering', 'Director of Operations', 'Director of Product', 'Director of IT',
+  // Manager Level
+  'Sales Manager', 'Marketing Manager', 'Engineering Manager', 'Product Manager', 'Operations Manager', 'HR Manager',
+  // Individual Contributors
+  'Account Executive', 'SDR', 'BDR', 'Software Engineer', 'Marketing Specialist', 'Customer Success Manager'
+];
+
+const SENIORITY_LEVELS = [
+  'C-Suite/Executive', 'VP/SVP', 'Director', 'Manager', 'Senior Individual Contributor', 'Individual Contributor', 'Entry Level'
+];
+
+const DEPARTMENTS = [
+  'Sales', 'Marketing', 'Engineering', 'Product', 'Operations', 'Finance', 'HR/People',
+  'Customer Success', 'IT', 'Legal', 'Executive', 'Business Development', 'Data/Analytics', 'Design'
+];
+
+// TECHNOGRAPHIC FILTERS
+const TECH_CATEGORIES = {
+  'CRM': ['Salesforce', 'HubSpot', 'Pipedrive', 'Zoho CRM', 'Monday Sales CRM', 'Freshsales', 'Close', 'Copper'],
+  'Marketing Automation': ['HubSpot', 'Marketo', 'Pardot', 'Mailchimp', 'ActiveCampaign', 'Klaviyo', 'Braze', 'Iterable'],
+  'Analytics': ['Google Analytics', 'Mixpanel', 'Amplitude', 'Heap', 'Segment', 'Hotjar', 'FullStory', 'Pendo'],
+  'Live Chat/Support': ['Intercom', 'Drift', 'Zendesk', 'Freshdesk', 'Crisp', 'LiveChat', 'Tawk.to', 'Help Scout'],
+  'E-commerce Platform': ['Shopify', 'WooCommerce', 'Magento', 'BigCommerce', 'Squarespace', 'Wix', 'PrestaShop'],
+  'Payment Processing': ['Stripe', 'PayPal', 'Square', 'Braintree', 'Adyen', 'Authorize.net'],
+  'Cloud/Hosting': ['AWS', 'Google Cloud', 'Azure', 'Cloudflare', 'Vercel', 'Heroku', 'DigitalOcean'],
+  'Development': ['React', 'Angular', 'Vue.js', 'Node.js', 'Python', 'Ruby on Rails', 'PHP', 'WordPress'],
+  'Scheduling': ['Calendly', 'Chili Piper', 'SavvyCal', 'Acuity', 'YouCanBook.me', 'Cal.com'],
+  'Project Management': ['Asana', 'Monday.com', 'Jira', 'Trello', 'ClickUp', 'Notion', 'Linear', 'Basecamp'],
+  'Communication': ['Slack', 'Microsoft Teams', 'Zoom', 'Google Meet', 'Discord'],
+  'HR/Recruiting': ['Workday', 'BambooHR', 'Gusto', 'Greenhouse', 'Lever', 'ADP', 'Rippling']
+};
+
+const ALL_TECHNOLOGIES = Object.values(TECH_CATEGORIES).flat();
+
+// FUNDING & GROWTH FILTERS
+const FUNDING_STAGES = [
+  'Pre-Seed', 'Seed', 'Series A', 'Series B', 'Series C', 'Series D+', 'Private Equity', 'IPO', 'Bootstrapped'
+];
+
+const FUNDING_RECENCY = [
+  'Last 30 days', 'Last 90 days', 'Last 6 months', 'Last 12 months', 'Last 2 years', 'Any time'
+];
+
+const FUNDING_AMOUNTS = [
   { label: '$0 - $1M', min: 0, max: 1000000 },
-  { label: '$1M - $10M', min: 1000000, max: 10000000 },
-  { label: '$10M - $50M', min: 10000000, max: 50000000 },
+  { label: '$1M - $5M', min: 1000000, max: 5000000 },
+  { label: '$5M - $20M', min: 5000000, max: 20000000 },
+  { label: '$20M - $50M', min: 20000000, max: 50000000 },
   { label: '$50M - $100M', min: 50000000, max: 100000000 },
-  { label: '$100M+', min: 100000000, max: 10000000000 }
+  { label: '$100M+', min: 100000000, max: 100000000000 }
 ];
 
-const LOCATIONS = [
-  'United States', 'Canada', 'United Kingdom', 'Germany', 'France',
-  'Australia', 'Netherlands', 'Spain', 'Italy', 'Brazil', 'Mexico',
-  'India', 'Singapore', 'Japan', 'South Korea'
+// HIRING SIGNALS
+const HIRING_DEPARTMENTS = [
+  'Sales', 'Marketing', 'Engineering', 'Product', 'Customer Success', 'Operations',
+  'Finance', 'HR', 'Legal', 'Design', 'Data Science', 'DevOps', 'Security'
 ];
 
-const HIRING_ROLES = [
-  'Sales / Account Executive', 'Business Development', 'Marketing',
-  'Customer Success', 'SDR / BDR', 'Engineering', 'Product', 'Operations'
+const HIRING_INTENSITY = [
+  { label: 'Aggressive (20+ open roles)', min: 20 },
+  { label: 'Active (10-19 open roles)', min: 10, max: 19 },
+  { label: 'Moderate (5-9 open roles)', min: 5, max: 9 },
+  { label: 'Light (1-4 open roles)', min: 1, max: 4 },
+  { label: 'Not hiring', min: 0, max: 0 }
 ];
 
-const TECH_STACK_OPTIONS = [
-  'HubSpot', 'Salesforce', 'Marketo', 'Pardot', 'Intercom',
-  'Drift', 'Zendesk', 'Freshdesk', 'Segment', 'Mixpanel',
-  'Google Analytics', 'Hotjar', 'Calendly', 'Stripe', 'Shopify'
+// INTENT & BEHAVIORAL SIGNALS
+const INTENT_SIGNALS = [
+  { id: 'recentFunding', label: 'Recent Funding', description: 'Raised funding in the last 12 months' },
+  { id: 'leadershipChange', label: 'Leadership Change', description: 'New C-level or VP hire in last 6 months' },
+  { id: 'techAdoption', label: 'New Tech Adoption', description: 'Recently adopted new technology' },
+  { id: 'expansionNews', label: 'Expansion News', description: 'Announced expansion or new office' },
+  { id: 'productLaunch', label: 'Product Launch', description: 'Launched new product or feature' },
+  { id: 'acquisitionNews', label: 'M&A Activity', description: 'Acquired company or was acquired' },
+  { id: 'jobPostingSpike', label: 'Job Posting Spike', description: 'Significant increase in job postings' },
+  { id: 'websiteTrafficGrowth', label: 'Traffic Growth', description: 'Website traffic growing 20%+ MoM' },
+  { id: 'adSpendIncrease', label: 'Ad Spend Increase', description: 'Increased advertising activity' },
+  { id: 'competitorMention', label: 'Competitor Mentions', description: 'Mentions competitor products' }
+];
+
+// COMPANY ATTRIBUTES
+const COMPANY_KEYWORDS = [
+  'AI-powered', 'Machine Learning', 'Automation', 'Cloud-native', 'Enterprise',
+  'SMB-focused', 'Startup', 'Remote-first', 'Global', 'Fast-growing',
+  'Venture-backed', 'Profitable', 'B Corp', 'Award-winning'
+];
+
+const COMPLIANCE_CERTIFICATIONS = [
+  'SOC 2', 'ISO 27001', 'HIPAA', 'GDPR Compliant', 'PCI DSS', 'FedRAMP', 'CCPA Compliant'
+];
+
+// LOOKALIKE & EXCLUSION FILTERS
+const EXCLUDE_TYPES = [
+  'Competitors', 'Existing Customers', 'Recently Contacted', 'Unsubscribed', 'Bad Fit'
 ];
 
 const SIGNAL_TYPES = [
@@ -250,8 +396,42 @@ const SAIScraper = () => {
   const [showCreateList, setShowCreateList] = useState(false);
   const [newListName, setNewListName] = useState('');
 
-  // ICP Filters
-  const [icpFilters, setIcpFilters] = useState({ industries: [], employeeRange: null, revenueRange: null, locations: [], hiringRoles: [], techStack: [] });
+  // ICP Filters - Comprehensive
+  const [icpFilters, setIcpFilters] = useState({
+    // Firmographic
+    industries: [],
+    subIndustries: [],
+    employeeRanges: [],
+    revenueRanges: [],
+    companyTypes: [],
+    businessModels: [],
+    // Geographic
+    countries: [],
+    states: [],
+    metroAreas: [],
+    // Contact/Demographic
+    jobTitles: [],
+    seniorityLevels: [],
+    departments: [],
+    // Technographic
+    technologies: [],
+    techCategories: [],
+    // Funding
+    fundingStages: [],
+    fundingRecency: null,
+    // Hiring
+    hiringDepartments: [],
+    hiringIntensity: null,
+    // Intent Signals
+    intentSignals: [],
+    // Keywords & Exclusions
+    keywords: [],
+    excludeDomains: [],
+    lookalikeDomains: []
+  });
+
+  // Active filter tab
+  const [activeFilterTab, setActiveFilterTab] = useState('firmographic');
 
   // Signal Filters
   const [enabledSignals, setEnabledSignals] = useState({ afterHoursCoverage: true, googlePaidTraffic: true, inboundResponseRisk: false });
@@ -283,7 +463,28 @@ const SAIScraper = () => {
 
   // Counts
   const activeSignalCount = Object.values(enabledSignals).filter(Boolean).length;
-  const activeIcpCount = [icpFilters.industries.length > 0, icpFilters.employeeRange, icpFilters.revenueRange, icpFilters.locations.length > 0, icpFilters.hiringRoles.length > 0, icpFilters.techStack.length > 0].filter(Boolean).length;
+  const activeIcpCount = [
+    icpFilters.industries.length > 0,
+    icpFilters.subIndustries.length > 0,
+    icpFilters.employeeRanges.length > 0,
+    icpFilters.revenueRanges.length > 0,
+    icpFilters.companyTypes.length > 0,
+    icpFilters.businessModels.length > 0,
+    icpFilters.countries.length > 0,
+    icpFilters.states.length > 0,
+    icpFilters.metroAreas.length > 0,
+    icpFilters.jobTitles.length > 0,
+    icpFilters.seniorityLevels.length > 0,
+    icpFilters.departments.length > 0,
+    icpFilters.technologies.length > 0,
+    icpFilters.fundingStages.length > 0,
+    icpFilters.fundingRecency,
+    icpFilters.hiringDepartments.length > 0,
+    icpFilters.hiringIntensity,
+    icpFilters.intentSignals.length > 0,
+    icpFilters.keywords.length > 0,
+    icpFilters.lookalikeDomains.length > 0
+  ].filter(Boolean).length;
   const canStartScraping = activeSignalCount > 0;
 
   // Selection helpers
@@ -460,7 +661,13 @@ const SAIScraper = () => {
   };
 
   // Handlers
-  const handleClearFilters = () => setIcpFilters({ industries: [], employeeRange: null, revenueRange: null, locations: [], hiringRoles: [], techStack: [] });
+  const handleClearFilters = () => setIcpFilters({
+    industries: [], subIndustries: [], employeeRanges: [], revenueRanges: [],
+    companyTypes: [], businessModels: [], countries: [], states: [], metroAreas: [],
+    jobTitles: [], seniorityLevels: [], departments: [], technologies: [], techCategories: [],
+    fundingStages: [], fundingRecency: null, hiringDepartments: [], hiringIntensity: null,
+    intentSignals: [], keywords: [], excludeDomains: [], lookalikeDomains: []
+  });
 
   // n8n-powered scrape with company discovery
   const handleN8nScrape = async () => {
@@ -503,9 +710,9 @@ const SAIScraper = () => {
         setCurrentStatus('Discovery service unavailable, using sample companies...');
         eligibleCompanies = [...MOCK_COMPANIES];
         if (icpFilters.industries.length > 0) eligibleCompanies = eligibleCompanies.filter(c => icpFilters.industries.includes(c.industry));
-        if (icpFilters.locations.length > 0) eligibleCompanies = eligibleCompanies.filter(c => icpFilters.locations.includes(c.location));
-        if (icpFilters.employeeRange) eligibleCompanies = eligibleCompanies.filter(c => c.employees === icpFilters.employeeRange);
-        if (icpFilters.revenueRange) eligibleCompanies = eligibleCompanies.filter(c => c.revenue === icpFilters.revenueRange);
+        if (icpFilters.countries.length > 0) eligibleCompanies = eligibleCompanies.filter(c => icpFilters.countries.includes(c.location));
+        if (icpFilters.employeeRanges.length > 0) eligibleCompanies = eligibleCompanies.filter(c => icpFilters.employeeRanges.includes(c.employees));
+        if (icpFilters.revenueRanges.length > 0) eligibleCompanies = eligibleCompanies.filter(c => icpFilters.revenueRanges.includes(c.revenue));
         if (eligibleCompanies.length === 0) eligibleCompanies = [...MOCK_COMPANIES];
         eligibleCompanies = eligibleCompanies.slice(0, maxResults);
         domains = eligibleCompanies.map(c => c.domain);
@@ -618,9 +825,9 @@ const SAIScraper = () => {
     const activeSignals = Object.entries(enabledSignals).filter(([_, e]) => e).map(([k]) => k);
     let eligibleCompanies = [...MOCK_COMPANIES];
     if (icpFilters.industries.length > 0) eligibleCompanies = eligibleCompanies.filter(c => icpFilters.industries.includes(c.industry));
-    if (icpFilters.locations.length > 0) eligibleCompanies = eligibleCompanies.filter(c => icpFilters.locations.includes(c.location));
-    if (icpFilters.employeeRange) eligibleCompanies = eligibleCompanies.filter(c => c.employees === icpFilters.employeeRange);
-    if (icpFilters.revenueRange) eligibleCompanies = eligibleCompanies.filter(c => c.revenue === icpFilters.revenueRange);
+    if (icpFilters.countries.length > 0) eligibleCompanies = eligibleCompanies.filter(c => icpFilters.countries.includes(c.location));
+    if (icpFilters.employeeRanges.length > 0) eligibleCompanies = eligibleCompanies.filter(c => icpFilters.employeeRanges.includes(c.employees));
+    if (icpFilters.revenueRanges.length > 0) eligibleCompanies = eligibleCompanies.filter(c => icpFilters.revenueRanges.includes(c.revenue));
     if (eligibleCompanies.length === 0) eligibleCompanies = [...MOCK_COMPANIES];
     eligibleCompanies = eligibleCompanies.slice(0, maxResults);
 
@@ -839,25 +1046,151 @@ const SAIScraper = () => {
             </button>
           </div>
 
-          {/* ICP Filters */}
-          <div style={{ padding: '24px', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+          {/* ICP Filters - Tabbed Interface */}
+          <div style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+            {/* Header */}
+            <div style={{ padding: '20px 24px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FB923C' }}>{Icons.target}</div>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(249, 115, 22, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#F97316' }}>{Icons.target}</div>
                 <span style={{ color: '#F8FAFC', fontSize: '14px', fontWeight: 700, letterSpacing: '-0.3px' }}>ICP Filters</span>
-                {activeIcpCount > 0 && <span style={{ background: 'linear-gradient(135deg, #F97316 0%, #F97316 100%)', color: 'white', padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 700 }}>{activeIcpCount}</span>}
+                {activeIcpCount > 0 && <span style={{ background: '#F97316', color: 'white', padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 700 }}>{activeIcpCount}</span>}
               </div>
-              {activeIcpCount > 0 && <button onClick={handleClearFilters} style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '6px', padding: '6px 12px', color: '#94A3B8', fontSize: '11px', cursor: 'pointer', fontWeight: 500, transition: 'all 0.2s ease' }}>Clear all</button>}
+              {activeIcpCount > 0 && <button onClick={handleClearFilters} style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '6px', padding: '6px 12px', color: '#A3A3A3', fontSize: '11px', cursor: 'pointer', fontWeight: 500 }}>Clear all</button>}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <MultiSelect label="Industry" options={INDUSTRIES} selected={icpFilters.industries} onChange={(v) => setIcpFilters({ ...icpFilters, industries: v })} placeholder="All industries" />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                <Select label="Employees" options={EMPLOYEE_RANGES.map(r => r.label)} value={icpFilters.employeeRange} onChange={(v) => setIcpFilters({ ...icpFilters, employeeRange: v })} placeholder="Any size" />
-                <Select label="Revenue" options={REVENUE_RANGES.map(r => r.label)} value={icpFilters.revenueRange} onChange={(v) => setIcpFilters({ ...icpFilters, revenueRange: v })} placeholder="Any revenue" />
-              </div>
-              <MultiSelect label="Location" options={LOCATIONS} selected={icpFilters.locations} onChange={(v) => setIcpFilters({ ...icpFilters, locations: v })} placeholder="All locations" />
-              <MultiSelect label="Hiring for Roles" options={HIRING_ROLES} selected={icpFilters.hiringRoles} onChange={(v) => setIcpFilters({ ...icpFilters, hiringRoles: v })} placeholder="Any role" />
-              <MultiSelect label="Uses Tech Stack" options={TECH_STACK_OPTIONS} selected={icpFilters.techStack} onChange={(v) => setIcpFilters({ ...icpFilters, techStack: v })} placeholder="Any technology" />
+
+            {/* Filter Tabs */}
+            <div style={{ display: 'flex', gap: '4px', padding: '0 24px 16px', overflowX: 'auto' }}>
+              {[
+                { id: 'firmographic', label: 'Company', icon: '#' },
+                { id: 'geographic', label: 'Location', icon: '@' },
+                { id: 'contact', label: 'Contact', icon: '>' },
+                { id: 'technographic', label: 'Tech', icon: '*' },
+                { id: 'funding', label: 'Funding', icon: '$' },
+                { id: 'hiring', label: 'Hiring', icon: '+' },
+                { id: 'intent', label: 'Intent', icon: '^' },
+                { id: 'advanced', label: 'Advanced', icon: '~' }
+              ].map(tab => (
+                <button key={tab.id} onClick={() => setActiveFilterTab(tab.id)}
+                  style={{ padding: '8px 12px', background: activeFilterTab === tab.id ? '#F97316' : 'rgba(255, 255, 255, 0.03)', border: activeFilterTab === tab.id ? 'none' : '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', color: activeFilterTab === tab.id ? 'white' : '#A3A3A3', fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', transition: 'all 0.2s ease' }}>
+                  <span style={{ fontWeight: 700 }}>{tab.icon}</span> {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Filter Content */}
+            <div style={{ padding: '0 24px 24px' }}>
+              {/* FIRMOGRAPHIC */}
+              {activeFilterTab === 'firmographic' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <MultiSelect label="Industry" options={INDUSTRIES} selected={icpFilters.industries} onChange={(v) => setIcpFilters({ ...icpFilters, industries: v })} placeholder="Select industries" />
+                  {icpFilters.industries.length > 0 && icpFilters.industries.some(i => SUB_INDUSTRIES[i]) && (
+                    <MultiSelect label="Sub-Industry" options={icpFilters.industries.flatMap(i => SUB_INDUSTRIES[i] || [])} selected={icpFilters.subIndustries} onChange={(v) => setIcpFilters({ ...icpFilters, subIndustries: v })} placeholder="Narrow by sub-industry" />
+                  )}
+                  <MultiSelect label="Company Size (Employees)" options={EMPLOYEE_RANGES.map(r => r.label)} selected={icpFilters.employeeRanges} onChange={(v) => setIcpFilters({ ...icpFilters, employeeRanges: v })} placeholder="Any size" />
+                  <MultiSelect label="Revenue Range" options={REVENUE_RANGES.map(r => r.label)} selected={icpFilters.revenueRanges} onChange={(v) => setIcpFilters({ ...icpFilters, revenueRanges: v })} placeholder="Any revenue" />
+                  <MultiSelect label="Company Type" options={COMPANY_TYPES} selected={icpFilters.companyTypes} onChange={(v) => setIcpFilters({ ...icpFilters, companyTypes: v })} placeholder="Any type" />
+                  <MultiSelect label="Business Model" options={BUSINESS_MODELS} selected={icpFilters.businessModels} onChange={(v) => setIcpFilters({ ...icpFilters, businessModels: v })} placeholder="Any model" />
+                </div>
+              )}
+
+              {/* GEOGRAPHIC */}
+              {activeFilterTab === 'geographic' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <MultiSelect label="Country" options={COUNTRIES} selected={icpFilters.countries} onChange={(v) => setIcpFilters({ ...icpFilters, countries: v })} placeholder="Select countries" />
+                  {icpFilters.countries.includes('United States') && (
+                    <>
+                      <MultiSelect label="US State" options={US_STATES} selected={icpFilters.states} onChange={(v) => setIcpFilters({ ...icpFilters, states: v })} placeholder="All states" />
+                      <MultiSelect label="Metro Area" options={US_METRO_AREAS} selected={icpFilters.metroAreas} onChange={(v) => setIcpFilters({ ...icpFilters, metroAreas: v })} placeholder="All metro areas" />
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* CONTACT/DEMOGRAPHIC */}
+              {activeFilterTab === 'contact' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <p style={{ color: '#737373', fontSize: '12px', marginBottom: '4px' }}>Filter by decision makers you want to reach</p>
+                  <MultiSelect label="Job Titles" options={JOB_TITLES} selected={icpFilters.jobTitles} onChange={(v) => setIcpFilters({ ...icpFilters, jobTitles: v })} placeholder="Any title" />
+                  <MultiSelect label="Seniority Level" options={SENIORITY_LEVELS} selected={icpFilters.seniorityLevels} onChange={(v) => setIcpFilters({ ...icpFilters, seniorityLevels: v })} placeholder="Any level" />
+                  <MultiSelect label="Department" options={DEPARTMENTS} selected={icpFilters.departments} onChange={(v) => setIcpFilters({ ...icpFilters, departments: v })} placeholder="Any department" />
+                </div>
+              )}
+
+              {/* TECHNOGRAPHIC */}
+              {activeFilterTab === 'technographic' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <p style={{ color: '#737373', fontSize: '12px', marginBottom: '4px' }}>Find companies using specific technologies</p>
+                  <MultiSelect label="Tech Category" options={Object.keys(TECH_CATEGORIES)} selected={icpFilters.techCategories} onChange={(v) => setIcpFilters({ ...icpFilters, techCategories: v })} placeholder="All categories" />
+                  <MultiSelect label="Specific Technologies" options={icpFilters.techCategories.length > 0 ? icpFilters.techCategories.flatMap(c => TECH_CATEGORIES[c] || []) : ALL_TECHNOLOGIES} selected={icpFilters.technologies} onChange={(v) => setIcpFilters({ ...icpFilters, technologies: v })} placeholder="Any technology" />
+                </div>
+              )}
+
+              {/* FUNDING */}
+              {activeFilterTab === 'funding' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <p style={{ color: '#737373', fontSize: '12px', marginBottom: '4px' }}>Target companies by funding stage and activity</p>
+                  <MultiSelect label="Funding Stage" options={FUNDING_STAGES} selected={icpFilters.fundingStages} onChange={(v) => setIcpFilters({ ...icpFilters, fundingStages: v })} placeholder="Any stage" />
+                  <Select label="Funding Recency" options={FUNDING_RECENCY} value={icpFilters.fundingRecency} onChange={(v) => setIcpFilters({ ...icpFilters, fundingRecency: v })} placeholder="Any time" />
+                </div>
+              )}
+
+              {/* HIRING */}
+              {activeFilterTab === 'hiring' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <p style={{ color: '#737373', fontSize: '12px', marginBottom: '4px' }}>Find growing companies actively hiring</p>
+                  <MultiSelect label="Hiring in Departments" options={HIRING_DEPARTMENTS} selected={icpFilters.hiringDepartments} onChange={(v) => setIcpFilters({ ...icpFilters, hiringDepartments: v })} placeholder="Any department" />
+                  <Select label="Hiring Intensity" options={HIRING_INTENSITY.map(h => h.label)} value={icpFilters.hiringIntensity} onChange={(v) => setIcpFilters({ ...icpFilters, hiringIntensity: v })} placeholder="Any intensity" />
+                </div>
+              )}
+
+              {/* INTENT SIGNALS */}
+              {activeFilterTab === 'intent' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <p style={{ color: '#737373', fontSize: '12px', marginBottom: '4px' }}>Target companies showing buying intent</p>
+                  <MultiSelect label="Intent Signals" options={INTENT_SIGNALS.map(s => s.label)} selected={icpFilters.intentSignals} onChange={(v) => setIcpFilters({ ...icpFilters, intentSignals: v })} placeholder="Any signal" />
+                  <div style={{ marginTop: '8px' }}>
+                    {INTENT_SIGNALS.filter(s => icpFilters.intentSignals.includes(s.label)).map(signal => (
+                      <div key={signal.id} style={{ padding: '10px 12px', background: 'rgba(249, 115, 22, 0.1)', border: '1px solid rgba(249, 115, 22, 0.2)', borderRadius: '8px', marginBottom: '8px' }}>
+                        <div style={{ color: '#FAFAFA', fontSize: '12px', fontWeight: 600 }}>{signal.label}</div>
+                        <div style={{ color: '#A3A3A3', fontSize: '11px', marginTop: '4px' }}>{signal.description}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ADVANCED */}
+              {activeFilterTab === 'advanced' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <p style={{ color: '#737373', fontSize: '12px', marginBottom: '4px' }}>Keywords, lookalikes, and exclusions</p>
+                  <div>
+                    <label style={{ display: 'block', color: '#A3A3A3', fontSize: '11px', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Keywords (comma separated)</label>
+                    <input type="text" placeholder="e.g., AI-powered, cloud-native, fast-growing"
+                      style={{ width: '100%', padding: '12px 14px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: '#FAFAFA', fontSize: '13px', outline: 'none' }}
+                      value={icpFilters.keywords.join(', ')}
+                      onChange={(e) => setIcpFilters({ ...icpFilters, keywords: e.target.value.split(',').map(k => k.trim()).filter(k => k) })}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', color: '#A3A3A3', fontSize: '11px', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Lookalike Domains</label>
+                    <input type="text" placeholder="e.g., stripe.com, hubspot.com"
+                      style={{ width: '100%', padding: '12px 14px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: '#FAFAFA', fontSize: '13px', outline: 'none' }}
+                      value={icpFilters.lookalikeDomains.join(', ')}
+                      onChange={(e) => setIcpFilters({ ...icpFilters, lookalikeDomains: e.target.value.split(',').map(k => k.trim()).filter(k => k) })}
+                    />
+                    <p style={{ color: '#737373', fontSize: '11px', marginTop: '6px' }}>Find companies similar to these domains</p>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', color: '#A3A3A3', fontSize: '11px', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Exclude Domains</label>
+                    <input type="text" placeholder="e.g., competitor.com, existing-customer.com"
+                      style={{ width: '100%', padding: '12px 14px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: '#FAFAFA', fontSize: '13px', outline: 'none' }}
+                      value={icpFilters.excludeDomains.join(', ')}
+                      onChange={(e) => setIcpFilters({ ...icpFilters, excludeDomains: e.target.value.split(',').map(k => k.trim()).filter(k => k) })}
+                    />
+                  </div>
+                  <MultiSelect label="Compliance/Certifications" options={COMPLIANCE_CERTIFICATIONS} selected={icpFilters.keywords.filter(k => COMPLIANCE_CERTIFICATIONS.includes(k))} onChange={(v) => setIcpFilters({ ...icpFilters, keywords: [...icpFilters.keywords.filter(k => !COMPLIANCE_CERTIFICATIONS.includes(k)), ...v] })} placeholder="Any certification" />
+                </div>
+              )}
             </div>
           </div>
 
