@@ -1,5 +1,6 @@
 // Vercel Serverless Function - Advanced Company Discovery via Serper
 // Comprehensive ICP filtering with 65+ filter options (Apollo/ZoomInfo level)
+// Supports ANY industry/niche including trades, local services, and verticals
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -19,6 +20,7 @@ export default async function handler(req, res) {
       // Firmographic
       industries = [],
       subIndustries = [],
+      customIndustry = '', // NEW: Free-text industry/niche search
       employeeRanges = [],
       revenueRanges = [],
       companyTypes = [],
@@ -50,7 +52,7 @@ export default async function handler(req, res) {
 
     // Build intelligent search queries
     const queries = buildAdvancedQueries({
-      industries, subIndustries, employeeRanges, revenueRanges, companyTypes, businessModels,
+      industries, subIndustries, customIndustry, employeeRanges, revenueRanges, companyTypes, businessModels,
       countries, states, metroAreas, jobTitles, seniorityLevels, departments,
       technologies, techCategories, fundingStages, fundingRecency,
       hiringDepartments, hiringIntensity, intentSignals, keywords, lookalikeDomains
@@ -67,7 +69,7 @@ export default async function handler(req, res) {
 
     // Process with advanced filtering
     const companies = processAdvancedResults(allOrganic, {
-      industries, subIndustries, employeeRanges, revenueRanges, companyTypes, businessModels,
+      industries, subIndustries, customIndustry, employeeRanges, revenueRanges, companyTypes, businessModels,
       countries, states, metroAreas, technologies, fundingStages, excludeDomains
     }, maxResults);
 
@@ -261,156 +263,370 @@ const INTENT_SEARCH_TERMS = {
   'Competitor Mentions': 'competitor alternative'
 };
 
+// ==================== INTELLIGENT INDUSTRY EXPANSION ====================
+// This system expands any industry/niche into comprehensive search terms
+const INDUSTRY_SYNONYMS = {
+  // Trades & Home Services
+  'hvac': ['HVAC company', 'heating and cooling company', 'air conditioning contractor', 'HVAC contractor', 'heating contractor', 'AC repair company', 'furnace company', 'HVAC service', 'climate control company'],
+  'plumbing': ['plumbing company', 'plumber', 'plumbing contractor', 'plumbing services', 'drain cleaning company', 'water heater company', 'pipe repair', 'plumbing repair'],
+  'plumber': ['plumbing company', 'plumber', 'plumbing contractor', 'plumbing services', 'licensed plumber'],
+  'electrical': ['electrical contractor', 'electrician company', 'electrical services', 'commercial electrician', 'residential electrician', 'electrical repair'],
+  'electrician': ['electrician company', 'electrical contractor', 'licensed electrician', 'electrical services'],
+  'roofing': ['roofing company', 'roofing contractor', 'roof repair company', 'commercial roofing', 'residential roofing', 'roofer'],
+  'landscaping': ['landscaping company', 'landscape contractor', 'lawn care company', 'landscape design', 'grounds maintenance', 'landscaper'],
+  'painting': ['painting company', 'painting contractor', 'commercial painter', 'residential painter', 'house painter'],
+  'flooring': ['flooring company', 'flooring contractor', 'hardwood flooring', 'tile contractor', 'carpet installer'],
+  'pest control': ['pest control company', 'exterminator', 'pest management', 'termite control', 'pest removal'],
+  'cleaning': ['cleaning company', 'janitorial services', 'commercial cleaning', 'cleaning service', 'office cleaning'],
+  'moving': ['moving company', 'movers', 'relocation company', 'moving services', 'professional movers'],
+  'garage door': ['garage door company', 'garage door repair', 'garage door installer', 'overhead door company'],
+  'fencing': ['fencing company', 'fence contractor', 'fence installer', 'fencing services'],
+  'concrete': ['concrete company', 'concrete contractor', 'concrete services', 'concrete construction'],
+  'paving': ['paving company', 'asphalt paving', 'paving contractor', 'driveway paving'],
+  'pool': ['pool company', 'pool contractor', 'pool service', 'pool installation', 'pool maintenance'],
+  'solar': ['solar company', 'solar installer', 'solar panel company', 'solar energy company', 'solar contractor'],
+  'window': ['window company', 'window installation', 'window replacement', 'window contractor'],
+  'siding': ['siding company', 'siding contractor', 'vinyl siding', 'siding installation'],
+  'insulation': ['insulation company', 'insulation contractor', 'spray foam insulation', 'home insulation'],
+  'remodeling': ['remodeling company', 'home remodeling', 'renovation contractor', 'kitchen remodeling', 'bathroom remodeling'],
+  'general contractor': ['general contractor', 'construction company', 'building contractor', 'GC company'],
+  'handyman': ['handyman service', 'handyman company', 'home repair service', 'property maintenance'],
+
+  // Healthcare & Medical
+  'dentist': ['dental practice', 'dentist office', 'dental clinic', 'family dentist', 'cosmetic dentist', 'dental group'],
+  'dental': ['dental practice', 'dental clinic', 'dental office', 'dentistry', 'dental group'],
+  'chiropractor': ['chiropractic clinic', 'chiropractor office', 'chiropractic practice', 'spine clinic'],
+  'physical therapy': ['physical therapy clinic', 'PT practice', 'rehabilitation center', 'physical therapist'],
+  'veterinary': ['veterinary clinic', 'vet office', 'animal hospital', 'veterinarian', 'pet clinic'],
+  'vet': ['veterinary clinic', 'vet office', 'animal hospital', 'veterinarian'],
+  'optometry': ['optometry practice', 'eye doctor', 'optometrist', 'vision center', 'eye care'],
+  'dermatology': ['dermatology practice', 'dermatologist', 'skin clinic', 'dermatology clinic'],
+  'orthopedic': ['orthopedic practice', 'orthopedic surgeon', 'orthopedic clinic', 'sports medicine'],
+  'plastic surgery': ['plastic surgery practice', 'cosmetic surgery', 'plastic surgeon', 'aesthetic clinic'],
+  'medspa': ['medical spa', 'medspa', 'med spa', 'aesthetic clinic', 'cosmetic clinic'],
+  'urgent care': ['urgent care clinic', 'walk-in clinic', 'immediate care', 'urgent care center'],
+  'home health': ['home health agency', 'home care company', 'home health care', 'in-home care'],
+  'hospice': ['hospice care', 'hospice agency', 'palliative care', 'end of life care'],
+  'pharmacy': ['pharmacy', 'drugstore', 'compounding pharmacy', 'retail pharmacy'],
+
+  // Automotive
+  'auto repair': ['auto repair shop', 'car repair', 'auto mechanic', 'automotive repair', 'auto service'],
+  'auto dealer': ['car dealership', 'auto dealer', 'car dealer', 'automobile dealer', 'vehicle dealership'],
+  'car dealership': ['car dealership', 'auto dealer', 'new car dealer', 'used car dealer'],
+  'auto body': ['auto body shop', 'collision repair', 'body shop', 'car body repair'],
+  'tire shop': ['tire shop', 'tire dealer', 'tire store', 'tire service'],
+  'oil change': ['oil change shop', 'quick lube', 'oil change service', 'lube center'],
+  'car wash': ['car wash', 'auto detailing', 'car detailing', 'auto spa'],
+  'towing': ['towing company', 'tow truck', 'roadside assistance', 'towing service'],
+
+  // Food & Beverage
+  'restaurant': ['restaurant', 'dining establishment', 'eatery', 'food service', 'restaurant group'],
+  'catering': ['catering company', 'catering service', 'event catering', 'corporate catering'],
+  'bakery': ['bakery', 'bake shop', 'pastry shop', 'bread company'],
+  'food truck': ['food truck', 'mobile food', 'food cart', 'street food'],
+  'brewery': ['brewery', 'craft brewery', 'beer company', 'microbrewery'],
+  'coffee shop': ['coffee shop', 'cafe', 'coffee roaster', 'espresso bar'],
+  'bar': ['bar', 'pub', 'tavern', 'nightclub', 'lounge'],
+
+  // Professional Services
+  'accountant': ['accounting firm', 'CPA firm', 'accountant', 'accounting services', 'tax accountant'],
+  'cpa': ['CPA firm', 'certified public accountant', 'accounting firm', 'tax services'],
+  'bookkeeper': ['bookkeeping service', 'bookkeeper', 'bookkeeping company'],
+  'attorney': ['law firm', 'attorney', 'lawyer', 'legal services', 'law office'],
+  'lawyer': ['law firm', 'lawyer', 'attorney', 'legal practice', 'law office'],
+  'architect': ['architecture firm', 'architect', 'architectural design', 'design firm'],
+  'engineer': ['engineering firm', 'engineering company', 'engineering services'],
+  'surveyor': ['surveying company', 'land surveyor', 'survey company'],
+  'interior design': ['interior design firm', 'interior designer', 'design studio'],
+  'photography': ['photography studio', 'photographer', 'photo studio', 'photography business'],
+  'videography': ['video production company', 'videographer', 'video production'],
+  'printing': ['printing company', 'print shop', 'commercial printing', 'printer'],
+  'staffing': ['staffing agency', 'recruiting firm', 'employment agency', 'temp agency'],
+
+  // Fitness & Wellness
+  'gym': ['gym', 'fitness center', 'health club', 'fitness studio'],
+  'personal trainer': ['personal training', 'fitness trainer', 'personal trainer', 'training studio'],
+  'yoga': ['yoga studio', 'yoga center', 'yoga practice'],
+  'pilates': ['pilates studio', 'pilates center'],
+  'martial arts': ['martial arts studio', 'karate school', 'MMA gym', 'martial arts school'],
+  'spa': ['spa', 'day spa', 'wellness spa', 'massage spa'],
+  'massage': ['massage therapy', 'massage studio', 'massage therapist'],
+  'salon': ['hair salon', 'beauty salon', 'salon', 'hair studio'],
+  'barber': ['barber shop', 'barbershop', 'barber'],
+  'nail salon': ['nail salon', 'nail spa', 'manicure'],
+
+  // Education & Childcare
+  'daycare': ['daycare center', 'child care', 'preschool', 'childcare center', 'early learning'],
+  'preschool': ['preschool', 'pre-k', 'early childhood', 'nursery school'],
+  'tutoring': ['tutoring center', 'tutoring service', 'learning center', 'tutor'],
+  'driving school': ['driving school', 'driver education', 'driving lessons'],
+  'music school': ['music school', 'music lessons', 'music academy'],
+  'dance studio': ['dance studio', 'dance school', 'dance academy'],
+
+  // Retail
+  'furniture': ['furniture store', 'furniture company', 'furniture retailer'],
+  'appliance': ['appliance store', 'appliance dealer', 'appliance company'],
+  'jewelry': ['jewelry store', 'jeweler', 'jewelry shop'],
+  'pet store': ['pet store', 'pet shop', 'pet supply'],
+  'sporting goods': ['sporting goods store', 'sports equipment', 'athletic store'],
+  'hardware store': ['hardware store', 'home improvement store', 'building supply'],
+
+  // Events & Entertainment
+  'wedding': ['wedding venue', 'wedding planner', 'event venue', 'wedding services'],
+  'event planning': ['event planner', 'event planning company', 'event management'],
+  'dj': ['DJ service', 'disc jockey', 'wedding DJ', 'event DJ'],
+  'photographer': ['photography studio', 'photographer', 'wedding photographer'],
+
+  // Agriculture & Outdoor
+  'farm': ['farm', 'agricultural company', 'farming operation', 'ranch'],
+  'nursery': ['plant nursery', 'garden center', 'nursery', 'greenhouse'],
+  'tree service': ['tree service', 'arborist', 'tree removal', 'tree care'],
+  'lawn care': ['lawn care company', 'lawn service', 'lawn maintenance', 'mowing service'],
+
+  // Technology & Digital
+  'web design': ['web design agency', 'web developer', 'website design', 'web development'],
+  'seo': ['SEO agency', 'SEO company', 'search engine optimization', 'digital marketing'],
+  'it support': ['IT support company', 'managed IT', 'IT services', 'tech support'],
+  'app development': ['app development company', 'mobile app developer', 'app developer'],
+
+  // Storage & Logistics
+  'storage': ['self storage', 'storage facility', 'mini storage', 'storage company'],
+  'warehouse': ['warehouse', 'warehousing', 'distribution center', 'fulfillment'],
+  'freight': ['freight company', 'trucking company', 'freight broker', 'logistics'],
+  'courier': ['courier service', 'delivery service', 'messenger service']
+};
+
+// Expand a custom industry term into multiple search variations
+function expandIndustryTerm(term) {
+  const normalized = term.toLowerCase().trim();
+
+  // Check direct match in synonyms
+  if (INDUSTRY_SYNONYMS[normalized]) {
+    return INDUSTRY_SYNONYMS[normalized];
+  }
+
+  // Check partial matches
+  for (const [key, values] of Object.entries(INDUSTRY_SYNONYMS)) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return values;
+    }
+  }
+
+  // Smart term generation for unknown industries
+  const baseTerms = [];
+  const cleanTerm = term.trim();
+
+  // Generate variations
+  baseTerms.push(`${cleanTerm} company`);
+  baseTerms.push(`${cleanTerm} contractor`);
+  baseTerms.push(`${cleanTerm} services`);
+  baseTerms.push(`${cleanTerm} business`);
+  baseTerms.push(`best ${cleanTerm} companies`);
+  baseTerms.push(`top ${cleanTerm} providers`);
+  baseTerms.push(`${cleanTerm} near me`); // Good for local businesses
+  baseTerms.push(`commercial ${cleanTerm}`);
+  baseTerms.push(`${cleanTerm} professionals`);
+
+  return baseTerms;
+}
+
 // ==================== BUILD ADVANCED QUERIES ====================
 function buildAdvancedQueries(filters) {
   const queries = [];
   const {
-    industries, subIndustries, employeeRanges, companyTypes, businessModels,
+    industries, subIndustries, customIndustry, employeeRanges, companyTypes, businessModels,
     countries, states, metroAreas, technologies, fundingStages,
     hiringDepartments, intentSignals, keywords, lookalikeDomains
   } = filters;
 
-  // Strategy 1: Industry + Location (primary)
+  // Helper to add location context to a query
+  const addLocationVariants = (baseTerm) => {
+    const variants = [];
+
+    if (metroAreas.length > 0) {
+      // Metro areas are most specific
+      for (const metro of metroAreas.slice(0, 3)) {
+        variants.push(`${baseTerm} ${METRO_TERMS[metro] || metro}`);
+      }
+    } else if (states.length > 0) {
+      // State-level targeting
+      for (const state of states.slice(0, 3)) {
+        const stateTerms = LOCATION_TERMS[state] || [state];
+        variants.push(`${baseTerm} ${stateTerms[0]}`);
+      }
+    } else if (countries.length > 0) {
+      // Country-level targeting
+      for (const country of countries.slice(0, 2)) {
+        const locTerms = LOCATION_TERMS[country] || [country];
+        variants.push(`${baseTerm} ${locTerms[0]}`);
+      }
+    } else {
+      // No location - just the base term
+      variants.push(baseTerm);
+    }
+
+    return variants;
+  };
+
+  // ==================== PRIORITY 1: CUSTOM INDUSTRY (Most Important) ====================
+  if (customIndustry && customIndustry.trim()) {
+    const customTerms = expandIndustryTerm(customIndustry);
+    console.log(`Expanded "${customIndustry}" to:`, customTerms);
+
+    // Add top expanded terms with location variants
+    for (const term of customTerms.slice(0, 4)) {
+      queries.push(...addLocationVariants(term));
+    }
+
+    // Also add some without location for broader coverage
+    queries.push(customTerms[0]);
+    if (customTerms[1]) queries.push(customTerms[1]);
+  }
+
+  // ==================== PRIORITY 2: PREDEFINED INDUSTRIES ====================
   if (industries.length > 0) {
     for (const industry of industries.slice(0, 2)) {
       const terms = INDUSTRY_SEARCH_TERMS[industry] || [industry.toLowerCase() + ' company'];
       const mainTerm = terms[0];
 
-      // Add location context
-      if (countries.length > 0) {
-        for (const country of countries.slice(0, 2)) {
-          const locTerms = LOCATION_TERMS[country] || [country];
-          queries.push(`${mainTerm} ${locTerms[0]}`);
-        }
-      }
+      queries.push(...addLocationVariants(mainTerm));
 
-      // Add state-level targeting (US)
-      if (states.length > 0) {
-        for (const state of states.slice(0, 2)) {
-          const stateTerms = LOCATION_TERMS[state] || [state];
-          queries.push(`${mainTerm} ${stateTerms[0]}`);
-        }
-      }
-
-      // Add metro area targeting
-      if (metroAreas.length > 0) {
-        for (const metro of metroAreas.slice(0, 2)) {
-          queries.push(`${mainTerm} ${METRO_TERMS[metro] || metro}`);
-        }
-      }
-
-      // If no location, just search industry
-      if (countries.length === 0 && states.length === 0 && metroAreas.length === 0) {
-        queries.push(mainTerm);
-        if (terms[1]) queries.push(terms[1]);
+      // Add alternative term if available
+      if (terms[1] && queries.length < 8) {
+        queries.push(...addLocationVariants(terms[1]).slice(0, 1));
       }
     }
   }
 
-  // Strategy 2: Sub-industry specific
+  // ==================== PRIORITY 3: SUB-INDUSTRIES ====================
   if (subIndustries.length > 0) {
     for (const sub of subIndustries.slice(0, 2)) {
       const subTerm = SUB_INDUSTRY_TERMS[sub] || sub.toLowerCase();
-      if (countries.length > 0) {
-        queries.push(`${subTerm} ${LOCATION_TERMS[countries[0]]?.[0] || countries[0]}`);
-      } else {
-        queries.push(subTerm);
-      }
+      queries.push(...addLocationVariants(subTerm).slice(0, 2));
     }
   }
 
-  // Strategy 3: Company size + Industry
-  if (employeeRanges.length > 0 && industries.length > 0) {
+  // ==================== PRIORITY 4: SIZE + INDUSTRY ====================
+  if (employeeRanges.length > 0) {
     const sizeTerm = SIZE_TERMS[employeeRanges[0]] || '';
-    const industryTerm = INDUSTRY_SEARCH_TERMS[industries[0]]?.[0] || industries[0];
-    if (sizeTerm) {
+    const industryTerm = customIndustry?.trim()
+      || INDUSTRY_SEARCH_TERMS[industries[0]]?.[0]
+      || industries[0]
+      || '';
+
+    if (sizeTerm && industryTerm) {
       queries.push(`${sizeTerm} ${industryTerm}`);
     }
   }
 
-  // Strategy 4: Business model targeting
+  // ==================== PRIORITY 5: BUSINESS MODEL ====================
   if (businessModels.length > 0) {
     for (const model of businessModels.slice(0, 2)) {
-      if (model === 'B2B') queries.push('B2B company');
-      else if (model === 'B2C') queries.push('B2C company');
-      else if (model === 'SaaS') queries.push('SaaS startup');
-      else if (model === 'D2C') queries.push('direct to consumer brand');
-      else if (model === 'Marketplace') queries.push('online marketplace');
-      else if (model === 'Subscription') queries.push('subscription business');
+      const modelTerms = {
+        'B2B': 'B2B company',
+        'B2C': 'B2C company',
+        'SaaS': 'SaaS startup',
+        'D2C': 'direct to consumer brand',
+        'Marketplace': 'online marketplace',
+        'Subscription': 'subscription business'
+      };
+
+      if (modelTerms[model]) {
+        const industryContext = customIndustry?.trim() || industries[0] || '';
+        if (industryContext) {
+          queries.push(`${modelTerms[model]} ${industryContext}`);
+        } else {
+          queries.push(modelTerms[model]);
+        }
+      }
     }
   }
 
-  // Strategy 5: Funding-based discovery
+  // ==================== PRIORITY 6: FUNDING ====================
   if (fundingStages.length > 0) {
     for (const stage of fundingStages.slice(0, 2)) {
       const fundingTerm = FUNDING_TERMS[stage] || stage;
-      if (industries.length > 0) {
-        queries.push(`${fundingTerm} ${INDUSTRY_SEARCH_TERMS[industries[0]]?.[0] || industries[0]}`);
+      const industryContext = customIndustry?.trim()
+        || INDUSTRY_SEARCH_TERMS[industries[0]]?.[0]
+        || industries[0]
+        || '';
+
+      if (industryContext) {
+        queries.push(`${fundingTerm} ${industryContext}`);
       } else {
         queries.push(fundingTerm);
       }
     }
   }
 
-  // Strategy 6: Hiring signals
+  // ==================== PRIORITY 7: HIRING SIGNALS ====================
   if (hiringDepartments.length > 0) {
     for (const dept of hiringDepartments.slice(0, 2)) {
       const hiringTerm = HIRING_DEPT_TERMS[dept] || `hiring ${dept.toLowerCase()}`;
-      if (industries.length > 0) {
-        queries.push(`${INDUSTRY_SEARCH_TERMS[industries[0]]?.[0] || industries[0]} ${hiringTerm}`);
-      } else {
-        queries.push(`company ${hiringTerm}`);
-      }
+      const industryContext = customIndustry?.trim()
+        || INDUSTRY_SEARCH_TERMS[industries[0]]?.[0]
+        || industries[0]
+        || 'company';
+
+      queries.push(`${industryContext} ${hiringTerm}`);
     }
   }
 
-  // Strategy 7: Technology-based targeting
+  // ==================== PRIORITY 8: TECHNOLOGY ====================
   if (technologies.length > 0) {
     for (const tech of technologies.slice(0, 2)) {
       const techTerm = TECH_SEARCH_TERMS[tech] || `uses ${tech}`;
-      if (industries.length > 0) {
-        queries.push(`${INDUSTRY_SEARCH_TERMS[industries[0]]?.[0] || industries[0]} ${techTerm}`);
-      } else {
-        queries.push(`company ${techTerm}`);
-      }
+      const industryContext = customIndustry?.trim()
+        || INDUSTRY_SEARCH_TERMS[industries[0]]?.[0]
+        || industries[0]
+        || 'company';
+
+      queries.push(`${industryContext} ${techTerm}`);
     }
   }
 
-  // Strategy 8: Intent signals
+  // ==================== PRIORITY 9: INTENT SIGNALS ====================
   if (intentSignals.length > 0) {
     for (const signal of intentSignals.slice(0, 2)) {
       const intentTerm = INTENT_SEARCH_TERMS[signal] || signal.toLowerCase();
-      if (industries.length > 0) {
-        queries.push(`${INDUSTRY_SEARCH_TERMS[industries[0]]?.[0] || industries[0]} ${intentTerm}`);
-      } else {
-        queries.push(`company ${intentTerm}`);
-      }
+      const industryContext = customIndustry?.trim()
+        || INDUSTRY_SEARCH_TERMS[industries[0]]?.[0]
+        || industries[0]
+        || 'company';
+
+      queries.push(`${industryContext} ${intentTerm}`);
     }
   }
 
-  // Strategy 9: Keyword-based search
+  // ==================== PRIORITY 10: KEYWORDS ====================
   if (keywords.length > 0) {
     for (const keyword of keywords.slice(0, 2)) {
       queries.push(`${keyword} company`);
+      queries.push(`${keyword} business`);
     }
   }
 
-  // Strategy 10: Lookalike domains (search for "similar to" or "alternative to")
+  // ==================== PRIORITY 11: LOOKALIKE DOMAINS ====================
   if (lookalikeDomains.length > 0) {
     for (const domain of lookalikeDomains.slice(0, 2)) {
       const cleanDomain = domain.replace(/\.(com|io|co|ai|org|net)$/i, '');
       queries.push(`companies like ${cleanDomain}`);
       queries.push(`${cleanDomain} competitors`);
+      queries.push(`${cleanDomain} alternatives`);
     }
   }
 
-  // Fallback
+  // ==================== FALLBACK ====================
   if (queries.length === 0) {
     queries.push('fast growing B2B companies 2024');
+    queries.push('top SMB companies USA');
   }
 
-  // Dedupe and return
-  return [...new Set(queries)].slice(0, 10);
+  // Dedupe, clean, and return top queries
+  const uniqueQueries = [...new Set(queries.map(q => q.trim()).filter(q => q.length > 3))];
+  console.log(`Generated ${uniqueQueries.length} unique queries:`, uniqueQueries.slice(0, 10));
+
+  return uniqueQueries.slice(0, 10);
 }
 
 // ==================== SERPER API ====================
@@ -543,7 +759,8 @@ function processAdvancedResults(organic, filters, maxResults) {
 
     // Infer attributes from content
     const text = `${result.title} ${result.snippet}`.toLowerCase();
-    const inferredIndustry = filters.industries?.[0] || inferIndustryAdvanced(text);
+    // Priority: customIndustry > selected industries > inferred from text
+    const inferredIndustry = filters.customIndustry?.trim() || filters.industries?.[0] || inferIndustryAdvanced(text);
     const inferredLocation = filters.countries?.[0] || filters.states?.[0] || inferLocation(text);
 
     companies.push({
@@ -567,23 +784,51 @@ function processAdvancedResults(organic, filters, maxResults) {
 // ==================== INFERENCE HELPERS ====================
 function inferIndustryAdvanced(text) {
   const industryKeywords = {
+    // Technology
     'SaaS': ['saas', 'software as a service', 'cloud platform', 'subscription software'],
     'Software Development': ['software development', 'custom software', 'app development'],
     'IT Services': ['it services', 'managed services', 'it consulting', 'it support'],
     'Cybersecurity': ['cybersecurity', 'security software', 'data protection', 'infosec'],
     'AI/ML': ['artificial intelligence', 'machine learning', 'ai platform', 'deep learning'],
+    // Finance
     'FinTech': ['fintech', 'financial technology', 'payments', 'banking software'],
+    'Accounting': ['accounting', 'cpa', 'bookkeeping', 'tax services', 'accountant'],
+    // Healthcare
     'Healthcare': ['healthcare', 'medical', 'health services', 'patient care'],
     'Biotech': ['biotech', 'biotechnology', 'life sciences', 'pharmaceutical'],
+    'Dental': ['dental', 'dentist', 'orthodont', 'oral health'],
+    'Veterinary': ['veterinary', 'vet', 'animal hospital', 'pet clinic'],
+    // Commerce
     'E-commerce': ['ecommerce', 'e-commerce', 'online store', 'online retail'],
+    // Services
     'Marketing Agency': ['marketing agency', 'digital marketing', 'advertising agency', 'seo'],
     'Legal': ['law firm', 'legal services', 'attorney', 'lawyer'],
     'Real Estate': ['real estate', 'property', 'realty', 'brokerage'],
+    'Consulting': ['consulting', 'consultancy', 'advisory', 'strategy'],
+    // Industrial
     'Construction': ['construction', 'contractor', 'building', 'roofing'],
     'Manufacturing': ['manufacturing', 'industrial', 'production', 'factory'],
-    'Consulting': ['consulting', 'consultancy', 'advisory', 'strategy'],
+    'Logistics': ['logistics', 'freight', 'shipping', 'supply chain'],
+    // Trades & Home Services
+    'HVAC': ['hvac', 'heating', 'cooling', 'air conditioning', 'furnace', 'ac repair'],
+    'Plumbing': ['plumbing', 'plumber', 'drain', 'pipe', 'water heater'],
+    'Electrical': ['electrical', 'electrician', 'wiring', 'electrical contractor'],
+    'Roofing': ['roofing', 'roof repair', 'roofer', 'shingle'],
+    'Landscaping': ['landscaping', 'lawn care', 'landscape', 'grounds'],
+    'Painting': ['painting', 'painter', 'house painting'],
+    'Pest Control': ['pest control', 'exterminator', 'termite', 'pest management'],
+    'Cleaning Services': ['cleaning', 'janitorial', 'maid service', 'house cleaning'],
+    'Moving Services': ['moving', 'movers', 'relocation'],
+    'Auto Services': ['auto repair', 'mechanic', 'car dealership', 'auto body', 'tire'],
+    // Fitness & Wellness
+    'Fitness': ['gym', 'fitness', 'personal trainer', 'workout'],
+    'Spa & Wellness': ['spa', 'massage', 'wellness', 'salon'],
+    // Food & Beverage
+    'Restaurant': ['restaurant', 'dining', 'eatery', 'food service'],
+    'Catering': ['catering', 'event catering', 'food catering'],
+    // Education
     'EdTech': ['edtech', 'education technology', 'online learning', 'e-learning'],
-    'Logistics': ['logistics', 'freight', 'shipping', 'supply chain']
+    'Childcare': ['daycare', 'childcare', 'preschool', 'early learning']
   };
 
   for (const [industry, keywords] of Object.entries(industryKeywords)) {

@@ -594,6 +594,7 @@ const SAIScraper = () => {
     // Firmographic
     industries: [],
     subIndustries: [],
+    customIndustry: '', // Free-text industry/niche search (HVAC, Plumbers, etc.)
     employeeRanges: [],
     revenueRanges: [],
     companyTypes: [],
@@ -1730,6 +1731,20 @@ const SAIScraper = () => {
                       placeholder="Narrow by specialty niche"
                     />
                   )}
+                  <div>
+                    <label style={{ display: 'block', color: theme.textSecondary, fontSize: '11px', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                      Custom Industry / Niche Search
+                      <span style={{ color: theme.accent, marginLeft: '6px', fontWeight: 700, fontSize: '10px', textTransform: 'none' }}>✨ Any industry</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g., HVAC, Plumbers, Solar Installers, Auto Dealers, Dentists..."
+                      style={{ width: '100%', padding: '12px 14px', background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '10px', color: theme.textPrimary, fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+                      value={icpFilters.customIndustry || ''}
+                      onChange={(e) => setIcpFilters({ ...icpFilters, customIndustry: e.target.value })}
+                    />
+                    <p style={{ color: theme.textMuted, fontSize: '11px', marginTop: '6px' }}>Search any industry/niche not in the list above. Supports: trades, local services, verticals, niches.</p>
+                  </div>
                   <MultiSelect label="Company Size (Employees)" options={EMPLOYEE_RANGES.map(r => r.label)} selected={icpFilters.employeeRanges} onChange={(v) => setIcpFilters({ ...icpFilters, employeeRanges: v })} placeholder="Any size" />
                   <MultiSelect label="Revenue Range" options={REVENUE_RANGES.map(r => r.label)} selected={icpFilters.revenueRanges} onChange={(v) => setIcpFilters({ ...icpFilters, revenueRanges: v })} placeholder="Any revenue" />
                   <MultiSelect label="Company Type" options={COMPANY_TYPES} selected={icpFilters.companyTypes} onChange={(v) => setIcpFilters({ ...icpFilters, companyTypes: v })} placeholder="Any type" />
