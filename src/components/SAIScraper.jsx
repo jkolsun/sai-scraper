@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { discoverCompanies, enrichCompanies } from '../services/n8nService';
 
 // ==================== COMPREHENSIVE ICP FILTER OPTIONS ====================
@@ -266,7 +266,13 @@ const Icons = {
   arrowLeft: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
   users: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
   move: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>,
-  minus: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  minus: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  bookmark: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>,
+  bookmarkFilled: <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>,
+  star: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+  starFilled: <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+  clock: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  copy: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
 };
 
 // ==================== DESIGN TOKENS (Beige/Grey Theme) ====================
@@ -444,6 +450,158 @@ const SAIScraper = () => {
   // Search Settings
   const [maxResults, setMaxResults] = useState(100);
   const [minScore, setMinScore] = useState(50);
+
+  // ==================== SAVED SEARCHES ====================
+  const [savedSearches, setSavedSearches] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sai_saved_searches');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [showSavedSearches, setShowSavedSearches] = useState(false);
+  const [showSaveSearchModal, setShowSaveSearchModal] = useState(false);
+  const [newSearchName, setNewSearchName] = useState('');
+  const [newSearchDescription, setNewSearchDescription] = useState('');
+  const [editingSearchId, setEditingSearchId] = useState(null);
+  const [searchToDelete, setSearchToDelete] = useState(null);
+
+  // Persist saved searches to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('sai_saved_searches', JSON.stringify(savedSearches));
+    } catch (e) {
+      console.error('Failed to save searches to localStorage:', e);
+    }
+  }, [savedSearches]);
+
+  // Save current search configuration
+  const handleSaveSearch = () => {
+    if (!newSearchName.trim()) return;
+
+    const searchConfig = {
+      id: editingSearchId || Date.now(),
+      name: newSearchName.trim(),
+      description: newSearchDescription.trim(),
+      createdAt: editingSearchId ? savedSearches.find(s => s.id === editingSearchId)?.createdAt : new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isFavorite: editingSearchId ? savedSearches.find(s => s.id === editingSearchId)?.isFavorite : false,
+      usageCount: editingSearchId ? savedSearches.find(s => s.id === editingSearchId)?.usageCount || 0 : 0,
+      lastUsed: null,
+      config: {
+        icpFilters: { ...icpFilters },
+        enabledSignals: { ...enabledSignals },
+        maxResults,
+        minScore
+      }
+    };
+
+    if (editingSearchId) {
+      setSavedSearches(savedSearches.map(s => s.id === editingSearchId ? searchConfig : s));
+    } else {
+      setSavedSearches([searchConfig, ...savedSearches]);
+    }
+
+    setNewSearchName('');
+    setNewSearchDescription('');
+    setShowSaveSearchModal(false);
+    setEditingSearchId(null);
+  };
+
+  // Load a saved search configuration
+  const handleLoadSearch = (search) => {
+    setIcpFilters(search.config.icpFilters);
+    setEnabledSignals(search.config.enabledSignals);
+    setMaxResults(search.config.maxResults);
+    setMinScore(search.config.minScore);
+
+    // Update usage stats
+    setSavedSearches(savedSearches.map(s =>
+      s.id === search.id
+        ? { ...s, usageCount: (s.usageCount || 0) + 1, lastUsed: new Date().toISOString() }
+        : s
+    ));
+
+    setShowSavedSearches(false);
+  };
+
+  // Toggle favorite
+  const handleToggleFavorite = (searchId) => {
+    setSavedSearches(savedSearches.map(s =>
+      s.id === searchId ? { ...s, isFavorite: !s.isFavorite } : s
+    ));
+  };
+
+  // Delete saved search
+  const handleDeleteSearch = (searchId) => {
+    setSavedSearches(savedSearches.filter(s => s.id !== searchId));
+    setSearchToDelete(null);
+  };
+
+  // Duplicate saved search
+  const handleDuplicateSearch = (search) => {
+    const duplicate = {
+      ...search,
+      id: Date.now(),
+      name: `${search.name} (Copy)`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      usageCount: 0,
+      lastUsed: null
+    };
+    setSavedSearches([duplicate, ...savedSearches]);
+  };
+
+  // Edit saved search
+  const handleEditSearch = (search) => {
+    setEditingSearchId(search.id);
+    setNewSearchName(search.name);
+    setNewSearchDescription(search.description || '');
+    setShowSaveSearchModal(true);
+  };
+
+  // Get filter summary for a saved search
+  const getSearchSummary = (search) => {
+    const parts = [];
+    const config = search.config;
+
+    if (config.icpFilters.industries?.length > 0) {
+      parts.push(`${config.icpFilters.industries.length} industries`);
+    }
+    if (config.icpFilters.employeeRanges?.length > 0) {
+      parts.push(`${config.icpFilters.employeeRanges.length} company sizes`);
+    }
+    if (config.icpFilters.countries?.length > 0) {
+      parts.push(`${config.icpFilters.countries.length} countries`);
+    }
+    if (config.icpFilters.states?.length > 0) {
+      parts.push(`${config.icpFilters.states.length} states`);
+    }
+    const signalCount = Object.values(config.enabledSignals).filter(Boolean).length;
+    if (signalCount > 0) {
+      parts.push(`${signalCount} signals`);
+    }
+
+    return parts.length > 0 ? parts.join(' • ') : 'No filters configured';
+  };
+
+  // Format relative time
+  const formatRelativeTime = (dateString) => {
+    if (!dateString) return 'Never';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
 
   // Scraper State
   const [isRunning, setIsRunning] = useState(false);
@@ -1082,6 +1240,268 @@ const SAIScraper = () => {
               }} />
             </button>
           </div>
+
+          {/* ==================== SAVED SEARCHES SECTION ==================== */}
+          <div style={{ borderBottom: `1px solid ${theme.border}`, padding: '16px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showSavedSearches ? '16px' : '0' }}>
+              <button
+                onClick={() => setShowSavedSearches(!showSavedSearches)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0
+                }}
+              >
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: theme.accentMuted, display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.accent }}>
+                  {Icons.bookmark}
+                </div>
+                <span style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 700, letterSpacing: '-0.3px' }}>Saved Searches</span>
+                {savedSearches.length > 0 && (
+                  <span style={{ background: theme.bgTertiary, color: theme.textSecondary, padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600 }}>
+                    {savedSearches.length}
+                  </span>
+                )}
+                <span style={{ color: theme.textMuted, transition: 'transform 0.2s ease', transform: showSavedSearches ? 'rotate(180deg)' : 'rotate(0)' }}>
+                  {Icons.chevronDown}
+                </span>
+              </button>
+              <button
+                onClick={() => { setEditingSearchId(null); setNewSearchName(''); setNewSearchDescription(''); setShowSaveSearchModal(true); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  background: activeIcpCount > 0 || activeSignalCount > 0 ? theme.accent : theme.bgTertiary,
+                  border: activeIcpCount > 0 || activeSignalCount > 0 ? 'none' : `1px solid ${theme.border}`,
+                  borderRadius: '8px', padding: '8px 14px',
+                  color: activeIcpCount > 0 || activeSignalCount > 0 ? 'white' : theme.textSecondary,
+                  fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {Icons.plus} Save Current
+              </button>
+            </div>
+
+            {/* Saved Searches Expanded Panel */}
+            {showSavedSearches && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {savedSearches.length === 0 ? (
+                  <div style={{ padding: '24px', textAlign: 'center', background: theme.bgTertiary, borderRadius: '10px' }}>
+                    <div style={{ color: theme.textMuted, marginBottom: '8px' }}>{Icons.bookmark}</div>
+                    <p style={{ color: theme.textSecondary, fontSize: '13px', margin: 0 }}>No saved searches yet</p>
+                    <p style={{ color: theme.textMuted, fontSize: '12px', margin: '4px 0 0' }}>Configure your filters and save them for quick access</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Favorites first */}
+                    {savedSearches
+                      .sort((a, b) => {
+                        if (a.isFavorite && !b.isFavorite) return -1;
+                        if (!a.isFavorite && b.isFavorite) return 1;
+                        return new Date(b.updatedAt) - new Date(a.updatedAt);
+                      })
+                      .map(search => (
+                        <div
+                          key={search.id}
+                          style={{
+                            background: theme.bgPrimary,
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: '10px',
+                            padding: '14px 16px',
+                            transition: 'all 0.2s ease',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => handleLoadSearch(search)}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = theme.accent; e.currentTarget.style.background = theme.bgSecondary; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = theme.bgPrimary; }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleToggleFavorite(search.id); }}
+                                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: search.isFavorite ? '#F59E0B' : theme.textMuted, flexShrink: 0 }}
+                              >
+                                {search.isFavorite ? Icons.starFilled : Icons.star}
+                              </button>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ color: theme.textPrimary, fontSize: '13px', fontWeight: 600, marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {search.name}
+                                </div>
+                                {search.description && (
+                                  <div style={{ color: theme.textMuted, fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {search.description}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleEditSearch(search); }}
+                                style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: theme.textMuted, borderRadius: '4px' }}
+                                title="Edit"
+                              >
+                                {Icons.edit}
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDuplicateSearch(search); }}
+                                style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: theme.textMuted, borderRadius: '4px' }}
+                                title="Duplicate"
+                              >
+                                {Icons.copy}
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setSearchToDelete(search.id); }}
+                                style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: '#DC2626', borderRadius: '4px' }}
+                                title="Delete"
+                              >
+                                {Icons.trash}
+                              </button>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ color: theme.textSecondary, fontSize: '11px' }}>
+                              {getSearchSummary(search)}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: theme.textMuted, fontSize: '10px' }}>
+                              {search.usageCount > 0 && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                  {Icons.zap} {search.usageCount}x
+                                </span>
+                              )}
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                {Icons.clock} {formatRelativeTime(search.lastUsed || search.createdAt)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Save Search Modal */}
+          {showSaveSearchModal && (
+            <>
+              <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.5)', zIndex: 100 }} onClick={() => setShowSaveSearchModal(false)} />
+              <div style={{
+                position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                background: theme.bgSecondary, borderRadius: '16px', padding: '28px',
+                width: '400px', maxWidth: '90vw', zIndex: 101, boxShadow: theme.shadowLg
+              }}>
+                <h3 style={{ color: theme.textPrimary, fontSize: '18px', fontWeight: 700, margin: '0 0 20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {Icons.bookmark} {editingSearchId ? 'Edit Saved Search' : 'Save Current Search'}
+                </h3>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', color: theme.textSecondary, fontSize: '12px', marginBottom: '8px', fontWeight: 500 }}>Search Name *</label>
+                  <input
+                    type="text"
+                    value={newSearchName}
+                    onChange={(e) => setNewSearchName(e.target.value)}
+                    placeholder="e.g., SaaS Companies California"
+                    style={{
+                      width: '100%', padding: '12px 16px', background: theme.bgPrimary,
+                      border: `1px solid ${theme.border}`, borderRadius: '8px',
+                      color: theme.textPrimary, fontSize: '14px', outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                    autoFocus
+                  />
+                </div>
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', color: theme.textSecondary, fontSize: '12px', marginBottom: '8px', fontWeight: 500 }}>Description (optional)</label>
+                  <textarea
+                    value={newSearchDescription}
+                    onChange={(e) => setNewSearchDescription(e.target.value)}
+                    placeholder="Add notes about this search..."
+                    rows={3}
+                    style={{
+                      width: '100%', padding: '12px 16px', background: theme.bgPrimary,
+                      border: `1px solid ${theme.border}`, borderRadius: '8px',
+                      color: theme.textPrimary, fontSize: '14px', outline: 'none',
+                      resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
+                <div style={{ background: theme.bgTertiary, borderRadius: '8px', padding: '12px 16px', marginBottom: '20px' }}>
+                  <div style={{ color: theme.textSecondary, fontSize: '11px', fontWeight: 600, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Configuration Preview
+                  </div>
+                  <div style={{ color: theme.textPrimary, fontSize: '12px' }}>
+                    {activeIcpCount > 0 && <span>{activeIcpCount} ICP filter{activeIcpCount > 1 ? 's' : ''}</span>}
+                    {activeIcpCount > 0 && activeSignalCount > 0 && <span> • </span>}
+                    {activeSignalCount > 0 && <span>{activeSignalCount} signal{activeSignalCount > 1 ? 's' : ''}</span>}
+                    {activeIcpCount === 0 && activeSignalCount === 0 && <span style={{ color: theme.textMuted }}>No filters configured</span>}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => { setShowSaveSearchModal(false); setEditingSearchId(null); setNewSearchName(''); setNewSearchDescription(''); }}
+                    style={{
+                      padding: '12px 20px', background: theme.bgTertiary,
+                      border: `1px solid ${theme.border}`, borderRadius: '8px',
+                      color: theme.textSecondary, fontSize: '13px', fontWeight: 500,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveSearch}
+                    disabled={!newSearchName.trim()}
+                    style={{
+                      padding: '12px 24px',
+                      background: newSearchName.trim() ? theme.accent : theme.borderDark,
+                      border: 'none', borderRadius: '8px',
+                      color: newSearchName.trim() ? 'white' : theme.textMuted,
+                      fontSize: '13px', fontWeight: 600,
+                      cursor: newSearchName.trim() ? 'pointer' : 'not-allowed'
+                    }}
+                  >
+                    {editingSearchId ? 'Update Search' : 'Save Search'}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Delete Confirmation Modal */}
+          {searchToDelete && (
+            <>
+              <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.5)', zIndex: 100 }} onClick={() => setSearchToDelete(null)} />
+              <div style={{
+                position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                background: theme.bgSecondary, borderRadius: '16px', padding: '28px',
+                width: '360px', maxWidth: '90vw', zIndex: 101, boxShadow: theme.shadowLg
+              }}>
+                <h3 style={{ color: theme.textPrimary, fontSize: '16px', fontWeight: 700, margin: '0 0 12px' }}>Delete Saved Search?</h3>
+                <p style={{ color: theme.textSecondary, fontSize: '13px', margin: '0 0 20px' }}>
+                  This action cannot be undone. The saved search "{savedSearches.find(s => s.id === searchToDelete)?.name}" will be permanently deleted.
+                </p>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => setSearchToDelete(null)}
+                    style={{
+                      padding: '10px 16px', background: theme.bgTertiary,
+                      border: `1px solid ${theme.border}`, borderRadius: '8px',
+                      color: theme.textSecondary, fontSize: '13px', fontWeight: 500, cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleDeleteSearch(searchToDelete)}
+                    style={{
+                      padding: '10px 16px', background: '#DC2626',
+                      border: 'none', borderRadius: '8px',
+                      color: 'white', fontSize: '13px', fontWeight: 600, cursor: 'pointer'
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* ICP Filters - Tabbed Interface */}
           <div style={{ borderBottom: `1px solid ${theme.border}` }}>
