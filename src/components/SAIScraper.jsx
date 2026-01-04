@@ -43,9 +43,22 @@ const TECH_STACK_OPTIONS = [
 ];
 
 const SIGNAL_TYPES = [
+  // Core Intent Signals
   { id: 'afterHoursCoverage', label: 'After Hours Coverage Gap', description: 'Visitors reach the site after business hours, but there is no immediate way to respond or capture them.', icon: '🌙', color: '#6366F1' },
   { id: 'googlePaidTraffic', label: 'Google Paid Traffic Active', description: 'This business is currently paying for search ads to drive visitors to their website.', icon: 'G', color: '#EA4335' },
-  { id: 'inboundResponseRisk', label: 'Inbound Response Risk', description: 'Slow or no response to inbound inquiries, risking lost opportunities from paid and organic traffic.', icon: '⚠', color: '#F59E0B' }
+  { id: 'inboundResponseRisk', label: 'Inbound Response Risk', description: 'Slow or no response to inbound inquiries, risking lost opportunities from paid and organic traffic.', icon: '⚠', color: '#F59E0B' },
+  { id: 'activelyHiring', label: 'Actively Hiring', description: 'Company is actively hiring, indicating growth and potential budget for new tools/services.', icon: '👥', color: '#10B981' },
+  { id: 'hasCRM', label: 'Uses CRM Software', description: 'Company uses enterprise CRM tools, indicating structured sales process and tech maturity.', icon: '💼', color: '#8B5CF6' },
+  { id: 'recentFunding', label: 'Recent Funding Round', description: 'Company recently raised funding, indicating growth capital and likely increased spending.', icon: '💰', color: '#F59E0B' },
+  { id: 'activeNews', label: 'Active in News/PR', description: 'Company has recent news mentions, indicating active growth or market presence.', icon: '📰', color: '#3B82F6' },
+  { id: 'b2bPresence', label: 'B2B Review Site Presence', description: 'Listed on G2, Capterra, or Trustpilot - indicates B2B software maturity.', icon: '⭐', color: '#EC4899' },
+  { id: 'socialActive', label: 'Active Social Media', description: 'Active across multiple social platforms, indicating marketing investment.', icon: '📱', color: '#06B6D4' },
+  // Advanced Intent Signals
+  { id: 'decisionMakersFound', label: 'Decision Makers Identified', description: 'Key decision makers (C-Suite, VPs, Directors) have been identified at this company.', icon: '🎯', color: '#EF4444' },
+  { id: 'highIntent', label: 'High Buying Intent', description: 'Multiple buying signals detected - company shows strong indicators of being in-market.', icon: '🔥', color: '#F97316' },
+  { id: 'leadershipChange', label: 'Recent Leadership Change', description: 'New executives or leadership changes detected - new decision makers often evaluate vendors.', icon: '👔', color: '#8B5CF6' },
+  { id: 'competitorUser', label: 'Uses Competitor Products', description: 'Company is using competitor products - potential switch opportunity.', icon: '🔄', color: '#14B8A6' },
+  { id: 'trafficGrowth', label: 'Website Traffic Growing', description: 'Website traffic is trending upward - business momentum indicator.', icon: '📈', color: '#22C55E' }
 ];
 
 // High-value target companies - mix of industries known to spend on Google Ads
@@ -292,21 +305,158 @@ const SAIScraper = () => {
   // Helpers
   const getSignalValue = (signal) => {
     const values = {
-      afterHoursCoverage: ['No chat after 6pm', 'No weekend coverage', 'Form-only after hours', 'Voicemail after 5pm'][Math.floor(Math.random() * 4)],
-      googlePaidTraffic: ['$15K/mo spend', '$25K/mo spend', '$50K/mo spend', '$80K/mo spend'][Math.floor(Math.random() * 4)],
-      inboundResponseRisk: ['Avg 4hr response time', 'No live chat', 'Form response >24hrs', 'High bounce rate'][Math.floor(Math.random() * 4)]
+      afterHoursCoverage: ['No chat after 6pm', 'No weekend coverage', 'Form-only after hours', 'Voicemail after 5pm'],
+      googlePaidTraffic: ['$15K/mo spend', '$25K/mo spend', '$50K/mo spend', '$80K/mo spend'],
+      inboundResponseRisk: ['Avg 4hr response time', 'No live chat', 'Form response >24hrs', 'High bounce rate'],
+      activelyHiring: ['5+ open roles', '10+ open roles', 'Sales team expanding', 'Engineering growth'],
+      hasCRM: ['Uses HubSpot', 'Uses Salesforce', 'CRM detected', 'Enterprise CRM'],
+      recentFunding: ['Series A raised', 'Series B raised', 'Seed funding', 'Growth capital'],
+      activeNews: ['3+ recent mentions', 'Product launch', 'Expansion news', 'Partnership announced'],
+      b2bPresence: ['G2 listed', 'Capterra profile', '4.5+ rating', 'Top rated'],
+      socialActive: ['3+ platforms', 'LinkedIn active', 'Multi-channel presence', 'Marketing investment'],
+      // New advanced signals
+      decisionMakersFound: ['CEO identified', 'VP contacts found', '3+ executives', 'C-Suite access'],
+      highIntent: ['Multiple signals', 'In-market buyer', 'Active evaluation', 'High priority'],
+      leadershipChange: ['New CEO', 'New VP Sales', 'Leadership transition', 'Executive hire'],
+      competitorUser: ['Uses Salesforce', 'HubSpot customer', 'Competitor detected', 'Switch opportunity'],
+      trafficGrowth: ['Traffic +25%', 'Traffic +50%', 'Growth trending', 'Momentum detected']
     };
-    return values[signal] || 'Detected';
+    return values[signal]?.[Math.floor(Math.random() * (values[signal]?.length || 1))] || 'Detected';
   };
 
   const getWhyNow = (signals) => {
+    // Highest priority signals first
+    if (signals.includes('highIntent')) return 'HIGH INTENT - Multiple buying signals detected';
+    if (signals.includes('recentFunding')) return 'Recently funded - flush with growth capital';
+    if (signals.includes('leadershipChange')) return 'New leadership - likely evaluating vendors';
+    if (signals.includes('competitorUser')) return 'Using competitor - potential switch opportunity';
     if (signals.includes('googlePaidTraffic') && signals.includes('afterHoursCoverage')) return 'Paying for ads but missing after-hours leads';
     if (signals.includes('googlePaidTraffic') && signals.includes('inboundResponseRisk')) return 'Ad spend at risk due to slow response';
     if (signals.includes('afterHoursCoverage') && signals.includes('inboundResponseRisk')) return 'Coverage gaps losing inbound opportunities';
+    if (signals.includes('activelyHiring') && signals.includes('activeNews')) return 'Growth phase - hiring and in the news';
+    if (signals.includes('trafficGrowth')) return 'Traffic growing - business momentum';
+    if (signals.includes('decisionMakersFound')) return 'Decision makers identified - direct access';
+    if (signals.includes('activelyHiring')) return 'Actively hiring - company in growth mode';
     if (signals.includes('googlePaidTraffic')) return 'Active ad spend detected';
     if (signals.includes('afterHoursCoverage')) return 'After-hours coverage gap identified';
     if (signals.includes('inboundResponseRisk')) return 'Inbound response at risk';
+    if (signals.includes('activeNews')) return 'Recent news activity - company momentum';
+    if (signals.includes('b2bPresence')) return 'Established B2B presence - mature buyer';
     return 'Signal activity detected';
+  };
+
+  // Generate personalized icebreaker based on signals (for cold email first line)
+  const generatePersonalization = (lead) => {
+    const { name, signals, industry, enrichment } = lead;
+    const companyName = name || 'your company';
+
+    // Prioritize by signal effectiveness for cold outreach (highest converting first)
+
+    // TIER 1: Highest intent signals
+    if (signals.includes('highIntent')) {
+      return `Noticed several growth signals at ${companyName} - looks like you're in an exciting phase.`;
+    }
+
+    if (signals.includes('leadershipChange')) {
+      const contacts = enrichment?.contacts?.decisionMakers;
+      if (contacts?.length > 0) {
+        return `Saw there's been some leadership changes at ${companyName} - congrats to the new team.`;
+      }
+      return `Noticed some leadership changes at ${companyName} - always an exciting time for new initiatives.`;
+    }
+
+    if (signals.includes('recentFunding')) {
+      const amount = enrichment?.funding?.totalRaised;
+      const round = enrichment?.funding?.fundingRound;
+      if (amount) return `Congrats on the ${amount} ${round || 'raise'} - exciting times ahead for ${companyName}.`;
+      return `Saw ${companyName} recently closed a funding round - congrats on the momentum.`;
+    }
+
+    if (signals.includes('competitorUser')) {
+      const competitors = enrichment?.competitors?.competitorsFound;
+      if (competitors?.length > 0) {
+        return `Noticed ${companyName} is using ${competitors[0]} - curious if it's meeting all your needs.`;
+      }
+      return `Saw ${companyName} is using some interesting tools - always looking to optimize the stack?`;
+    }
+
+    // TIER 2: Strong growth signals
+    if (signals.includes('decisionMakersFound')) {
+      const contacts = enrichment?.contacts?.decisionMakers;
+      const cSuite = contacts?.filter(c => c.level === 'C-Suite').length || 0;
+      if (cSuite > 0) return `Been researching ${companyName}'s leadership team - impressive backgrounds.`;
+      return `Came across ${companyName} while researching ${industry || 'your space'} leaders.`;
+    }
+
+    if (signals.includes('trafficGrowth')) {
+      const trend = enrichment?.webTraffic?.trafficTrend;
+      if (trend === 'growing') return `Noticed ${companyName}'s web presence is really taking off - momentum looks strong.`;
+      return `Saw ${companyName} is building solid traction online - impressive growth.`;
+    }
+
+    if (signals.includes('activelyHiring')) {
+      const roles = enrichment?.jobs?.rolesHiring;
+      if (roles?.includes('Sales / Account Executive')) return `Noticed ${companyName} is scaling the sales team - growth mode looks strong.`;
+      if (roles?.includes('Engineering')) return `Saw you're building out the engineering team at ${companyName} - exciting product roadmap ahead.`;
+      if (roles?.includes('Marketing')) return `Noticed ${companyName} is investing in marketing - smart move for this stage.`;
+      return `Saw ${companyName} is actively hiring - always a great sign of momentum.`;
+    }
+
+    // TIER 3: Opportunity signals
+    if (signals.includes('googlePaidTraffic') && signals.includes('afterHoursCoverage')) {
+      return `Noticed ${companyName} is investing in Google Ads but may be missing leads after hours.`;
+    }
+
+    if (signals.includes('googlePaidTraffic')) {
+      return `Saw ${companyName} is actively investing in paid search - smart move for ${industry || 'your space'}.`;
+    }
+
+    if (signals.includes('afterHoursCoverage')) {
+      return `Noticed ${companyName} might be missing inbound opportunities outside business hours.`;
+    }
+
+    if (signals.includes('activeNews')) {
+      if (enrichment?.news?.hasProductLaunch) return `Congrats on the recent product launch at ${companyName} - looks like big things ahead.`;
+      if (enrichment?.news?.hasExpansionNews) return `Saw the expansion news for ${companyName} - exciting growth trajectory.`;
+      if (enrichment?.news?.hasPartnership) return `Noticed the recent partnership announcement from ${companyName} - great momentum.`;
+      return `Been seeing ${companyName} in the news lately - impressive traction.`;
+    }
+
+    if (signals.includes('b2bPresence')) {
+      const rating = enrichment?.reviews?.avgRating;
+      if (rating && rating >= 4.5) return `Saw ${companyName} has stellar reviews on G2 - clearly doing something right.`;
+      if (rating && rating >= 4) return `Noticed the strong presence ${companyName} has built on review sites.`;
+      return `Saw ${companyName} is well-established in the B2B space.`;
+    }
+
+    if (signals.includes('hasCRM')) {
+      return `Noticed ${companyName} is using enterprise sales tools - sounds like you take growth seriously.`;
+    }
+
+    if (signals.includes('socialActive')) {
+      return `Been following ${companyName}'s social presence - great brand building.`;
+    }
+
+    if (signals.includes('inboundResponseRisk')) {
+      return `Noticed ${companyName} may be leaving some inbound leads on the table.`;
+    }
+
+    // Fallback based on industry
+    if (industry) {
+      return `Came across ${companyName} while researching ${industry} companies - impressive what you're building.`;
+    }
+
+    return `Came across ${companyName} and was impressed by what you're building.`;
+  };
+
+  // Extract email domain/provider from email address
+  const getEmailProvider = (email) => {
+    if (!email) return '';
+    const domain = email.split('@')[1] || '';
+    if (domain.includes('gmail')) return 'Gmail';
+    if (domain.includes('outlook') || domain.includes('hotmail')) return 'Outlook';
+    if (domain.includes('yahoo')) return 'Yahoo';
+    return domain; // Return company domain for business emails
   };
 
   // Handlers
@@ -521,16 +671,91 @@ const SAIScraper = () => {
 
   const handleExport = () => {
     const data = selectedIds.size > 0 ? results.filter(r => selectedIds.has(r.id)) : results;
-    const csvContent = [
-      ['Company', 'Domain', 'Score', 'Industry', 'Employees', 'Location', 'Revenue', 'Signals', 'Why Now'].join(','),
-      ...data.map(r => [r.name, r.domain, r.score, r.industry, r.employees, r.location, r.revenue, r.signals.map(s => SIGNAL_TYPES.find(st => st.id === s)?.label).join('; '), r.whyNow].join(','))
-    ].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+
+    // Helper to escape CSV values (handle commas, quotes, newlines)
+    const escapeCSV = (value) => {
+      if (value === null || value === undefined) return '';
+      const str = String(value);
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    // CSV Headers matching requested columns
+    const headers = [
+      'Campaign Name',
+      'Email',
+      'Email Provider',
+      'Lead Status',
+      'First Name',
+      'Last Name',
+      'Interest Status',
+      'phone',
+      'website',
+      'lastName',
+      'firstName',
+      'companyName',
+      'personalization',
+      'email',
+      'summary',
+      'Industry',
+      'Employees',
+      'Location',
+      'Score',
+      'Signals'
+    ];
+
+    // Generate rows
+    const rows = data.map(lead => {
+      // Extract contact info from enrichment
+      const email = lead.enrichment?.website?.contact?.emails?.[0] || '';
+      const phone = lead.enrichment?.website?.contact?.phones?.[0] || '';
+      const website = `https://${lead.domain}`;
+
+      // Generate personalization based on signals
+      const personalization = generatePersonalization(lead);
+
+      // Create summary from whyNow and signals
+      const signalLabels = lead.signals.map(s => SIGNAL_TYPES.find(st => st.id === s)?.label || s).join('; ');
+      const summary = `${lead.whyNow} Signals: ${signalLabels}`;
+
+      // Campaign name based on industry/signal
+      const primarySignal = lead.signals[0] ? SIGNAL_TYPES.find(st => st.id === lead.signals[0])?.label : 'General';
+      const campaignName = `${lead.industry || 'General'} - ${primarySignal || 'Outreach'}`;
+
+      return [
+        escapeCSV(campaignName),           // Campaign Name
+        escapeCSV(email),                   // Email
+        escapeCSV(getEmailProvider(email)), // Email Provider
+        escapeCSV('New'),                   // Lead Status
+        escapeCSV(''),                      // First Name (to be filled)
+        escapeCSV(''),                      // Last Name (to be filled)
+        escapeCSV('Not Contacted'),         // Interest Status
+        escapeCSV(phone),                   // phone
+        escapeCSV(website),                 // website
+        escapeCSV(''),                      // lastName (duplicate for compatibility)
+        escapeCSV(''),                      // firstName (duplicate for compatibility)
+        escapeCSV(lead.name),               // companyName
+        escapeCSV(personalization),         // personalization
+        escapeCSV(email),                   // email (duplicate for compatibility)
+        escapeCSV(summary),                 // summary
+        escapeCSV(lead.industry),           // Industry
+        escapeCSV(lead.employees),          // Employees
+        escapeCSV(lead.location),           // Location
+        escapeCSV(lead.score),              // Score
+        escapeCSV(signalLabels)             // Signals
+      ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `sai-scraper-results-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `sai-leads-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   // List management
