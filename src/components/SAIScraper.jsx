@@ -1062,10 +1062,14 @@ const SAIScraper = () => {
     setN8nError(null);
 
     let eligibleCompanies = [];
-    let domains = [];
 
     // Check if we have filters that require discovery
-    const hasDiscoveryFilters = icpFilters.industries.length > 0 || icpFilters.locations.length > 0;
+    const hasDiscoveryFilters = icpFilters.industries.length > 0 ||
+                                 icpFilters.countries.length > 0 ||
+                                 icpFilters.customIndustry?.trim().length > 0 ||
+                                 icpFilters.states.length > 0 ||
+                                 icpFilters.metroAreas.length > 0 ||
+                                 icpFilters.keywords.length > 0;
 
     if (hasDiscoveryFilters) {
       // DISCOVERY MODE: Find new companies based on ICP filters
@@ -1083,7 +1087,6 @@ const SAIScraper = () => {
         }
 
         eligibleCompanies = discoveredCompanies.slice(0, maxResults);
-        domains = eligibleCompanies.map(c => c.domain);
         setCurrentStatus(`Found ${eligibleCompanies.length} companies, now analyzing signals...`);
         setProgress(30);
       } catch (error) {
@@ -1097,15 +1100,13 @@ const SAIScraper = () => {
         if (icpFilters.revenueRanges.length > 0) eligibleCompanies = eligibleCompanies.filter(c => icpFilters.revenueRanges.includes(c.revenue));
         if (eligibleCompanies.length === 0) eligibleCompanies = [...MOCK_COMPANIES];
         eligibleCompanies = eligibleCompanies.slice(0, maxResults);
-        domains = eligibleCompanies.map(c => c.domain);
         setProgress(20);
       }
     } else {
       // NO FILTERS: Use sample companies (legacy behavior)
-      setCurrentStatus('Sending sample domains to n8n workflow...');
+      setCurrentStatus('No filters selected, using sample companies...');
       setProgress(20);
       eligibleCompanies = [...MOCK_COMPANIES].slice(0, maxResults);
-      domains = eligibleCompanies.map(c => c.domain);
     }
 
     try {
