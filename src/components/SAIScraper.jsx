@@ -21,15 +21,197 @@ const INDUSTRIES = [
   'Real Estate', 'EdTech', 'Media/Entertainment', 'Hospitality', 'Non-Profit'
 ];
 
+// Comprehensive sub-industries for ALL industries - enables precise ICP targeting
 const SUB_INDUSTRIES = {
-  'SaaS': ['CRM', 'Marketing Automation', 'HR Tech', 'Sales Tech', 'Project Management', 'Analytics', 'Security', 'DevOps'],
-  'Healthcare': ['Hospitals', 'Clinics', 'Dental', 'Mental Health', 'Home Care', 'Medical Equipment', 'Health Insurance'],
-  'FinTech': ['Payments', 'Lending', 'Wealth Management', 'InsurTech', 'RegTech', 'Crypto/Blockchain'],
-  'E-commerce': ['D2C Brands', 'Marketplaces', 'Dropshipping', 'Subscription Commerce', 'B2B E-commerce'],
-  'Marketing Agency': ['Digital Marketing', 'SEO/SEM', 'Social Media', 'Content Marketing', 'PR', 'Branding', 'Performance Marketing'],
-  'Legal': ['Corporate Law', 'Personal Injury', 'Immigration', 'Real Estate Law', 'IP Law', 'Criminal Defense'],
-  'Real Estate': ['Residential', 'Commercial', 'Property Management', 'Real Estate Tech', 'Mortgage'],
-  'Manufacturing': ['Automotive', 'Electronics', 'Food & Beverage', 'Textiles', 'Aerospace', 'Industrial Equipment']
+  // Technology
+  'SaaS': [
+    'CRM & Sales Automation', 'Marketing Automation', 'HR Tech & HRIS', 'Sales Enablement',
+    'Project Management', 'Business Intelligence', 'Security & Compliance', 'DevOps & Infrastructure',
+    'Customer Success', 'Communication & Collaboration', 'Accounting & Finance', 'E-commerce Platforms',
+    'Learning Management', 'Document Management', 'Workflow Automation', 'Data Integration'
+  ],
+  'Software Development': [
+    'Custom Software', 'Mobile App Development', 'Web Development', 'Enterprise Software',
+    'API Development', 'Embedded Systems', 'Game Development', 'Low-Code/No-Code Platforms',
+    'Open Source', 'Developer Tools', 'QA & Testing', 'Database Management'
+  ],
+  'IT Services': [
+    'Managed IT Services', 'IT Consulting', 'System Integration', 'Network Services',
+    'Help Desk & Support', 'IT Outsourcing', 'Cloud Migration', 'Infrastructure Management',
+    'Disaster Recovery', 'IT Training', 'Hardware Services', 'VoIP & Unified Communications'
+  ],
+  'Cybersecurity': [
+    'Endpoint Security', 'Network Security', 'Cloud Security', 'Identity & Access Management',
+    'Security Operations', 'Threat Intelligence', 'Penetration Testing', 'Compliance & GRC',
+    'Data Loss Prevention', 'Email Security', 'Application Security', 'Security Awareness Training'
+  ],
+  'Cloud Computing': [
+    'IaaS', 'PaaS', 'Private Cloud', 'Hybrid Cloud', 'Multi-Cloud Management',
+    'Serverless Computing', 'Container Services', 'Cloud Storage', 'Cloud Networking',
+    'Cloud Consulting', 'Cloud Cost Optimization', 'Edge Computing'
+  ],
+  'AI/ML': [
+    'Machine Learning Platforms', 'Natural Language Processing', 'Computer Vision', 'Predictive Analytics',
+    'Conversational AI', 'Robotic Process Automation', 'AI Consulting', 'Data Science Services',
+    'MLOps', 'AI Hardware', 'Generative AI', 'AI Ethics & Governance'
+  ],
+
+  // Finance
+  'FinTech': [
+    'Payments & Processing', 'Digital Lending', 'Wealth Management', 'InsurTech',
+    'RegTech & Compliance', 'Crypto & Blockchain', 'Neobanking', 'B2B Payments',
+    'Personal Finance', 'Trade Finance', 'Embedded Finance', 'Open Banking'
+  ],
+  'Banking': [
+    'Commercial Banking', 'Retail Banking', 'Investment Banking', 'Private Banking',
+    'Credit Unions', 'Community Banks', 'Digital-First Banks', 'Agricultural Banking',
+    'Trade Finance', 'Treasury Services', 'Correspondent Banking', 'Mortgage Banking'
+  ],
+  'Insurance': [
+    'Property & Casualty', 'Life Insurance', 'Health Insurance', 'Commercial Insurance',
+    'Reinsurance', 'Insurance Brokerage', 'Claims Management', 'Underwriting Services',
+    'Workers Compensation', 'Auto Insurance', 'Specialty Insurance', 'Insurance Technology'
+  ],
+  'Investment': [
+    'Asset Management', 'Venture Capital', 'Private Equity', 'Hedge Funds',
+    'Family Offices', 'Real Estate Investment', 'Wealth Advisory', 'Institutional Investment',
+    'Retail Investment', 'Impact Investing', 'Quantitative Trading', 'Investment Research'
+  ],
+  'Accounting': [
+    'Public Accounting', 'Tax Services', 'Audit Services', 'Bookkeeping',
+    'Forensic Accounting', 'Management Accounting', 'Payroll Services', 'Financial Advisory',
+    'CFO Services', 'Business Valuation', 'Cost Accounting', 'Accounting Software'
+  ],
+
+  // Healthcare
+  'Healthcare': [
+    'Hospitals & Health Systems', 'Physician Practices', 'Urgent Care', 'Ambulatory Surgery',
+    'Home Health', 'Hospice & Palliative', 'Rehabilitation', 'Long-Term Care',
+    'Behavioral Health', 'Primary Care', 'Specialty Care', 'Healthcare Administration'
+  ],
+  'Biotech': [
+    'Drug Discovery', 'Genomics', 'Proteomics', 'Cell & Gene Therapy',
+    'Biologics', 'Biosimilars', 'Agricultural Biotech', 'Industrial Biotech',
+    'Bioinformatics', 'Clinical Research', 'Bioprocessing', 'Synthetic Biology'
+  ],
+  'Pharmaceuticals': [
+    'Brand Pharmaceuticals', 'Generic Drugs', 'OTC Medications', 'Specialty Pharma',
+    'Pharmaceutical Manufacturing', 'Drug Distribution', 'Clinical Trials', 'Regulatory Affairs',
+    'Pharmacovigilance', 'Medical Affairs', 'Pharmaceutical Marketing', 'API Manufacturing'
+  ],
+  'Medical Devices': [
+    'Diagnostic Equipment', 'Surgical Instruments', 'Implantable Devices', 'Monitoring Devices',
+    'Imaging Equipment', 'Dental Devices', 'Orthopedic Devices', 'Cardiovascular Devices',
+    'In Vitro Diagnostics', 'Wearable Medical Devices', 'Assistive Technology', 'Sterilization Equipment'
+  ],
+  'Telehealth': [
+    'Virtual Primary Care', 'Mental Health Platforms', 'Remote Patient Monitoring', 'Telemedicine Platforms',
+    'Digital Therapeutics', 'Online Pharmacy', 'Virtual Specialty Care', 'Chronic Care Management',
+    'Health Coaching', 'Second Opinion Services', 'Virtual Urgent Care', 'Teledermatology'
+  ],
+
+  // Commerce
+  'E-commerce': [
+    'D2C Brands', 'Online Marketplaces', 'Dropshipping', 'Subscription Commerce',
+    'B2B E-commerce', 'Social Commerce', 'Mobile Commerce', 'Recommerce/Resale',
+    'Live Shopping', 'Grocery E-commerce', 'Fashion E-commerce', 'Electronics E-commerce'
+  ],
+  'Retail': [
+    'Department Stores', 'Specialty Retail', 'Convenience Stores', 'Discount Retail',
+    'Luxury Retail', 'Grocery & Supermarkets', 'Drug Stores', 'Home Improvement',
+    'Fashion & Apparel', 'Electronics Retail', 'Sporting Goods', 'Pet Retail'
+  ],
+  'Wholesale': [
+    'Consumer Goods Wholesale', 'Industrial Wholesale', 'Food & Beverage Distribution',
+    'Pharmaceutical Wholesale', 'Electronics Distribution', 'Building Materials',
+    'Automotive Parts', 'Agricultural Products', 'Apparel Wholesale', 'Chemical Distribution'
+  ],
+  'Consumer Goods': [
+    'Food & Beverage', 'Personal Care', 'Household Products', 'Apparel & Accessories',
+    'Electronics & Appliances', 'Home & Garden', 'Sports & Outdoor', 'Baby & Kids',
+    'Pet Products', 'Health & Wellness', 'Beauty & Cosmetics', 'Luxury Goods'
+  ],
+
+  // Services
+  'Professional Services': [
+    'Management Consulting', 'Strategy Consulting', 'Operations Consulting', 'IT Consulting',
+    'Business Advisory', 'Project Management', 'Change Management', 'Process Improvement',
+    'Market Research', 'Due Diligence', 'Interim Management', 'Expert Networks'
+  ],
+  'Consulting': [
+    'Strategy Consulting', 'Technology Consulting', 'Human Capital', 'Financial Advisory',
+    'Risk Consulting', 'Digital Transformation', 'Supply Chain Consulting', 'Sustainability Consulting',
+    'M&A Advisory', 'Turnaround Consulting', 'Industry-Specific Consulting', 'Implementation Services'
+  ],
+  'Marketing Agency': [
+    'Full-Service Agency', 'Digital Marketing', 'SEO & SEM', 'Social Media Marketing',
+    'Content Marketing', 'PR & Communications', 'Branding & Creative', 'Performance Marketing',
+    'Influencer Marketing', 'Email Marketing', 'Video Production', 'Experiential Marketing'
+  ],
+  'Legal': [
+    'Corporate Law', 'Litigation', 'Personal Injury', 'Immigration Law',
+    'Real Estate Law', 'Intellectual Property', 'Criminal Defense', 'Family Law',
+    'Employment Law', 'Tax Law', 'Bankruptcy', 'Estate Planning'
+  ],
+  'Recruiting': [
+    'Executive Search', 'IT Recruiting', 'Healthcare Staffing', 'Finance & Accounting',
+    'Engineering Recruiting', 'Sales Recruiting', 'Temporary Staffing', 'RPO Services',
+    'Diversity Recruiting', 'Campus Recruiting', 'Blue Collar Staffing', 'Contract Staffing'
+  ],
+
+  // Industrial
+  'Manufacturing': [
+    'Automotive', 'Aerospace & Defense', 'Electronics', 'Industrial Machinery',
+    'Food & Beverage', 'Chemicals', 'Plastics & Rubber', 'Metal Fabrication',
+    'Textiles & Apparel', 'Furniture', 'Medical Manufacturing', 'Packaging'
+  ],
+  'Construction': [
+    'Commercial Construction', 'Residential Construction', 'Industrial Construction',
+    'Infrastructure', 'Specialty Contractors', 'MEP Contractors', 'General Contractors',
+    'Construction Management', 'Design-Build', 'Green Building', 'Renovation & Remodeling', 'Heavy Civil'
+  ],
+  'Logistics': [
+    'Freight Forwarding', 'Warehousing & Distribution', '3PL Services', 'Last-Mile Delivery',
+    'Cold Chain Logistics', 'Supply Chain Management', 'Customs Brokerage', 'Freight Brokerage',
+    'Reverse Logistics', 'E-commerce Fulfillment', 'Hazmat Logistics', 'Project Cargo'
+  ],
+  'Transportation': [
+    'Trucking', 'Rail Freight', 'Air Freight', 'Ocean Shipping',
+    'Passenger Airlines', 'Ground Transportation', 'Public Transit', 'Charter Services',
+    'Intermodal', 'Courier & Express', 'Fleet Management', 'Autonomous Vehicles'
+  ],
+  'Energy': [
+    'Oil & Gas Exploration', 'Oil & Gas Services', 'Renewable Energy', 'Solar',
+    'Wind Power', 'Energy Storage', 'Electric Utilities', 'Natural Gas',
+    'Energy Trading', 'Energy Efficiency', 'Nuclear Energy', 'Hydrogen & Fuel Cells'
+  ],
+
+  // Other
+  'Real Estate': [
+    'Residential Sales', 'Commercial Real Estate', 'Property Management', 'Real Estate Development',
+    'REITs', 'Mortgage Services', 'Real Estate Tech', 'Industrial Real Estate',
+    'Retail Real Estate', 'Multifamily', 'Vacation Rentals', 'Co-working Spaces'
+  ],
+  'EdTech': [
+    'K-12 EdTech', 'Higher Ed Solutions', 'Corporate Learning', 'Language Learning',
+    'Test Prep', 'Online Course Platforms', 'Learning Management', 'Educational Content',
+    'Student Information Systems', 'Virtual Classrooms', 'Tutoring Platforms', 'Skills Assessment'
+  ],
+  'Media/Entertainment': [
+    'Streaming Services', 'Gaming', 'Film & TV Production', 'Music & Audio',
+    'Publishing', 'Advertising', 'Sports & Events', 'News & Journalism',
+    'Podcasting', 'Social Media', 'Animation & VFX', 'Live Entertainment'
+  ],
+  'Hospitality': [
+    'Hotels & Resorts', 'Restaurants & Food Service', 'Travel & Tourism', 'Event Management',
+    'Catering', 'Bars & Nightlife', 'Cruise Lines', 'Vacation Rentals',
+    'Theme Parks', 'Casinos & Gaming', 'Corporate Hospitality', 'Hospitality Technology'
+  ],
+  'Non-Profit': [
+    'Healthcare Non-Profits', 'Education Non-Profits', 'Social Services', 'Environmental',
+    'Arts & Culture', 'Religious Organizations', 'Advocacy & Policy', 'International Development',
+    'Community Foundations', 'Professional Associations', 'Research Institutions', 'Youth Development'
+  ]
 };
 
 const EMPLOYEE_RANGES = [
@@ -1538,9 +1720,15 @@ const SAIScraper = () => {
               {/* FIRMOGRAPHIC */}
               {activeFilterTab === 'firmographic' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <MultiSelect label="Industry" options={INDUSTRIES} selected={icpFilters.industries} onChange={(v) => setIcpFilters({ ...icpFilters, industries: v })} placeholder="Select industries" />
-                  {icpFilters.industries.length > 0 && icpFilters.industries.some(i => SUB_INDUSTRIES[i]) && (
-                    <MultiSelect label="Sub-Industry" options={icpFilters.industries.flatMap(i => SUB_INDUSTRIES[i] || [])} selected={icpFilters.subIndustries} onChange={(v) => setIcpFilters({ ...icpFilters, subIndustries: v })} placeholder="Narrow by sub-industry" />
+                  <MultiSelect label="Industry" options={INDUSTRIES} selected={icpFilters.industries} onChange={(v) => setIcpFilters({ ...icpFilters, industries: v, subIndustries: icpFilters.subIndustries.filter(si => v.some(ind => SUB_INDUSTRIES[ind]?.includes(si))) })} placeholder="Select industries" />
+                  {icpFilters.industries.length > 0 && (
+                    <MultiSelect
+                      label="Sub-Industry (Precision Targeting)"
+                      options={icpFilters.industries.flatMap(i => SUB_INDUSTRIES[i] || [])}
+                      selected={icpFilters.subIndustries}
+                      onChange={(v) => setIcpFilters({ ...icpFilters, subIndustries: v })}
+                      placeholder="Narrow by specialty niche"
+                    />
                   )}
                   <MultiSelect label="Company Size (Employees)" options={EMPLOYEE_RANGES.map(r => r.label)} selected={icpFilters.employeeRanges} onChange={(v) => setIcpFilters({ ...icpFilters, employeeRanges: v })} placeholder="Any size" />
                   <MultiSelect label="Revenue Range" options={REVENUE_RANGES.map(r => r.label)} selected={icpFilters.revenueRanges} onChange={(v) => setIcpFilters({ ...icpFilters, revenueRanges: v })} placeholder="Any revenue" />

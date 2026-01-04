@@ -21,8 +21,8 @@ export default async function handler(req, res) {
 
     console.log(`Enriching ${domain}...`);
 
-    // Run all enrichments in parallel - 14 data sources (including email verification)
-    const [linkedin, jobs, techstack, ads, website, funding, news, reviews, social, contacts, intent, competitors, webTraffic, emailData] = await Promise.all([
+    // Run all enrichments in parallel - 15 data sources (including email verification + AI classification)
+    const [linkedin, jobs, techstack, ads, website, funding, news, reviews, social, contacts, intent, competitors, webTraffic, emailData, industryClassification] = await Promise.all([
       enrichLinkedIn(domain, companyName),
       enrichJobs(domain, companyName),
       enrichTechStack(domain),
@@ -36,7 +36,8 @@ export default async function handler(req, res) {
       enrichIntent(domain, companyName, industry),
       enrichCompetitors(domain, companyName, industry),
       enrichWebTraffic(domain),
-      findAndVerifyEmails(domain, companyName)
+      findAndVerifyEmails(domain, companyName),
+      classifyIndustryWithAI(domain, companyName, industry)
     ]);
 
     // Aggregate all signals
@@ -276,6 +277,8 @@ export default async function handler(req, res) {
       email: primaryEmail,
       hasVerifiedEmail,
       emailVerification: emailData.found ? emailData.data : null,
+      // AI-powered industry classification
+      industryClassification: industryClassification.found ? industryClassification.data : null,
       enrichment: {
         linkedin: linkedin.found ? linkedin.data : null,
         jobs: jobs.found ? jobs.data : null,
@@ -290,12 +293,13 @@ export default async function handler(req, res) {
         intent: intent.found ? intent.data : null,
         competitors: competitors.found ? competitors.data : null,
         webTraffic: webTraffic.found ? webTraffic.data : null,
-        emails: emailData.found ? emailData.data : null
+        emails: emailData.found ? emailData.data : null,
+        industryAI: industryClassification.found ? industryClassification.data : null
       },
       metadata: {
         enrichedAt: new Date().toISOString(),
-        sourcesChecked: 14,
-        sourcesFound: [linkedin, jobs, techstack, ads, website, funding, news, reviews, social, contacts, intent, competitors, webTraffic, emailData].filter(s => s.found).length,
+        sourcesChecked: 15,
+        sourcesFound: [linkedin, jobs, techstack, ads, website, funding, news, reviews, social, contacts, intent, competitors, webTraffic, emailData, industryClassification].filter(s => s.found).length,
         emailVerified: hasVerifiedEmail
       }
     });
@@ -2280,4 +2284,372 @@ function detectEmailPattern(emails) {
   }
 
   return 'unknown';
+}
+
+// ==================== AI-POWERED INDUSTRY CLASSIFICATION ====================
+// Intelligently classifies companies into industries and sub-industries
+// using keyword analysis, tech stack detection, and contextual signals
+
+const INDUSTRY_KEYWORDS = {
+  // Technology
+  'SaaS': {
+    keywords: ['saas', 'software as a service', 'cloud software', 'subscription software', 'platform'],
+    subIndustries: {
+      'CRM & Sales Automation': ['crm', 'sales automation', 'customer relationship', 'pipeline', 'salesforce alternative', 'hubspot'],
+      'Marketing Automation': ['marketing automation', 'email marketing', 'campaign management', 'marketing platform', 'mailchimp', 'marketo'],
+      'HR Tech & HRIS': ['hr software', 'hris', 'human resources', 'payroll', 'employee management', 'recruiting software', 'ats'],
+      'Sales Enablement': ['sales enablement', 'sales training', 'sales content', 'proposal software', 'cpq'],
+      'Project Management': ['project management', 'task management', 'workflow', 'collaboration', 'asana', 'monday', 'trello'],
+      'Business Intelligence': ['business intelligence', 'bi tool', 'analytics', 'dashboard', 'data visualization', 'tableau', 'looker'],
+      'Security & Compliance': ['security software', 'compliance', 'soc 2', 'gdpr', 'data protection', 'encryption'],
+      'DevOps & Infrastructure': ['devops', 'ci/cd', 'deployment', 'infrastructure', 'kubernetes', 'docker', 'aws'],
+      'Customer Success': ['customer success', 'customer experience', 'nps', 'churn', 'retention'],
+      'Communication & Collaboration': ['communication', 'messaging', 'video conferencing', 'slack', 'teams', 'zoom'],
+      'Accounting & Finance': ['accounting software', 'invoicing', 'bookkeeping', 'financial management', 'quickbooks', 'xero'],
+      'E-commerce Platforms': ['ecommerce platform', 'online store', 'shopping cart', 'shopify', 'woocommerce', 'magento']
+    }
+  },
+  'Software Development': {
+    keywords: ['software development', 'custom software', 'application development', 'programming', 'coding'],
+    subIndustries: {
+      'Custom Software': ['custom software', 'bespoke software', 'tailored solutions', 'software consultancy'],
+      'Mobile App Development': ['mobile app', 'ios development', 'android development', 'react native', 'flutter'],
+      'Web Development': ['web development', 'website development', 'web application', 'frontend', 'backend'],
+      'Enterprise Software': ['enterprise software', 'erp', 'enterprise solutions', 'large scale'],
+      'API Development': ['api development', 'api integration', 'rest api', 'graphql', 'microservices'],
+      'Developer Tools': ['developer tools', 'ide', 'sdk', 'debugging', 'code editor']
+    }
+  },
+  'IT Services': {
+    keywords: ['it services', 'managed services', 'it support', 'technology services', 'msp'],
+    subIndustries: {
+      'Managed IT Services': ['managed it', 'managed services', 'msp', 'it management'],
+      'IT Consulting': ['it consulting', 'technology consulting', 'it strategy', 'digital strategy'],
+      'System Integration': ['system integration', 'systems integrator', 'integration services'],
+      'Help Desk & Support': ['help desk', 'it support', 'technical support', 'service desk'],
+      'Cloud Migration': ['cloud migration', 'cloud transformation', 'move to cloud']
+    }
+  },
+  'Cybersecurity': {
+    keywords: ['cybersecurity', 'security', 'infosec', 'information security', 'data security'],
+    subIndustries: {
+      'Endpoint Security': ['endpoint security', 'antivirus', 'edr', 'endpoint protection'],
+      'Network Security': ['network security', 'firewall', 'intrusion detection', 'ids', 'ips'],
+      'Cloud Security': ['cloud security', 'casb', 'cloud access', 'cloud protection'],
+      'Identity & Access Management': ['identity management', 'iam', 'sso', 'mfa', 'authentication'],
+      'Security Operations': ['soc', 'security operations', 'siem', 'threat detection'],
+      'Penetration Testing': ['penetration testing', 'pentest', 'ethical hacking', 'vulnerability assessment']
+    }
+  },
+  'AI/ML': {
+    keywords: ['artificial intelligence', 'machine learning', 'ai', 'ml', 'deep learning', 'neural network'],
+    subIndustries: {
+      'Machine Learning Platforms': ['ml platform', 'machine learning platform', 'mlops', 'model training'],
+      'Natural Language Processing': ['nlp', 'natural language', 'text analysis', 'sentiment analysis', 'chatbot'],
+      'Computer Vision': ['computer vision', 'image recognition', 'object detection', 'visual ai'],
+      'Predictive Analytics': ['predictive analytics', 'forecasting', 'prediction', 'predictive modeling'],
+      'Conversational AI': ['conversational ai', 'chatbot', 'virtual assistant', 'voice assistant'],
+      'Generative AI': ['generative ai', 'genai', 'llm', 'large language model', 'gpt', 'content generation']
+    }
+  },
+
+  // Finance
+  'FinTech': {
+    keywords: ['fintech', 'financial technology', 'finance technology'],
+    subIndustries: {
+      'Payments & Processing': ['payments', 'payment processing', 'merchant services', 'pos', 'stripe', 'square'],
+      'Digital Lending': ['lending', 'loans', 'credit', 'financing', 'loan origination'],
+      'Wealth Management': ['wealth management', 'investment management', 'robo-advisor', 'portfolio'],
+      'InsurTech': ['insurtech', 'insurance technology', 'digital insurance'],
+      'Crypto & Blockchain': ['crypto', 'cryptocurrency', 'blockchain', 'defi', 'web3', 'bitcoin', 'ethereum'],
+      'Neobanking': ['neobank', 'digital bank', 'challenger bank', 'online banking']
+    }
+  },
+  'Insurance': {
+    keywords: ['insurance', 'insurer', 'underwriting', 'policy', 'claims'],
+    subIndustries: {
+      'Property & Casualty': ['property insurance', 'casualty', 'p&c', 'home insurance'],
+      'Life Insurance': ['life insurance', 'term life', 'whole life'],
+      'Health Insurance': ['health insurance', 'medical insurance', 'healthcare coverage'],
+      'Commercial Insurance': ['commercial insurance', 'business insurance', 'liability'],
+      'Auto Insurance': ['auto insurance', 'car insurance', 'vehicle insurance']
+    }
+  },
+
+  // Healthcare
+  'Healthcare': {
+    keywords: ['healthcare', 'health care', 'medical', 'clinical', 'patient care'],
+    subIndustries: {
+      'Hospitals & Health Systems': ['hospital', 'health system', 'medical center', 'healthcare system'],
+      'Physician Practices': ['physician practice', 'medical practice', 'doctor office', 'clinic'],
+      'Urgent Care': ['urgent care', 'walk-in clinic', 'immediate care'],
+      'Home Health': ['home health', 'home care', 'in-home care', 'visiting nurse'],
+      'Behavioral Health': ['behavioral health', 'mental health', 'psychiatry', 'psychology', 'therapy'],
+      'Primary Care': ['primary care', 'family medicine', 'general practice', 'pcp']
+    }
+  },
+  'Telehealth': {
+    keywords: ['telehealth', 'telemedicine', 'virtual care', 'remote healthcare', 'digital health'],
+    subIndustries: {
+      'Virtual Primary Care': ['virtual primary care', 'online doctor', 'video visit'],
+      'Mental Health Platforms': ['online therapy', 'teletherapy', 'mental health app', 'betterhelp', 'talkspace'],
+      'Remote Patient Monitoring': ['remote monitoring', 'rpm', 'patient monitoring', 'wearable health'],
+      'Digital Therapeutics': ['digital therapeutics', 'dtx', 'prescription digital', 'therapeutic app']
+    }
+  },
+
+  // Commerce
+  'E-commerce': {
+    keywords: ['ecommerce', 'e-commerce', 'online store', 'online shopping', 'online retail'],
+    subIndustries: {
+      'D2C Brands': ['d2c', 'direct to consumer', 'dtc', 'brand'],
+      'Online Marketplaces': ['marketplace', 'multi-vendor', 'platform'],
+      'Subscription Commerce': ['subscription', 'subscription box', 'recurring', 'membership'],
+      'B2B E-commerce': ['b2b ecommerce', 'wholesale online', 'business commerce']
+    }
+  },
+  'Retail': {
+    keywords: ['retail', 'retailer', 'store', 'shop', 'merchandise'],
+    subIndustries: {
+      'Specialty Retail': ['specialty retail', 'niche retail', 'specialty store'],
+      'Grocery & Supermarkets': ['grocery', 'supermarket', 'food retail'],
+      'Fashion & Apparel': ['fashion', 'apparel', 'clothing', 'accessories'],
+      'Electronics Retail': ['electronics', 'consumer electronics', 'tech retail']
+    }
+  },
+
+  // Services
+  'Marketing Agency': {
+    keywords: ['marketing agency', 'digital agency', 'advertising agency', 'creative agency'],
+    subIndustries: {
+      'Full-Service Agency': ['full service', 'integrated agency', 'end-to-end'],
+      'Digital Marketing': ['digital marketing', 'online marketing', 'internet marketing'],
+      'SEO & SEM': ['seo', 'search engine optimization', 'sem', 'ppc', 'google ads'],
+      'Social Media Marketing': ['social media', 'social marketing', 'smm', 'instagram', 'facebook marketing'],
+      'Content Marketing': ['content marketing', 'content creation', 'content strategy', 'blog', 'copywriting'],
+      'Performance Marketing': ['performance marketing', 'growth marketing', 'conversion', 'cro']
+    }
+  },
+  'Legal': {
+    keywords: ['law firm', 'legal services', 'attorney', 'lawyer', 'legal'],
+    subIndustries: {
+      'Corporate Law': ['corporate law', 'business law', 'commercial law', 'm&a'],
+      'Personal Injury': ['personal injury', 'accident lawyer', 'injury attorney'],
+      'Immigration Law': ['immigration', 'visa', 'citizenship', 'immigration lawyer'],
+      'Intellectual Property': ['intellectual property', 'ip law', 'patent', 'trademark', 'copyright'],
+      'Employment Law': ['employment law', 'labor law', 'workplace', 'discrimination']
+    }
+  },
+  'Consulting': {
+    keywords: ['consulting', 'consultancy', 'advisory', 'consultant'],
+    subIndustries: {
+      'Strategy Consulting': ['strategy consulting', 'strategic advisory', 'business strategy'],
+      'Technology Consulting': ['technology consulting', 'it consulting', 'digital consulting'],
+      'Management Consulting': ['management consulting', 'business consulting'],
+      'Financial Advisory': ['financial advisory', 'finance consulting', 'transaction advisory']
+    }
+  },
+
+  // Industrial
+  'Manufacturing': {
+    keywords: ['manufacturing', 'manufacturer', 'production', 'factory', 'industrial'],
+    subIndustries: {
+      'Automotive': ['automotive', 'auto parts', 'vehicle', 'car manufacturing'],
+      'Aerospace & Defense': ['aerospace', 'defense', 'aviation', 'military'],
+      'Electronics': ['electronics manufacturing', 'pcb', 'semiconductor', 'electronic components'],
+      'Food & Beverage': ['food manufacturing', 'beverage', 'food processing', 'cpg'],
+      'Medical Manufacturing': ['medical device', 'medical manufacturing', 'healthcare products']
+    }
+  },
+  'Construction': {
+    keywords: ['construction', 'contractor', 'builder', 'building'],
+    subIndustries: {
+      'Commercial Construction': ['commercial construction', 'office building', 'commercial builder'],
+      'Residential Construction': ['residential', 'home builder', 'housing', 'homes'],
+      'General Contractors': ['general contractor', 'gc', 'prime contractor'],
+      'Specialty Contractors': ['specialty contractor', 'subcontractor', 'trade contractor']
+    }
+  },
+
+  // Real Estate
+  'Real Estate': {
+    keywords: ['real estate', 'property', 'realty', 'brokerage'],
+    subIndustries: {
+      'Residential Sales': ['residential real estate', 'home sales', 'realtor', 'buying home'],
+      'Commercial Real Estate': ['commercial real estate', 'cre', 'office space', 'retail space'],
+      'Property Management': ['property management', 'property manager', 'building management'],
+      'Real Estate Tech': ['proptech', 'real estate technology', 'real estate software']
+    }
+  },
+
+  // Education
+  'EdTech': {
+    keywords: ['edtech', 'education technology', 'elearning', 'e-learning', 'online learning'],
+    subIndustries: {
+      'K-12 EdTech': ['k-12', 'k12', 'school', 'classroom', 'student'],
+      'Higher Ed Solutions': ['higher education', 'university', 'college', 'campus'],
+      'Corporate Learning': ['corporate learning', 'corporate training', 'employee training', 'lms'],
+      'Online Course Platforms': ['online course', 'mooc', 'course platform', 'udemy', 'coursera'],
+      'Tutoring Platforms': ['tutoring', 'tutor', 'homework help', 'test prep']
+    }
+  }
+};
+
+async function classifyIndustryWithAI(domain, companyName, providedIndustry) {
+  try {
+    // Gather data for classification
+    const company = companyName || domain.replace(/\.(com|io|co|net|org)$/i, '').replace(/[-_]/g, ' ');
+
+    // Search for company information to analyze
+    const searchQueries = [
+      `"${company}" company about`,
+      `"${domain}" what does company do`
+    ];
+
+    let companyDescription = '';
+    let websiteContent = '';
+    let detectedKeywords = [];
+
+    // Fetch company website for analysis
+    try {
+      const websiteResponse = await fetch(`https://${domain}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+        signal: AbortSignal.timeout(5000)
+      });
+
+      if (websiteResponse.ok) {
+        websiteContent = (await websiteResponse.text()).toLowerCase();
+      }
+    } catch (e) {
+      // Continue without website content
+    }
+
+    // Search for company description
+    try {
+      const response = await fetch('https://google.serper.dev/search', {
+        method: 'POST',
+        headers: { 'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q: searchQueries[0], gl: 'us', hl: 'en', num: 5 }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const results = data.organic || [];
+        companyDescription = results.map(r => `${r.title} ${r.snippet || ''}`).join(' ').toLowerCase();
+      }
+    } catch (e) {
+      // Continue with website content only
+    }
+
+    // Combine all text for analysis
+    const analysisText = `${companyDescription} ${websiteContent}`.toLowerCase();
+
+    // Score each industry and sub-industry
+    const industryScores = {};
+    const subIndustryMatches = {};
+
+    for (const [industry, config] of Object.entries(INDUSTRY_KEYWORDS)) {
+      let score = 0;
+
+      // Check main industry keywords
+      for (const keyword of config.keywords) {
+        if (analysisText.includes(keyword)) {
+          score += 10;
+          detectedKeywords.push(keyword);
+        }
+      }
+
+      // Check sub-industry keywords and track matches
+      if (config.subIndustries) {
+        subIndustryMatches[industry] = [];
+
+        for (const [subIndustry, subKeywords] of Object.entries(config.subIndustries)) {
+          let subScore = 0;
+          const matchedKeywords = [];
+
+          for (const keyword of subKeywords) {
+            if (analysisText.includes(keyword)) {
+              subScore += 5;
+              matchedKeywords.push(keyword);
+            }
+          }
+
+          if (subScore > 0) {
+            score += subScore;
+            subIndustryMatches[industry].push({
+              name: subIndustry,
+              score: subScore,
+              matchedKeywords
+            });
+          }
+        }
+
+        // Sort sub-industries by score
+        subIndustryMatches[industry].sort((a, b) => b.score - a.score);
+      }
+
+      if (score > 0) {
+        industryScores[industry] = score;
+      }
+    }
+
+    // If provided industry matches, boost its score
+    if (providedIndustry && industryScores[providedIndustry]) {
+      industryScores[providedIndustry] += 20;
+    }
+
+    // Sort industries by score
+    const sortedIndustries = Object.entries(industryScores)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3);
+
+    if (sortedIndustries.length === 0) {
+      // Fallback - use provided industry or 'Unknown'
+      return {
+        found: true,
+        data: {
+          primaryIndustry: providedIndustry || 'Unknown',
+          confidence: 'low',
+          subIndustries: [],
+          alternativeIndustries: [],
+          detectedKeywords: [],
+          analysisMethod: 'fallback'
+        }
+      };
+    }
+
+    const primaryIndustry = sortedIndustries[0][0];
+    const primaryScore = sortedIndustries[0][1];
+    const primarySubIndustries = subIndustryMatches[primaryIndustry] || [];
+
+    // Determine confidence level
+    let confidence = 'low';
+    if (primaryScore >= 50) confidence = 'high';
+    else if (primaryScore >= 25) confidence = 'medium';
+
+    return {
+      found: true,
+      data: {
+        primaryIndustry,
+        confidence,
+        confidenceScore: primaryScore,
+        subIndustries: primarySubIndustries.slice(0, 3).map(s => s.name),
+        subIndustryDetails: primarySubIndustries.slice(0, 3),
+        alternativeIndustries: sortedIndustries.slice(1).map(([ind, score]) => ({
+          industry: ind,
+          score,
+          subIndustries: (subIndustryMatches[ind] || []).slice(0, 2).map(s => s.name)
+        })),
+        detectedKeywords: [...new Set(detectedKeywords)].slice(0, 10),
+        analysisMethod: 'ai_keyword_matching'
+      }
+    };
+
+  } catch (error) {
+    console.error('Industry classification error:', error);
+    return {
+      found: false,
+      error: error.message
+    };
+  }
 }
