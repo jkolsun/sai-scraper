@@ -774,7 +774,7 @@ const SAIScraper = () => {
           });
         }
 
-        return {
+        const processedResult = {
           id: Date.now() + index,
           name: result.companyName || company?.name || result.domain,
           domain: result.domain || company?.domain,
@@ -789,12 +789,17 @@ const SAIScraper = () => {
           scrapedAt: result.metadata?.enrichedAt,
           enrichment: result.enrichment,
           disqualified: !result.success,
-          // Email verification data - CRITICAL
+          // MANDATORY OUTPUT FIELDS - Critical for client delivery
           email: result.email || null,
           hasVerifiedEmail: result.hasVerifiedEmail || false,
           emailVerification: result.emailVerification || null,
-          verifiedEmails: result.emailVerification?.verifiedEmails || []
+          verifiedEmails: result.emailVerification?.verifiedEmails || [],
+          website: `https://${result.domain || company?.domain}`,
+          personalization: null // Will be set after object creation
         };
+        // Generate personalization using the complete result object
+        processedResult.personalization = generatePersonalization(processedResult);
+        return processedResult;
       });
 
       console.log('Processed results:', processedResults);
@@ -949,13 +954,11 @@ const SAIScraper = () => {
 
     // Generate rows
     const rows = data.map(lead => {
-      // Use verified email (primary) - this is guaranteed to be valid
+      // MANDATORY OUTPUT FIELDS - Use pre-computed values for consistency
       const email = lead.email || lead.enrichment?.website?.contact?.emails?.[0] || '';
       const phone = lead.enrichment?.website?.contact?.phones?.[0] || '';
-      const website = `https://${lead.domain}`;
-
-      // Generate personalization based on signals
-      const personalization = generatePersonalization(lead);
+      const website = lead.website || `https://${lead.domain}`;
+      const personalization = lead.personalization || generatePersonalization(lead);
 
       // Create summary from whyNow and signals
       const signalLabels = lead.signals.map(s => SIGNAL_TYPES.find(st => st.id === s)?.label || s).join('; ');
@@ -1359,9 +1362,10 @@ const SAIScraper = () => {
                     </th>
                     <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Company</th>
                     <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Email</th>
+                    <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Website</th>
+                    <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', minWidth: '200px' }}>Personalization</th>
                     <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Score</th>
                     <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Signals</th>
-                    <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Industry</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1388,6 +1392,16 @@ const SAIScraper = () => {
                         </div>
                       </td>
                       <td style={{ padding: '18px' }} onClick={() => setSelectedCompany(result)}>
+                        <a href={`https://${result.domain}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: theme.accent, fontSize: '13px', fontWeight: 500, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          {result.domain} <span style={{ opacity: 0.7 }}>{Icons.externalLink}</span>
+                        </a>
+                      </td>
+                      <td style={{ padding: '18px', maxWidth: '280px' }} onClick={() => setSelectedCompany(result)}>
+                        <div style={{ color: theme.textSecondary, fontSize: '12px', lineHeight: '1.4', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }} title={result.personalization || generatePersonalization(result)}>
+                          {result.personalization || generatePersonalization(result)}
+                        </div>
+                      </td>
+                      <td style={{ padding: '18px' }} onClick={() => setSelectedCompany(result)}>
                         <span style={{ background: result.score >= 70 ? theme.accentMuted : result.score >= 50 ? 'rgba(212, 175, 55, 0.15)' : 'rgba(220, 38, 38, 0.1)', color: result.score >= 70 ? theme.accent : result.score >= 50 ? theme.accentLight : '#DC2626', padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 700, border: result.score >= 70 ? `1px solid ${theme.accent}` : result.score >= 50 ? `1px solid ${theme.accentLight}` : '1px solid #DC2626' }}>{result.score}</span>
                       </td>
                       <td style={{ padding: '18px' }} onClick={() => setSelectedCompany(result)}>
@@ -1397,7 +1411,6 @@ const SAIScraper = () => {
                           })}
                         </div>
                       </td>
-                      <td style={{ padding: '18px', color: theme.textMuted, fontSize: '13px', fontWeight: 500 }} onClick={() => setSelectedCompany(result)}>{result.industry}</td>
                     </tr>
                   ))}
                 </tbody>
