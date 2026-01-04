@@ -188,23 +188,11 @@ const EXCLUDE_TYPES = [
   'Competitors', 'Existing Customers', 'Recently Contacted', 'Unsubscribed', 'Bad Fit'
 ];
 
+// Core 3 Buying Signals - Primary focus for scraping
 const SIGNAL_TYPES = [
-  // Core Intent Signals
-  { id: 'afterHoursCoverage', label: 'After Hours Coverage Gap', description: 'Visitors reach the site after business hours, but there is no immediate way to respond or capture them.', icon: '*', color: '#F97316' },
-  { id: 'googlePaidTraffic', label: 'Google Paid Traffic Active', description: 'This business is currently paying for search ads to drive visitors to their website.', icon: 'G', color: '#F97316' },
-  { id: 'inboundResponseRisk', label: 'Inbound Response Risk', description: 'Slow or no response to inbound inquiries, risking lost opportunities from paid and organic traffic.', icon: '!', color: '#F97316' },
-  { id: 'activelyHiring', label: 'Actively Hiring', description: 'Company is actively hiring, indicating growth and potential budget for new tools/services.', icon: '+', color: '#F97316' },
-  { id: 'hasCRM', label: 'Uses CRM Software', description: 'Company uses enterprise CRM tools, indicating structured sales process and tech maturity.', icon: '#', color: '#F97316' },
-  { id: 'recentFunding', label: 'Recent Funding Round', description: 'Company recently raised funding, indicating growth capital and likely increased spending.', icon: '$', color: '#F97316' },
-  { id: 'activeNews', label: 'Active in News/PR', description: 'Company has recent news mentions, indicating active growth or market presence.', icon: '@', color: '#F97316' },
-  { id: 'b2bPresence', label: 'B2B Review Site Presence', description: 'Listed on G2, Capterra, or Trustpilot - indicates B2B software maturity.', icon: '*', color: '#F97316' },
-  { id: 'socialActive', label: 'Active Social Media', description: 'Active across multiple social platforms, indicating marketing investment.', icon: '&', color: '#F97316' },
-  // Advanced Intent Signals
-  { id: 'decisionMakersFound', label: 'Decision Makers Identified', description: 'Key decision makers (C-Suite, VPs, Directors) have been identified at this company.', icon: '>', color: '#F97316' },
-  { id: 'highIntent', label: 'High Buying Intent', description: 'Multiple buying signals detected - company shows strong indicators of being in-market.', icon: '^', color: '#F97316' },
-  { id: 'leadershipChange', label: 'Recent Leadership Change', description: 'New executives or leadership changes detected - new decision makers often evaluate vendors.', icon: '%', color: '#F97316' },
-  { id: 'competitorUser', label: 'Uses Competitor Products', description: 'Company is using competitor products - potential switch opportunity.', icon: '<>', color: '#F97316' },
-  { id: 'trafficGrowth', label: 'Website Traffic Growing', description: 'Website traffic is trending upward - business momentum indicator.', icon: '/', color: '#F97316' }
+  { id: 'afterHoursCoverage', label: 'After Hours Coverage Gap', description: 'No live chat or response capability after business hours - missing leads from evening/weekend visitors.', icon: '*' },
+  { id: 'googlePaidTraffic', label: 'Google Paid Traffic Active', description: 'Currently paying for Google Ads - spending money to drive traffic to their website.', icon: 'G' },
+  { id: 'inboundResponseRisk', label: 'Inbound Response Risk', description: 'Slow response times or no immediate engagement - losing leads they paid to acquire.', icon: '!' }
 ];
 
 // High-value target companies - mix of industries known to spend on Google Ads
@@ -391,19 +379,6 @@ const Select = ({ label, options, value, onChange, placeholder }) => {
   );
 };
 
-const SignalCard = ({ signal, enabled, onChange }) => (
-  <div onClick={() => onChange(!enabled)}
-    style={{ padding: '14px 16px', background: enabled ? theme.accentMuted : theme.bgSecondary, border: `1px solid ${enabled ? theme.accent : theme.border}`, borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '14px', transition: 'all 0.2s ease', boxShadow: enabled ? theme.shadowMd : theme.shadow }}>
-    <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: enabled ? theme.accent : theme.bgTertiary, color: enabled ? 'white' : theme.textSecondary, fontSize: signal.icon.length > 1 ? '14px' : '18px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s ease' }}>{signal.icon}</div>
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 500, marginBottom: '4px', transition: 'color 0.2s ease' }}>{signal.label}</div>
-      <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: '1.5' }}>{signal.description}</div>
-    </div>
-    <div style={{ width: '20px', height: '20px', borderRadius: '4px', border: enabled ? 'none' : `1.5px solid ${theme.borderDark}`, background: enabled ? theme.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px', transition: 'all 0.2s ease' }}>
-      {enabled && <span style={{ color: 'white' }}>{Icons.check}</span>}
-    </div>
-  </div>
-);
 
 // ==================== MAIN APP ====================
 const SAIScraper = () => {
@@ -819,10 +794,21 @@ const SAIScraper = () => {
 
       console.log('Processed results:', processedResults);
 
-      // Filter and sort by score
+      // Get the active signals that user selected
+      const activeSignals = Object.entries(enabledSignals).filter(([_, e]) => e).map(([k]) => k);
+      console.log('Filtering for signals:', activeSignals);
+
+      // Filter results: must have at least one of the SELECTED signals
       const filteredResults = processedResults
-        .filter(r => r.domain && r.score >= minScore)
+        .filter(r => {
+          if (!r.domain || r.score < minScore) return false;
+          // Company must have at least one of the selected signals
+          const hasSelectedSignal = r.signals.some(s => activeSignals.includes(s));
+          return hasSelectedSignal;
+        })
         .sort((a, b) => b.score - a.score);
+
+      console.log('Filtered to', filteredResults.length, 'companies with selected signals');
 
       setResults(filteredResults);
       setCompaniesFound(filteredResults.length);
@@ -882,9 +868,17 @@ const SAIScraper = () => {
         for (let i = 0; i < numToAdd; i++) {
           const company = eligibleCompanies[foundCount + i];
           if (!company) continue;
-          const detectedSignals = activeSignals.filter(() => Math.random() > 0.25);
-          const score = Math.min(100, detectedSignals.length * 25 + Math.floor(Math.random() * 30));
-          if (score >= minScore && detectedSignals.length > 0) {
+
+          // Only detect signals that were selected - each signal has ~60% chance of being detected
+          const detectedSignals = activeSignals.filter(() => Math.random() > 0.4);
+
+          // Must have at least one selected signal to be included
+          if (detectedSignals.length === 0) continue;
+
+          // Score based on how many of the SELECTED signals were detected
+          const score = Math.min(100, Math.round((detectedSignals.length / activeSignals.length) * 70) + Math.floor(Math.random() * 20) + 15);
+
+          if (score >= minScore) {
             const result = {
               id: Date.now() + foundCount + i, name: company.name, domain: company.domain, industry: company.industry,
               employees: company.employees, location: company.location, revenue: company.revenue, score,
@@ -1224,17 +1218,39 @@ const SAIScraper = () => {
             </div>
           </div>
 
-          {/* Signal Filters */}
+          {/* Signal Filters - Compact Dropdown */}
           <div style={{ padding: '24px', borderBottom: `1px solid ${theme.border}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
               <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: theme.accentMuted, display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.accent }}>{Icons.zap}</div>
               <span style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 700, letterSpacing: '-0.3px' }}>Buying Signals</span>
               {activeSignalCount > 0 && <span style={{ background: theme.accentMuted, color: theme.accent, padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 700, border: `1px solid ${theme.accent}` }}>{activeSignalCount} active</span>}
             </div>
-            <p style={{ color: theme.textMuted, fontSize: '12px', marginBottom: '18px', marginLeft: '42px', lineHeight: '1.5' }}>Find companies showing these intent signals</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {SIGNAL_TYPES.map((signal) => <SignalCard key={signal.id} signal={signal} enabled={enabledSignals[signal.id]} onChange={(v) => setEnabledSignals({ ...enabledSignals, [signal.id]: v })} />)}
-            </div>
+            <MultiSelect
+              label=""
+              options={SIGNAL_TYPES.map(s => s.label)}
+              selected={Object.entries(enabledSignals).filter(([_, v]) => v).map(([k]) => SIGNAL_TYPES.find(s => s.id === k)?.label).filter(Boolean)}
+              onChange={(labels) => {
+                const newSignals = {};
+                SIGNAL_TYPES.forEach(s => {
+                  newSignals[s.id] = labels.includes(s.label);
+                });
+                setEnabledSignals(newSignals);
+              }}
+              placeholder="Select signals to search for"
+            />
+            {activeSignalCount > 0 && (
+              <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {SIGNAL_TYPES.filter(s => enabledSignals[s.id]).map(signal => (
+                  <div key={signal.id} style={{ padding: '10px 12px', background: theme.accentMuted, border: `1px solid ${theme.accent}`, borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: theme.accent, color: 'white', fontSize: '11px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{signal.icon}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ color: theme.textPrimary, fontSize: '13px', fontWeight: 600 }}>{signal.label}</div>
+                      <div style={{ color: theme.textSecondary, fontSize: '11px' }}>{signal.description}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Search Settings */}
