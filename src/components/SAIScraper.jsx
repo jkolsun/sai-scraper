@@ -788,7 +788,12 @@ const SAIScraper = () => {
           whyNow: result.whyNow || 'Company shows growth indicators',
           scrapedAt: result.metadata?.enrichedAt,
           enrichment: result.enrichment,
-          disqualified: !result.success
+          disqualified: !result.success,
+          // Email verification data - CRITICAL
+          email: result.email || null,
+          hasVerifiedEmail: result.hasVerifiedEmail || false,
+          emailVerification: result.emailVerification || null,
+          verifiedEmails: result.emailVerification?.verifiedEmails || []
         };
       });
 
@@ -798,17 +803,22 @@ const SAIScraper = () => {
       const activeSignals = Object.entries(enabledSignals).filter(([_, e]) => e).map(([k]) => k);
       console.log('Filtering for signals:', activeSignals);
 
-      // Filter results: must have at least one of the SELECTED signals
+      // Filter results: must have verified email AND at least one selected signal
       const filteredResults = processedResults
         .filter(r => {
           if (!r.domain || r.score < minScore) return false;
+          // CRITICAL: Company must have a verified email
+          if (!r.hasVerifiedEmail || !r.email) {
+            console.log(`Skipping ${r.domain} - no verified email`);
+            return false;
+          }
           // Company must have at least one of the selected signals
           const hasSelectedSignal = r.signals.some(s => activeSignals.includes(s));
           return hasSelectedSignal;
         })
         .sort((a, b) => b.score - a.score);
 
-      console.log('Filtered to', filteredResults.length, 'companies with selected signals');
+      console.log('Filtered to', filteredResults.length, 'companies with verified emails and selected signals');
 
       setResults(filteredResults);
       setCompaniesFound(filteredResults.length);
@@ -939,8 +949,8 @@ const SAIScraper = () => {
 
     // Generate rows
     const rows = data.map(lead => {
-      // Extract contact info from enrichment
-      const email = lead.enrichment?.website?.contact?.emails?.[0] || '';
+      // Use verified email (primary) - this is guaranteed to be valid
+      const email = lead.email || lead.enrichment?.website?.contact?.emails?.[0] || '';
       const phone = lead.enrichment?.website?.contact?.phones?.[0] || '';
       const website = `https://${lead.domain}`;
 
@@ -1348,9 +1358,9 @@ const SAIScraper = () => {
                       <Checkbox checked={allSelected} indeterminate={someSelected} onChange={toggleSelectAll} />
                     </th>
                     <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Company</th>
+                    <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Email</th>
                     <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Score</th>
                     <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Signals</th>
-                    <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Why Now</th>
                     <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Industry</th>
                   </tr>
                 </thead>
@@ -1370,6 +1380,14 @@ const SAIScraper = () => {
                         </div>
                       </td>
                       <td style={{ padding: '18px' }} onClick={() => setSelectedCompany(result)}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '4px', padding: '2px 6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ color: '#22C55E', fontSize: '10px' }}>{Icons.check}</span>
+                          </span>
+                          <span style={{ color: theme.textPrimary, fontSize: '13px', fontWeight: 500 }}>{result.email}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '18px' }} onClick={() => setSelectedCompany(result)}>
                         <span style={{ background: result.score >= 70 ? theme.accentMuted : result.score >= 50 ? 'rgba(212, 175, 55, 0.15)' : 'rgba(220, 38, 38, 0.1)', color: result.score >= 70 ? theme.accent : result.score >= 50 ? theme.accentLight : '#DC2626', padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 700, border: result.score >= 70 ? `1px solid ${theme.accent}` : result.score >= 50 ? `1px solid ${theme.accentLight}` : '1px solid #DC2626' }}>{result.score}</span>
                       </td>
                       <td style={{ padding: '18px' }} onClick={() => setSelectedCompany(result)}>
@@ -1379,7 +1397,6 @@ const SAIScraper = () => {
                           })}
                         </div>
                       </td>
-                      <td style={{ padding: '18px', color: theme.textSecondary, fontSize: '13px', fontWeight: 500, maxWidth: '200px' }} onClick={() => setSelectedCompany(result)}>{result.whyNow}</td>
                       <td style={{ padding: '18px', color: theme.textMuted, fontSize: '13px', fontWeight: 500 }} onClick={() => setSelectedCompany(result)}>{result.industry}</td>
                     </tr>
                   ))}

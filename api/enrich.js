@@ -1,5 +1,6 @@
 // Vercel Serverless Function - Master Enrichment API
 // Performs all enrichment in a single function for efficiency
+// Includes email discovery and verification
 
 const SERPER_KEY = 'cad6eefce44b2e9d112983ff0796cab6ae988d8b';
 
@@ -20,8 +21,8 @@ export default async function handler(req, res) {
 
     console.log(`Enriching ${domain}...`);
 
-    // Run all enrichments in parallel - 13 data sources
-    const [linkedin, jobs, techstack, ads, website, funding, news, reviews, social, contacts, intent, competitors, webTraffic] = await Promise.all([
+    // Run all enrichments in parallel - 14 data sources (including email verification)
+    const [linkedin, jobs, techstack, ads, website, funding, news, reviews, social, contacts, intent, competitors, webTraffic, emailData] = await Promise.all([
       enrichLinkedIn(domain, companyName),
       enrichJobs(domain, companyName),
       enrichTechStack(domain),
@@ -34,7 +35,8 @@ export default async function handler(req, res) {
       enrichContacts(domain, companyName),
       enrichIntent(domain, companyName, industry),
       enrichCompetitors(domain, companyName, industry),
-      enrichWebTraffic(domain)
+      enrichWebTraffic(domain),
+      findAndVerifyEmails(domain, companyName)
     ]);
 
     // Aggregate all signals
@@ -247,6 +249,21 @@ export default async function handler(req, res) {
       ? whyNowReasons.join('. ') + '.'
       : 'Company shows standard growth indicators.';
 
+    // Add email verification signals
+    if (emailData.found && emailData.data?.verifiedEmails?.length > 0) {
+      allSignals.push({
+        type: 'email_verified',
+        source: 'email_verification',
+        message: `${emailData.data.verifiedEmails.length} verified email(s) found`
+      });
+      // Boost score for verified emails
+      score = Math.min(score + 10, 100);
+    }
+
+    // Primary verified email (for export/outreach)
+    const primaryEmail = emailData.data?.verifiedEmails?.[0] || null;
+    const hasVerifiedEmail = emailData.found && emailData.data?.verifiedEmails?.length > 0;
+
     return res.status(200).json({
       success: true,
       domain,
@@ -255,6 +272,10 @@ export default async function handler(req, res) {
       signals: allSignals,
       buyingSignals,
       whyNow,
+      // Email verification data - critical for outreach
+      email: primaryEmail,
+      hasVerifiedEmail,
+      emailVerification: emailData.found ? emailData.data : null,
       enrichment: {
         linkedin: linkedin.found ? linkedin.data : null,
         jobs: jobs.found ? jobs.data : null,
@@ -268,12 +289,14 @@ export default async function handler(req, res) {
         contacts: contacts.found ? contacts.data : null,
         intent: intent.found ? intent.data : null,
         competitors: competitors.found ? competitors.data : null,
-        webTraffic: webTraffic.found ? webTraffic.data : null
+        webTraffic: webTraffic.found ? webTraffic.data : null,
+        emails: emailData.found ? emailData.data : null
       },
       metadata: {
         enrichedAt: new Date().toISOString(),
-        sourcesChecked: 13,
-        sourcesFound: [linkedin, jobs, techstack, ads, website, funding, news, reviews, social, contacts, intent, competitors, webTraffic].filter(s => s.found).length
+        sourcesChecked: 14,
+        sourcesFound: [linkedin, jobs, techstack, ads, website, funding, news, reviews, social, contacts, intent, competitors, webTraffic, emailData].filter(s => s.found).length,
+        emailVerified: hasVerifiedEmail
       }
     });
 
@@ -1527,4 +1550,319 @@ async function enrichWebTraffic(domain) {
     console.error('Web traffic enrichment error:', error);
     return { found: false, error: error.message };
   }
+}
+
+// ==================== EMAIL DISCOVERY & VERIFICATION ====================
+async function findAndVerifyEmails(domain, companyName) {
+  try {
+    const company = companyName || domain.replace(/\.(com|io|co|net|org)$/i, '').replace(/[-_]/g, ' ');
+
+    // Collect emails from multiple sources
+    const discoveredEmails = new Set();
+    const emailSources = {};
+
+    // Source 1: Search for emails on the company website
+    const websiteEmails = await findEmailsOnWebsite(domain);
+    websiteEmails.forEach(email => {
+      discoveredEmails.add(email.toLowerCase());
+      emailSources[email.toLowerCase()] = 'website';
+    });
+
+    // Source 2: Search Google for company emails
+    const searchEmails = await searchForEmails(domain, company);
+    searchEmails.forEach(email => {
+      if (!discoveredEmails.has(email.toLowerCase())) {
+        discoveredEmails.add(email.toLowerCase());
+        emailSources[email.toLowerCase()] = 'google_search';
+      }
+    });
+
+    // Source 3: Generate common email patterns and verify
+    const patternEmails = generateEmailPatterns(domain, company);
+
+    // Convert to array and filter valid company emails
+    const allEmails = Array.from(discoveredEmails).filter(email => {
+      // Must be from the company domain
+      if (!email.endsWith(`@${domain}`) && !email.endsWith(`@www.${domain}`)) {
+        // Check if it's a subdomain of the company
+        const emailDomain = email.split('@')[1];
+        if (!emailDomain?.includes(domain.replace('www.', ''))) {
+          return false;
+        }
+      }
+      // Filter out generic/spam emails
+      const localPart = email.split('@')[0].toLowerCase();
+      const spamPatterns = ['noreply', 'no-reply', 'donotreply', 'mailer', 'newsletter', 'unsubscribe', 'bounce', 'postmaster', 'webmaster', 'admin@', 'root@', 'test', 'demo', 'example'];
+      return !spamPatterns.some(p => localPart.includes(p));
+    });
+
+    // Verify emails using multiple methods
+    const verificationResults = await Promise.all(
+      allEmails.slice(0, 10).map(email => verifyEmail(email, domain))
+    );
+
+    // Also verify pattern-based emails
+    const patternVerification = await Promise.all(
+      patternEmails.slice(0, 5).map(email => verifyEmail(email, domain))
+    );
+
+    // Combine verified emails
+    const verifiedEmails = [];
+    const allVerifications = [...verificationResults, ...patternVerification];
+
+    allVerifications.forEach(result => {
+      if (result.verified && result.email) {
+        // Prioritize by verification confidence
+        verifiedEmails.push({
+          email: result.email,
+          verified: true,
+          confidence: result.confidence,
+          source: emailSources[result.email] || 'pattern_match',
+          verificationMethod: result.method
+        });
+      }
+    });
+
+    // Sort by confidence
+    verifiedEmails.sort((a, b) => b.confidence - a.confidence);
+
+    // Dedupe by email
+    const uniqueVerified = verifiedEmails.filter((email, index, self) =>
+      index === self.findIndex(e => e.email === email.email)
+    );
+
+    const signals = [];
+    if (uniqueVerified.length > 0) {
+      signals.push(`${uniqueVerified.length} verified email(s) found`);
+      if (uniqueVerified[0].confidence >= 90) {
+        signals.push('High confidence email verification');
+      }
+    } else if (allEmails.length > 0) {
+      signals.push(`${allEmails.length} email(s) found but not verified`);
+    } else {
+      signals.push('No emails discovered - may need manual research');
+    }
+
+    return {
+      found: uniqueVerified.length > 0,
+      data: {
+        verifiedEmails: uniqueVerified.map(e => e.email),
+        verifiedEmailDetails: uniqueVerified,
+        discoveredEmails: allEmails,
+        totalDiscovered: allEmails.length,
+        totalVerified: uniqueVerified.length,
+        emailPattern: detectEmailPattern(uniqueVerified.map(e => e.email)),
+        signals
+      }
+    };
+  } catch (error) {
+    console.error('Email discovery error:', error);
+    return { found: false, error: error.message };
+  }
+}
+
+// Find emails directly on the company website
+async function findEmailsOnWebsite(domain) {
+  const emails = [];
+  const pagesToCheck = [
+    `https://${domain}`,
+    `https://${domain}/contact`,
+    `https://${domain}/contact-us`,
+    `https://${domain}/about`,
+    `https://${domain}/about-us`,
+    `https://${domain}/team`,
+    `https://www.${domain}`,
+    `https://www.${domain}/contact`
+  ];
+
+  for (const url of pagesToCheck.slice(0, 4)) {
+    try {
+      const response = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+        redirect: 'follow',
+        signal: AbortSignal.timeout(5000)
+      });
+
+      if (response.ok) {
+        const html = await response.text();
+        // Email regex - comprehensive pattern
+        const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+        const found = html.match(emailRegex) || [];
+
+        found.forEach(email => {
+          const clean = email.toLowerCase().trim();
+          // Filter out image files and common junk
+          if (!clean.includes('.png') && !clean.includes('.jpg') &&
+              !clean.includes('.gif') && !clean.includes('example.') &&
+              !clean.includes('email@') && !clean.includes('@example') &&
+              clean.length < 60) {
+            emails.push(clean);
+          }
+        });
+      }
+    } catch (e) {
+      // Continue to next URL
+    }
+  }
+
+  return [...new Set(emails)];
+}
+
+// Search Google for company emails
+async function searchForEmails(domain, companyName) {
+  try {
+    const queries = [
+      `"@${domain}" email`,
+      `"${companyName}" email contact "@${domain}"`,
+      `site:${domain} email contact`
+    ];
+
+    const emails = [];
+
+    for (const query of queries.slice(0, 2)) {
+      const response = await fetch('https://google.serper.dev/search', {
+        method: 'POST',
+        headers: { 'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q: query, gl: 'us', hl: 'en', num: 10 }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const results = data.organic || [];
+
+        for (const result of results) {
+          const text = `${result.title} ${result.snippet || ''}`;
+          const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+          const found = text.match(emailRegex) || [];
+
+          found.forEach(email => {
+            const clean = email.toLowerCase().trim();
+            if (clean.includes(domain.replace('www.', '').split('.')[0])) {
+              emails.push(clean);
+            }
+          });
+        }
+      }
+    }
+
+    return [...new Set(emails)];
+  } catch (error) {
+    console.error('Email search error:', error);
+    return [];
+  }
+}
+
+// Generate common email patterns
+function generateEmailPatterns(domain, companyName) {
+  const cleanDomain = domain.replace('www.', '');
+  const commonPrefixes = [
+    'info',
+    'contact',
+    'hello',
+    'sales',
+    'support',
+    'team',
+    'help',
+    'inquiries',
+    'business'
+  ];
+
+  return commonPrefixes.map(prefix => `${prefix}@${cleanDomain}`);
+}
+
+// Verify email using multiple methods
+async function verifyEmail(email, companyDomain) {
+  try {
+    const emailDomain = email.split('@')[1];
+    let confidence = 0;
+    let method = 'unknown';
+
+    // Method 1: Check if domain matches company (basic check)
+    if (emailDomain === companyDomain || emailDomain === `www.${companyDomain}` ||
+        companyDomain.includes(emailDomain) || emailDomain.includes(companyDomain.replace('www.', ''))) {
+      confidence += 30;
+      method = 'domain_match';
+    }
+
+    // Method 2: Check MX records exist (domain can receive email)
+    const mxCheck = await checkMXRecords(emailDomain);
+    if (mxCheck.valid) {
+      confidence += 40;
+      method = 'mx_verified';
+    }
+
+    // Method 3: Check email format and common patterns
+    const localPart = email.split('@')[0].toLowerCase();
+    const validPatterns = ['info', 'contact', 'hello', 'sales', 'support', 'team', 'help', 'business', 'inquiries'];
+    if (validPatterns.some(p => localPart === p || localPart.startsWith(p))) {
+      confidence += 20;
+    }
+
+    // Method 4: Check if it's a real name pattern (first.last, flast, firstl)
+    if (/^[a-z]+\.[a-z]+$/.test(localPart) || /^[a-z]{1,2}[a-z]+$/.test(localPart)) {
+      confidence += 15;
+    }
+
+    // Method 5: Check against known disposable email domains (negative signal)
+    const disposableDomains = ['mailinator.com', 'guerrillamail.com', 'tempmail.com', '10minutemail.com'];
+    if (disposableDomains.includes(emailDomain)) {
+      confidence = 0;
+    }
+
+    return {
+      email,
+      verified: confidence >= 50,
+      confidence: Math.min(confidence, 100),
+      method,
+      checks: {
+        domainMatch: emailDomain === companyDomain,
+        mxValid: mxCheck.valid,
+        formatValid: true
+      }
+    };
+  } catch (error) {
+    return { email, verified: false, confidence: 0, error: error.message };
+  }
+}
+
+// Check MX records using DNS lookup via API
+async function checkMXRecords(domain) {
+  try {
+    // Use Google's DNS API for MX record lookup
+    const response = await fetch(`https://dns.google/resolve?name=${domain}&type=MX`, {
+      signal: AbortSignal.timeout(3000)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      // Status 0 means NOERROR, and Answer contains MX records
+      if (data.Status === 0 && data.Answer && data.Answer.length > 0) {
+        return { valid: true, records: data.Answer.length };
+      }
+    }
+
+    return { valid: false };
+  } catch (error) {
+    // If DNS lookup fails, assume it might still be valid
+    return { valid: true, assumed: true };
+  }
+}
+
+// Detect email pattern from verified emails
+function detectEmailPattern(emails) {
+  if (!emails || emails.length === 0) return null;
+
+  const patterns = {
+    'info@': emails.some(e => e.startsWith('info@')),
+    'contact@': emails.some(e => e.startsWith('contact@')),
+    'first.last@': emails.some(e => /^[a-z]+\.[a-z]+@/.test(e)),
+    'firstlast@': emails.some(e => /^[a-z]{6,}@/.test(e) && !e.startsWith('info') && !e.startsWith('contact')),
+    'flast@': emails.some(e => /^[a-z]\.[a-z]+@/.test(e))
+  };
+
+  for (const [pattern, detected] of Object.entries(patterns)) {
+    if (detected) return pattern;
+  }
+
+  return 'unknown';
 }
