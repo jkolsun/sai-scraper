@@ -281,17 +281,43 @@ const Icons = {
   minus: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
 };
 
+// ==================== DESIGN TOKENS (Beige/Grey Theme) ====================
+const theme = {
+  // Backgrounds
+  bgPrimary: '#F5F5F0',      // Light beige/cream
+  bgSecondary: '#FFFFFF',     // White
+  bgTertiary: '#EEEEE8',      // Slightly darker beige
+  bgDark: '#1A1A1A',          // Near black
+  // Text
+  textPrimary: '#1A1A1A',     // Near black
+  textSecondary: '#6B6B6B',   // Grey
+  textMuted: '#9A9A9A',       // Light grey
+  textLight: '#FFFFFF',       // White
+  // Accent (Golden/Olive like Bright SAI)
+  accent: '#B8960C',          // Golden olive
+  accentLight: '#D4AF37',     // Lighter gold
+  accentMuted: 'rgba(184, 150, 12, 0.1)',
+  // Borders
+  border: '#E5E5E0',          // Light border
+  borderDark: '#D0D0C8',      // Darker border
+  // Shadows
+  shadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+  shadowMd: '0 4px 16px rgba(0, 0, 0, 0.08)',
+  shadowLg: '0 8px 32px rgba(0, 0, 0, 0.12)'
+};
+
 // ==================== CHECKBOX COMPONENT ====================
 const Checkbox = ({ checked, indeterminate, onChange, disabled }) => (
   <div
     onClick={(e) => { e.stopPropagation(); if (!disabled) onChange(!checked); }}
     style={{
       width: '18px', height: '18px', borderRadius: '4px',
-      border: checked || indeterminate ? 'none' : '2px solid #525252',
-      background: checked || indeterminate ? '#F97316' : 'transparent',
+      border: checked || indeterminate ? 'none' : `1.5px solid ${theme.borderDark}`,
+      background: checked || indeterminate ? theme.accent : 'transparent',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       cursor: disabled ? 'not-allowed' : 'pointer', flexShrink: 0,
-      opacity: disabled ? 0.5 : 1
+      opacity: disabled ? 0.5 : 1,
+      transition: 'all 0.15s ease'
     }}
   >
     {checked && <span style={{ color: 'white' }}>{Icons.check}</span>}
@@ -308,19 +334,22 @@ const MultiSelect = ({ label, options, selected, onChange, placeholder }) => {
   };
   return (
     <div style={{ position: 'relative' }}>
-      {label && <label style={{ display: 'block', color: '#A3A3A3', fontSize: '11px', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>{label}</label>}
+      {label && <label style={{ display: 'block', color: theme.textSecondary, fontSize: '12px', marginBottom: '8px', fontWeight: 500 }}>{label}</label>}
       <button onClick={() => setIsOpen(!isOpen)}
-        style={{ width: '100%', padding: '12px 14px', background: 'rgba(255, 255, 255, 0.03)', border: isOpen ? '1px solid rgba(249, 115, 22, 0.5)' : '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: selected.length > 0 ? '#FAFAFA' : '#737373', fontSize: '13px', fontWeight: 500, textAlign: 'left', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s ease' }}>
+        style={{ width: '100%', padding: '12px 16px', background: theme.bgSecondary, border: `1px solid ${isOpen ? theme.accent : theme.border}`, borderRadius: '8px', color: selected.length > 0 ? theme.textPrimary : theme.textMuted, fontSize: '14px', fontWeight: 400, textAlign: 'left', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s ease', boxShadow: isOpen ? theme.shadowMd : theme.shadow }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.length > 0 ? `${selected.length} selected` : placeholder}</span>
-        <span style={{ color: '#737373', transition: 'transform 0.2s ease', transform: isOpen ? 'rotate(180deg)' : 'rotate(0)' }}>{Icons.chevronDown}</span>
+        <span style={{ color: theme.textMuted, transition: 'transform 0.2s ease', transform: isOpen ? 'rotate(180deg)' : 'rotate(0)' }}>{Icons.chevronDown}</span>
       </button>
       {isOpen && (
         <>
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }} onClick={() => setIsOpen(false)} />
-          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '6px', background: 'rgba(0, 0, 0, 0.98)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', maxHeight: '220px', overflowY: 'auto', zIndex: 50, boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)' }}>
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '8px', maxHeight: '240px', overflowY: 'auto', zIndex: 50, boxShadow: theme.shadowLg }}>
             {options.map((option, i) => (
-              <div key={option} onClick={() => toggleOption(option)} style={{ padding: '11px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', background: selected.includes(option) ? 'rgba(249, 115, 22, 0.15)' : 'transparent', color: '#FAFAFA', fontSize: '13px', fontWeight: 500, borderBottom: i < options.length - 1 ? '1px solid rgba(255, 255, 255, 0.04)' : 'none', transition: 'background 0.15s ease' }}>
-                <span style={{ width: '18px', height: '18px', border: selected.includes(option) ? 'none' : '2px solid rgba(255, 255, 255, 0.2)', borderRadius: '5px', background: selected.includes(option) ? '#F97316' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s ease', flexShrink: 0 }}>
+              <div key={option} onClick={() => toggleOption(option)}
+                style={{ padding: '10px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', background: selected.includes(option) ? theme.accentMuted : 'transparent', color: theme.textPrimary, fontSize: '14px', fontWeight: 400, borderBottom: i < options.length - 1 ? `1px solid ${theme.border}` : 'none', transition: 'background 0.15s ease' }}
+                onMouseEnter={(e) => { if (!selected.includes(option)) e.target.style.background = theme.bgTertiary; }}
+                onMouseLeave={(e) => { if (!selected.includes(option)) e.target.style.background = 'transparent'; }}>
+                <span style={{ width: '18px', height: '18px', border: selected.includes(option) ? 'none' : `1.5px solid ${theme.borderDark}`, borderRadius: '4px', background: selected.includes(option) ? theme.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s ease', flexShrink: 0 }}>
                   {selected.includes(option) && <span style={{ color: 'white' }}>{Icons.check}</span>}
                 </span>
                 {option}
@@ -337,20 +366,21 @@ const Select = ({ label, options, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <div style={{ position: 'relative' }}>
-      {label && <label style={{ display: 'block', color: '#A3A3A3', fontSize: '11px', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>{label}</label>}
+      {label && <label style={{ display: 'block', color: theme.textSecondary, fontSize: '12px', marginBottom: '8px', fontWeight: 500 }}>{label}</label>}
       <button onClick={() => setIsOpen(!isOpen)}
-        style={{ width: '100%', padding: '12px 14px', background: 'rgba(255, 255, 255, 0.03)', border: isOpen ? '1px solid rgba(249, 115, 22, 0.5)' : '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: value ? '#FAFAFA' : '#737373', fontSize: '13px', fontWeight: 500, textAlign: 'left', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s ease' }}>
+        style={{ width: '100%', padding: '12px 16px', background: theme.bgSecondary, border: `1px solid ${isOpen ? theme.accent : theme.border}`, borderRadius: '8px', color: value ? theme.textPrimary : theme.textMuted, fontSize: '14px', fontWeight: 400, textAlign: 'left', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s ease', boxShadow: isOpen ? theme.shadowMd : theme.shadow }}>
         {value || placeholder}
-        <span style={{ color: '#737373', transition: 'transform 0.2s ease', transform: isOpen ? 'rotate(180deg)' : 'rotate(0)' }}>{Icons.chevronDown}</span>
+        <span style={{ color: theme.textMuted, transition: 'transform 0.2s ease', transform: isOpen ? 'rotate(180deg)' : 'rotate(0)' }}>{Icons.chevronDown}</span>
       </button>
       {isOpen && (
         <>
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }} onClick={() => setIsOpen(false)} />
-          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '6px', background: 'rgba(0, 0, 0, 0.98)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', maxHeight: '220px', overflowY: 'auto', zIndex: 50, boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)' }}>
-            <div onClick={() => { onChange(null); setIsOpen(false); }} style={{ padding: '11px 14px', cursor: 'pointer', background: !value ? 'rgba(249, 115, 22, 0.15)' : 'transparent', color: '#737373', fontSize: '13px', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>{placeholder}</div>
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '8px', maxHeight: '240px', overflowY: 'auto', zIndex: 50, boxShadow: theme.shadowLg }}>
+            <div onClick={() => { onChange(null); setIsOpen(false); }}
+              style={{ padding: '10px 16px', cursor: 'pointer', background: !value ? theme.accentMuted : 'transparent', color: theme.textMuted, fontSize: '14px', fontWeight: 400, borderBottom: `1px solid ${theme.border}` }}>{placeholder}</div>
             {options.map((option, i) => (
               <div key={typeof option === 'object' ? option.label : option} onClick={() => { onChange(typeof option === 'object' ? option.label : option); setIsOpen(false); }}
-                style={{ padding: '11px 14px', cursor: 'pointer', background: (typeof option === 'object' ? option.label : option) === value ? 'rgba(249, 115, 22, 0.15)' : 'transparent', color: '#FAFAFA', fontSize: '13px', fontWeight: 500, borderBottom: i < options.length - 1 ? '1px solid rgba(255, 255, 255, 0.04)' : 'none', transition: 'background 0.15s ease' }}>
+                style={{ padding: '10px 16px', cursor: 'pointer', background: (typeof option === 'object' ? option.label : option) === value ? theme.accentMuted : 'transparent', color: theme.textPrimary, fontSize: '14px', fontWeight: 400, borderBottom: i < options.length - 1 ? `1px solid ${theme.border}` : 'none', transition: 'background 0.15s ease' }}>
                 {typeof option === 'object' ? option.label : option}
               </div>
             ))}
@@ -363,13 +393,13 @@ const Select = ({ label, options, value, onChange, placeholder }) => {
 
 const SignalCard = ({ signal, enabled, onChange }) => (
   <div onClick={() => onChange(!enabled)}
-    style={{ padding: '16px 18px', background: enabled ? 'rgba(249, 115, 22, 0.1)' : 'rgba(255, 255, 255, 0.02)', border: enabled ? '1px solid rgba(249, 115, 22, 0.4)' : '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '16px', transition: 'all 0.2s ease', boxShadow: enabled ? '0 4px 20px rgba(249, 115, 22, 0.15)' : 'none' }}>
-    <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: enabled ? '#F97316' : 'rgba(255, 255, 255, 0.06)', color: enabled ? 'white' : '#A3A3A3', fontSize: signal.icon.length > 1 ? '17px' : '20px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s ease', boxShadow: enabled ? '0 4px 12px rgba(249, 115, 22, 0.3)' : 'none' }}>{signal.icon}</div>
+    style={{ padding: '14px 16px', background: enabled ? theme.accentMuted : theme.bgSecondary, border: `1px solid ${enabled ? theme.accent : theme.border}`, borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '14px', transition: 'all 0.2s ease', boxShadow: enabled ? theme.shadowMd : theme.shadow }}>
+    <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: enabled ? theme.accent : theme.bgTertiary, color: enabled ? 'white' : theme.textSecondary, fontSize: signal.icon.length > 1 ? '14px' : '18px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s ease' }}>{signal.icon}</div>
     <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ color: enabled ? '#FAFAFA' : '#A3A3A3', fontSize: '14px', fontWeight: 600, marginBottom: '6px', letterSpacing: '-0.2px', transition: 'color 0.2s ease' }}>{signal.label}</div>
-      <div style={{ color: '#737373', fontSize: '12px', lineHeight: '1.5' }}>{signal.description}</div>
+      <div style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 500, marginBottom: '4px', transition: 'color 0.2s ease' }}>{signal.label}</div>
+      <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: '1.5' }}>{signal.description}</div>
     </div>
-    <div style={{ width: '22px', height: '22px', borderRadius: '6px', border: enabled ? 'none' : '2px solid rgba(255, 255, 255, 0.15)', background: enabled ? '#F97316' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '4px', transition: 'all 0.2s ease', boxShadow: enabled ? '0 2px 8px rgba(249, 115, 22, 0.3)' : 'none' }}>
+    <div style={{ width: '20px', height: '20px', borderRadius: '4px', border: enabled ? 'none' : `1.5px solid ${theme.borderDark}`, background: enabled ? theme.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px', transition: 'all 0.2s ease' }}>
       {enabled && <span style={{ color: 'white' }}>{Icons.check}</span>}
     </div>
   </div>
@@ -1020,42 +1050,42 @@ const SAIScraper = () => {
   const renderScraperPage = () => (
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
       {/* Left Panel */}
-      <div style={{ width: '420px', borderRight: '1px solid rgba(255, 255, 255, 0.06)', display: 'flex', flexDirection: 'column', background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 15, 26, 0.98) 100%)' }}>
+      <div style={{ width: '420px', borderRight: `1px solid ${theme.border}`, display: 'flex', flexDirection: 'column', background: theme.bgSecondary }}>
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 0 20px 0' }}>
           {/* n8n Toggle */}
-          <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255, 255, 255, 0.02)' }}>
+          <div style={{ padding: '20px 24px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: theme.bgTertiary }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: useN8n ? '#F97316' : '#475569', boxShadow: useN8n ? '0 0 12px rgba(16, 185, 129, 0.5)' : 'none', transition: 'all 0.3s ease' }} />
-              <span style={{ color: useN8n ? '#F1F5F9' : '#94A3B8', fontSize: '13px', fontWeight: 600, letterSpacing: '-0.2px' }}>Live Scraping</span>
-              {useN8n && <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#FB923C', padding: '3px 10px', borderRadius: '100px', fontSize: '10px', fontWeight: 700, border: '1px solid rgba(16, 185, 129, 0.2)', letterSpacing: '0.5px' }}>ACTIVE</span>}
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: useN8n ? theme.accent : theme.textMuted, boxShadow: useN8n ? `0 0 12px ${theme.accentMuted}` : 'none', transition: 'all 0.3s ease' }} />
+              <span style={{ color: useN8n ? theme.textPrimary : theme.textSecondary, fontSize: '13px', fontWeight: 600, letterSpacing: '-0.2px' }}>Live Scraping</span>
+              {useN8n && <span style={{ background: theme.accentMuted, color: theme.accent, padding: '3px 10px', borderRadius: '100px', fontSize: '10px', fontWeight: 700, border: `1px solid ${theme.accent}`, letterSpacing: '0.5px' }}>ACTIVE</span>}
             </div>
             <button
               onClick={() => setUseN8n(!useN8n)}
               style={{
                 width: '48px', height: '26px', borderRadius: '13px', border: 'none',
-                background: useN8n ? 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)' : 'rgba(255, 255, 255, 0.1)',
+                background: useN8n ? `linear-gradient(135deg, ${theme.accent} 0%, ${theme.accentLight} 100%)` : theme.borderDark,
                 cursor: 'pointer', position: 'relative', transition: 'all 0.3s ease',
-                boxShadow: useN8n ? '0 2px 8px rgba(16, 185, 129, 0.3)' : 'inset 0 1px 3px rgba(0, 0, 0, 0.3)'
+                boxShadow: useN8n ? `0 2px 8px ${theme.accentMuted}` : 'inset 0 1px 3px rgba(0, 0, 0, 0.1)'
               }}
             >
               <div style={{
                 width: '20px', height: '20px', borderRadius: '50%', background: 'white',
                 position: 'absolute', top: '3px', left: useN8n ? '25px' : '3px', transition: 'left 0.2s ease',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)'
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.15)'
               }} />
             </button>
           </div>
 
           {/* ICP Filters - Tabbed Interface */}
-          <div style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+          <div style={{ borderBottom: `1px solid ${theme.border}` }}>
             {/* Header */}
             <div style={{ padding: '20px 24px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(249, 115, 22, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#F97316' }}>{Icons.target}</div>
-                <span style={{ color: '#F8FAFC', fontSize: '14px', fontWeight: 700, letterSpacing: '-0.3px' }}>ICP Filters</span>
-                {activeIcpCount > 0 && <span style={{ background: '#F97316', color: 'white', padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 700 }}>{activeIcpCount}</span>}
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: theme.accentMuted, display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.accent }}>{Icons.target}</div>
+                <span style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 700, letterSpacing: '-0.3px' }}>ICP Filters</span>
+                {activeIcpCount > 0 && <span style={{ background: theme.accent, color: 'white', padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 700 }}>{activeIcpCount}</span>}
               </div>
-              {activeIcpCount > 0 && <button onClick={handleClearFilters} style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '6px', padding: '6px 12px', color: '#A3A3A3', fontSize: '11px', cursor: 'pointer', fontWeight: 500 }}>Clear all</button>}
+              {activeIcpCount > 0 && <button onClick={handleClearFilters} style={{ background: theme.bgTertiary, border: `1px solid ${theme.border}`, borderRadius: '6px', padding: '6px 12px', color: theme.textSecondary, fontSize: '11px', cursor: 'pointer', fontWeight: 500 }}>Clear all</button>}
             </div>
 
             {/* Filter Tabs */}
@@ -1071,7 +1101,7 @@ const SAIScraper = () => {
                 { id: 'advanced', label: 'Advanced', icon: '~' }
               ].map(tab => (
                 <button key={tab.id} onClick={() => setActiveFilterTab(tab.id)}
-                  style={{ padding: '8px 12px', background: activeFilterTab === tab.id ? '#F97316' : 'rgba(255, 255, 255, 0.03)', border: activeFilterTab === tab.id ? 'none' : '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', color: activeFilterTab === tab.id ? 'white' : '#A3A3A3', fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', transition: 'all 0.2s ease' }}>
+                  style={{ padding: '8px 12px', background: activeFilterTab === tab.id ? theme.accent : theme.bgTertiary, border: activeFilterTab === tab.id ? 'none' : `1px solid ${theme.border}`, borderRadius: '8px', color: activeFilterTab === tab.id ? 'white' : theme.textSecondary, fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', transition: 'all 0.2s ease' }}>
                   <span style={{ fontWeight: 700 }}>{tab.icon}</span> {tab.label}
                 </button>
               ))}
@@ -1146,13 +1176,13 @@ const SAIScraper = () => {
               {/* INTENT SIGNALS */}
               {activeFilterTab === 'intent' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <p style={{ color: '#737373', fontSize: '12px', marginBottom: '4px' }}>Target companies showing buying intent</p>
+                  <p style={{ color: theme.textMuted, fontSize: '12px', marginBottom: '4px' }}>Target companies showing buying intent</p>
                   <MultiSelect label="Intent Signals" options={INTENT_SIGNALS.map(s => s.label)} selected={icpFilters.intentSignals} onChange={(v) => setIcpFilters({ ...icpFilters, intentSignals: v })} placeholder="Any signal" />
                   <div style={{ marginTop: '8px' }}>
                     {INTENT_SIGNALS.filter(s => icpFilters.intentSignals.includes(s.label)).map(signal => (
-                      <div key={signal.id} style={{ padding: '10px 12px', background: 'rgba(249, 115, 22, 0.1)', border: '1px solid rgba(249, 115, 22, 0.2)', borderRadius: '8px', marginBottom: '8px' }}>
-                        <div style={{ color: '#FAFAFA', fontSize: '12px', fontWeight: 600 }}>{signal.label}</div>
-                        <div style={{ color: '#A3A3A3', fontSize: '11px', marginTop: '4px' }}>{signal.description}</div>
+                      <div key={signal.id} style={{ padding: '10px 12px', background: theme.accentMuted, border: `1px solid ${theme.accent}`, borderRadius: '8px', marginBottom: '8px' }}>
+                        <div style={{ color: theme.textPrimary, fontSize: '12px', fontWeight: 600 }}>{signal.label}</div>
+                        <div style={{ color: theme.textSecondary, fontSize: '11px', marginTop: '4px' }}>{signal.description}</div>
                       </div>
                     ))}
                   </div>
@@ -1162,28 +1192,28 @@ const SAIScraper = () => {
               {/* ADVANCED */}
               {activeFilterTab === 'advanced' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <p style={{ color: '#737373', fontSize: '12px', marginBottom: '4px' }}>Keywords, lookalikes, and exclusions</p>
+                  <p style={{ color: theme.textMuted, fontSize: '12px', marginBottom: '4px' }}>Keywords, lookalikes, and exclusions</p>
                   <div>
-                    <label style={{ display: 'block', color: '#A3A3A3', fontSize: '11px', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Keywords (comma separated)</label>
+                    <label style={{ display: 'block', color: theme.textSecondary, fontSize: '11px', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Keywords (comma separated)</label>
                     <input type="text" placeholder="e.g., AI-powered, cloud-native, fast-growing"
-                      style={{ width: '100%', padding: '12px 14px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: '#FAFAFA', fontSize: '13px', outline: 'none' }}
+                      style={{ width: '100%', padding: '12px 14px', background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '10px', color: theme.textPrimary, fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
                       value={icpFilters.keywords.join(', ')}
                       onChange={(e) => setIcpFilters({ ...icpFilters, keywords: e.target.value.split(',').map(k => k.trim()).filter(k => k) })}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', color: '#A3A3A3', fontSize: '11px', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Lookalike Domains</label>
+                    <label style={{ display: 'block', color: theme.textSecondary, fontSize: '11px', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Lookalike Domains</label>
                     <input type="text" placeholder="e.g., stripe.com, hubspot.com"
-                      style={{ width: '100%', padding: '12px 14px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: '#FAFAFA', fontSize: '13px', outline: 'none' }}
+                      style={{ width: '100%', padding: '12px 14px', background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '10px', color: theme.textPrimary, fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
                       value={icpFilters.lookalikeDomains.join(', ')}
                       onChange={(e) => setIcpFilters({ ...icpFilters, lookalikeDomains: e.target.value.split(',').map(k => k.trim()).filter(k => k) })}
                     />
-                    <p style={{ color: '#737373', fontSize: '11px', marginTop: '6px' }}>Find companies similar to these domains</p>
+                    <p style={{ color: theme.textMuted, fontSize: '11px', marginTop: '6px' }}>Find companies similar to these domains</p>
                   </div>
                   <div>
-                    <label style={{ display: 'block', color: '#A3A3A3', fontSize: '11px', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Exclude Domains</label>
+                    <label style={{ display: 'block', color: theme.textSecondary, fontSize: '11px', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Exclude Domains</label>
                     <input type="text" placeholder="e.g., competitor.com, existing-customer.com"
-                      style={{ width: '100%', padding: '12px 14px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: '#FAFAFA', fontSize: '13px', outline: 'none' }}
+                      style={{ width: '100%', padding: '12px 14px', background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '10px', color: theme.textPrimary, fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
                       value={icpFilters.excludeDomains.join(', ')}
                       onChange={(e) => setIcpFilters({ ...icpFilters, excludeDomains: e.target.value.split(',').map(k => k.trim()).filter(k => k) })}
                     />
@@ -1195,13 +1225,13 @@ const SAIScraper = () => {
           </div>
 
           {/* Signal Filters */}
-          <div style={{ padding: '24px', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+          <div style={{ padding: '24px', borderBottom: `1px solid ${theme.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FB923C' }}>{Icons.zap}</div>
-              <span style={{ color: '#F8FAFC', fontSize: '14px', fontWeight: 700, letterSpacing: '-0.3px' }}>Buying Signals</span>
-              {activeSignalCount > 0 && <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#FB923C', padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 700, border: '1px solid rgba(16, 185, 129, 0.2)' }}>{activeSignalCount} active</span>}
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: theme.accentMuted, display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.accent }}>{Icons.zap}</div>
+              <span style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 700, letterSpacing: '-0.3px' }}>Buying Signals</span>
+              {activeSignalCount > 0 && <span style={{ background: theme.accentMuted, color: theme.accent, padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 700, border: `1px solid ${theme.accent}` }}>{activeSignalCount} active</span>}
             </div>
-            <p style={{ color: '#64748B', fontSize: '12px', marginBottom: '18px', marginLeft: '42px', lineHeight: '1.5' }}>Find companies showing these intent signals</p>
+            <p style={{ color: theme.textMuted, fontSize: '12px', marginBottom: '18px', marginLeft: '42px', lineHeight: '1.5' }}>Find companies showing these intent signals</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {SIGNAL_TYPES.map((signal) => <SignalCard key={signal.id} signal={signal} enabled={enabledSignals[signal.id]} onChange={(v) => setEnabledSignals({ ...enabledSignals, [signal.id]: v })} />)}
             </div>
@@ -1210,55 +1240,55 @@ const SAIScraper = () => {
           {/* Search Settings */}
           <div style={{ padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FB923C' }}>{Icons.sliders}</div>
-              <span style={{ color: '#F8FAFC', fontSize: '14px', fontWeight: 700, letterSpacing: '-0.3px' }}>Search Settings</span>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: theme.accentMuted, display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.accent }}>{Icons.sliders}</div>
+              <span style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 700, letterSpacing: '-0.3px' }}>Search Settings</span>
             </div>
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', color: '#94A3B8', fontSize: '11px', marginBottom: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Max Results</label>
+              <label style={{ display: 'block', color: theme.textSecondary, fontSize: '11px', marginBottom: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Max Results</label>
               <div style={{ display: 'flex', gap: '8px' }}>
                 {[10, 25, 50, 100].map(num => (
-                  <button key={num} onClick={() => setMaxResults(num)} style={{ flex: 1, padding: '12px', background: maxResults === num ? 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)' : 'rgba(255, 255, 255, 0.03)', border: maxResults === num ? 'none' : '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', color: maxResults === num ? 'white' : '#94A3B8', fontSize: '13px', fontWeight: maxResults === num ? 700 : 500, cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: maxResults === num ? '0 2px 8px rgba(59, 130, 246, 0.3)' : 'none' }}>{num}</button>
+                  <button key={num} onClick={() => setMaxResults(num)} style={{ flex: 1, padding: '12px', background: maxResults === num ? theme.accent : theme.bgTertiary, border: maxResults === num ? 'none' : `1px solid ${theme.border}`, borderRadius: '8px', color: maxResults === num ? 'white' : theme.textSecondary, fontSize: '13px', fontWeight: maxResults === num ? 700 : 500, cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: maxResults === num ? theme.shadowMd : 'none' }}>{num}</button>
                 ))}
               </div>
             </div>
             <div>
-              <label style={{ display: 'block', color: '#94A3B8', fontSize: '11px', marginBottom: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Minimum Score: <span style={{ color: '#FB923C', fontWeight: 700 }}>{minScore}</span></label>
-              <input type="range" min="0" max="80" value={minScore} onChange={(e) => setMinScore(Number(e.target.value))} style={{ width: '100%' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B', fontSize: '10px', marginTop: '8px', fontWeight: 500 }}><span>All results</span><span>High intent only</span></div>
+              <label style={{ display: 'block', color: theme.textSecondary, fontSize: '11px', marginBottom: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Minimum Score: <span style={{ color: theme.accent, fontWeight: 700 }}>{minScore}</span></label>
+              <input type="range" min="0" max="80" value={minScore} onChange={(e) => setMinScore(Number(e.target.value))} style={{ width: '100%', accentColor: theme.accent }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: theme.textMuted, fontSize: '10px', marginTop: '8px', fontWeight: 500 }}><span>All results</span><span>High intent only</span></div>
             </div>
           </div>
         </div>
 
         {/* Run Button */}
-        <div style={{ padding: '24px', borderTop: '1px solid rgba(255, 255, 255, 0.06)', background: 'rgba(0, 0, 0, 0.2)' }}>
+        <div style={{ padding: '24px', borderTop: `1px solid ${theme.border}`, background: theme.bgTertiary }}>
           {!canStartScraping && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: '10px', marginBottom: '14px' }}>
-              <span style={{ color: '#F87171' }}>{Icons.alertCircle}</span>
-              <span style={{ color: '#FDA4AF', fontSize: '13px', fontWeight: 500 }}>Select at least one signal to search</span>
+              <span style={{ color: '#DC2626' }}>{Icons.alertCircle}</span>
+              <span style={{ color: '#DC2626', fontSize: '13px', fontWeight: 500 }}>Select at least one signal to search</span>
             </div>
           )}
           {n8nError && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: '10px', marginBottom: '14px' }}>
-              <span style={{ color: '#F87171' }}>{Icons.alertCircle}</span>
-              <span style={{ color: '#FDA4AF', fontSize: '13px', fontWeight: 500 }}>{n8nError}</span>
+              <span style={{ color: '#DC2626' }}>{Icons.alertCircle}</span>
+              <span style={{ color: '#DC2626', fontSize: '13px', fontWeight: 500 }}>{n8nError}</span>
             </div>
           )}
           {isRunning ? (
             <div>
               <div style={{ marginBottom: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                  <span style={{ color: '#E2E8F0', fontSize: '13px', fontWeight: 500 }}>{currentStatus}</span>
-                  <span style={{ color: '#FB923C', fontSize: '13px', fontWeight: 700 }}>{Math.round(progress)}%</span>
+                  <span style={{ color: theme.textPrimary, fontSize: '13px', fontWeight: 500 }}>{currentStatus}</span>
+                  <span style={{ color: theme.accent, fontSize: '13px', fontWeight: 700 }}>{Math.round(progress)}%</span>
                 </div>
-                <div style={{ background: 'rgba(255, 255, 255, 0.05)', borderRadius: '100px', height: '8px', overflow: 'hidden' }}>
-                  <div style={{ width: `${progress}%`, height: '100%', background: 'linear-gradient(90deg, #F97316 0%, #F97316 100%)', borderRadius: '100px', transition: 'width 0.3s ease', boxShadow: '0 0 20px rgba(59, 130, 246, 0.4)' }} />
+                <div style={{ background: theme.border, borderRadius: '100px', height: '8px', overflow: 'hidden' }}>
+                  <div style={{ width: `${progress}%`, height: '100%', background: `linear-gradient(90deg, ${theme.accent} 0%, ${theme.accentLight} 100%)`, borderRadius: '100px', transition: 'width 0.3s ease' }} />
                 </div>
-                <div style={{ color: '#64748B', fontSize: '12px', marginTop: '10px', fontWeight: 500 }}>{companiesFound} companies scanned</div>
+                <div style={{ color: theme.textMuted, fontSize: '12px', marginTop: '10px', fontWeight: 500 }}>{companiesFound} companies scanned</div>
               </div>
-              <button onClick={handleStopScrape} style={{ width: '100%', padding: '16px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '12px', color: '#F87171', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.2s ease' }}>{Icons.stop} Stop Scraping</button>
+              <button onClick={handleStopScrape} style={{ width: '100%', padding: '16px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '12px', color: '#DC2626', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.2s ease' }}>{Icons.stop} Stop Scraping</button>
             </div>
           ) : (
-            <button onClick={handleStartScrape} disabled={!canStartScraping} style={{ width: '100%', padding: '18px', background: !canStartScraping ? 'rgba(255, 255, 255, 0.05)' : 'linear-gradient(135deg, #F97316 0%, #F97316 100%)', border: 'none', borderRadius: '12px', color: !canStartScraping ? '#64748B' : 'white', fontSize: '15px', fontWeight: 700, cursor: !canStartScraping ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: canStartScraping ? '0 4px 20px rgba(59, 130, 246, 0.35), 0 0 40px rgba(139, 92, 246, 0.15)' : 'none', transition: 'all 0.3s ease', letterSpacing: '-0.3px' }}>
+            <button onClick={handleStartScrape} disabled={!canStartScraping} style={{ width: '100%', padding: '18px', background: !canStartScraping ? theme.borderDark : `linear-gradient(135deg, ${theme.accent} 0%, ${theme.accentLight} 100%)`, border: 'none', borderRadius: '12px', color: !canStartScraping ? theme.textMuted : 'white', fontSize: '15px', fontWeight: 700, cursor: !canStartScraping ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: canStartScraping ? theme.shadowLg : 'none', transition: 'all 0.3s ease', letterSpacing: '-0.3px' }}>
               {Icons.search} Find Companies {useN8n && <span style={{ opacity: 0.8, fontWeight: 500 }}>(Live)</span>}
             </button>
           )}
@@ -1266,76 +1296,75 @@ const SAIScraper = () => {
       </div>
 
       {/* Right Panel */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'transparent', position: 'relative' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: theme.bgPrimary, position: 'relative' }}>
         {/* Header */}
-        <div style={{ padding: '24px 28px', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255, 255, 255, 0.02)' }}>
+        <div style={{ padding: '24px 28px', borderBottom: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: theme.bgSecondary }}>
           <div>
-            <div style={{ color: '#F8FAFC', fontSize: '20px', fontWeight: 700, letterSpacing: '-0.4px' }}>Discovered Companies</div>
-            <div style={{ color: '#64748B', fontSize: '13px', marginTop: '6px', fontWeight: 500 }}>
+            <div style={{ color: theme.textPrimary, fontSize: '20px', fontWeight: 700, letterSpacing: '-0.4px' }}>Discovered Companies</div>
+            <div style={{ color: theme.textMuted, fontSize: '13px', marginTop: '6px', fontWeight: 500 }}>
               {results.length > 0 ? (
-                <><span style={{ color: '#E2E8F0' }}>{results.length}</span> companies found <span style={{ color: '#475569' }}>•</span> Avg score: <span style={{ color: '#FB923C' }}>{Math.round(results.reduce((a, r) => a + r.score, 0) / results.length)}</span></>
+                <><span style={{ color: theme.textPrimary }}>{results.length}</span> companies found <span style={{ color: theme.textMuted }}>•</span> Avg score: <span style={{ color: theme.accent }}>{Math.round(results.reduce((a, r) => a + r.score, 0) / results.length)}</span></>
               ) : 'Configure filters and start searching'}
             </div>
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={() => { setResults([]); setSelectedIds(new Set()); }} disabled={results.length === 0} style={{ padding: '10px 18px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: results.length === 0 ? '#475569' : '#94A3B8', fontSize: '13px', fontWeight: 600, cursor: results.length === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.refresh} Clear</button>
-            <button onClick={handleExport} disabled={results.length === 0} style={{ padding: '10px 20px', background: results.length > 0 ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255, 255, 255, 0.03)', border: results.length > 0 ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: results.length === 0 ? '#475569' : '#FB923C', fontSize: '13px', fontWeight: 600, cursor: results.length === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.download} Export {selectedIds.size > 0 ? `(${selectedIds.size})` : ''}</button>
+            <button onClick={() => { setResults([]); setSelectedIds(new Set()); }} disabled={results.length === 0} style={{ padding: '10px 18px', background: theme.bgTertiary, border: `1px solid ${theme.border}`, borderRadius: '10px', color: results.length === 0 ? theme.textMuted : theme.textSecondary, fontSize: '13px', fontWeight: 600, cursor: results.length === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.refresh} Clear</button>
+            <button onClick={handleExport} disabled={results.length === 0} style={{ padding: '10px 20px', background: results.length > 0 ? theme.accentMuted : theme.bgTertiary, border: results.length > 0 ? `1px solid ${theme.accent}` : `1px solid ${theme.border}`, borderRadius: '10px', color: results.length === 0 ? theme.textMuted : theme.accent, fontSize: '13px', fontWeight: 600, cursor: results.length === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.download} Export {selectedIds.size > 0 ? `(${selectedIds.size})` : ''}</button>
           </div>
         </div>
 
         {/* Results Table */}
         <div style={{ flex: 1, overflow: 'auto', padding: '24px 28px' }}>
           {results.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748B' }}>
-              <div style={{ width: '80px', height: '80px', borderRadius: '20px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px' }}>
-                <span style={{ color: '#FB923C', transform: 'scale(2)' }}>{Icons.database}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: theme.textMuted }}>
+              <div style={{ width: '80px', height: '80px', borderRadius: '20px', background: theme.accentMuted, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px' }}>
+                <span style={{ color: theme.accent, transform: 'scale(2)' }}>{Icons.database}</span>
               </div>
-              <div style={{ fontSize: '18px', marginBottom: '10px', color: '#E2E8F0', fontWeight: 600, letterSpacing: '-0.3px' }}>No companies discovered yet</div>
-              <div style={{ fontSize: '14px', textAlign: 'center', maxWidth: '380px', lineHeight: '1.6', color: '#64748B' }}>Configure your ICP filters and signal requirements, then click "Find Companies" to start discovering high-intent leads</div>
+              <div style={{ fontSize: '18px', marginBottom: '10px', color: theme.textPrimary, fontWeight: 600, letterSpacing: '-0.3px' }}>No companies discovered yet</div>
+              <div style={{ fontSize: '14px', textAlign: 'center', maxWidth: '380px', lineHeight: '1.6', color: theme.textMuted }}>Configure your ICP filters and signal requirements, then click "Find Companies" to start discovering high-intent leads</div>
             </div>
           ) : (
-            <div style={{ background: 'rgba(17, 24, 39, 0.6)', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.06)', overflow: 'hidden', boxShadow: '0 4px 24px rgba(0, 0, 0, 0.2)' }}>
+            <div style={{ background: theme.bgSecondary, borderRadius: '14px', border: `1px solid ${theme.border}`, overflow: 'hidden', boxShadow: theme.shadowMd }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.06)', background: 'rgba(255, 255, 255, 0.02)' }}>
+                  <tr style={{ borderBottom: `1px solid ${theme.border}`, background: theme.bgTertiary }}>
                     <th style={{ padding: '16px 18px', textAlign: 'left', width: '50px' }}>
                       <Checkbox checked={allSelected} indeterminate={someSelected} onChange={toggleSelectAll} />
                     </th>
-                    <th style={{ padding: '16px 18px', textAlign: 'left', color: '#64748B', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Company</th>
-                    <th style={{ padding: '16px 18px', textAlign: 'left', color: '#64748B', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Score</th>
-                    <th style={{ padding: '16px 18px', textAlign: 'left', color: '#64748B', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Signals</th>
-                    <th style={{ padding: '16px 18px', textAlign: 'left', color: '#64748B', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Why Now</th>
-                    <th style={{ padding: '16px 18px', textAlign: 'left', color: '#64748B', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Industry</th>
+                    <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Company</th>
+                    <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Score</th>
+                    <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Signals</th>
+                    <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Why Now</th>
+                    <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Industry</th>
                   </tr>
                 </thead>
                 <tbody>
                   {results.map((result, index) => (
-                    <tr key={result.id} style={{ borderBottom: index < results.length - 1 ? '1px solid rgba(255, 255, 255, 0.04)' : 'none', cursor: 'pointer', background: selectedIds.has(result.id) ? 'rgba(59, 130, 246, 0.08)' : 'transparent', transition: 'background 0.15s ease' }}>
+                    <tr key={result.id} style={{ borderBottom: index < results.length - 1 ? `1px solid ${theme.border}` : 'none', cursor: 'pointer', background: selectedIds.has(result.id) ? theme.accentMuted : 'transparent', transition: 'background 0.15s ease' }}>
                       <td style={{ padding: '18px' }} onClick={(e) => e.stopPropagation()}>
                         <Checkbox checked={selectedIds.has(result.id)} onChange={() => toggleSelect(result.id)} />
                       </td>
                       <td style={{ padding: '18px' }} onClick={() => setSelectedCompany(result)}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: result.score >= 70 ? '#F97316' : result.score >= 50 ? '#FB923C' : '#EF4444', boxShadow: result.score >= 70 ? '0 0 8px rgba(16, 185, 129, 0.5)' : result.score >= 50 ? '0 0 8px rgba(245, 158, 11, 0.5)' : 'none' }} />
+                          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: result.score >= 70 ? theme.accent : result.score >= 50 ? theme.accentLight : '#DC2626' }} />
                           <div>
-                            <div style={{ color: '#F8FAFC', fontSize: '14px', fontWeight: 600, letterSpacing: '-0.2px' }}>{result.name}</div>
-                            <div style={{ color: '#64748B', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>{result.domain} <span style={{ color: '#FB923C', opacity: 0.7 }}>{Icons.externalLink}</span></div>
+                            <div style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 600, letterSpacing: '-0.2px' }}>{result.name}</div>
+                            <div style={{ color: theme.textMuted, fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>{result.domain} <span style={{ color: theme.accent, opacity: 0.7 }}>{Icons.externalLink}</span></div>
                           </div>
                         </div>
                       </td>
                       <td style={{ padding: '18px' }} onClick={() => setSelectedCompany(result)}>
-                        <span style={{ background: result.score >= 70 ? 'rgba(16, 185, 129, 0.15)' : result.score >= 50 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)', color: result.score >= 70 ? '#FB923C' : result.score >= 50 ? '#FB923C' : '#F87171', padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 700, border: result.score >= 70 ? '1px solid rgba(16, 185, 129, 0.2)' : result.score >= 50 ? '1px solid rgba(245, 158, 11, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)' }}>{result.score}</span>
+                        <span style={{ background: result.score >= 70 ? theme.accentMuted : result.score >= 50 ? 'rgba(212, 175, 55, 0.15)' : 'rgba(220, 38, 38, 0.1)', color: result.score >= 70 ? theme.accent : result.score >= 50 ? theme.accentLight : '#DC2626', padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 700, border: result.score >= 70 ? `1px solid ${theme.accent}` : result.score >= 50 ? `1px solid ${theme.accentLight}` : '1px solid #DC2626' }}>{result.score}</span>
                       </td>
                       <td style={{ padding: '18px' }} onClick={() => setSelectedCompany(result)}>
                         <div style={{ display: 'flex', gap: '6px' }}>
                           {result.signals.map((signal, i) => {
-                            const config = SIGNAL_TYPES.find(s => s.id === signal);
-                            return <span key={i} style={{ width: '32px', height: '32px', borderRadius: '8px', background: `${config?.color}20` || 'rgba(100, 116, 139, 0.2)', border: `1px solid ${config?.color}30` || 'rgba(100, 116, 139, 0.3)', color: config?.color || '#64748B', fontSize: config?.icon.length > 1 ? '13px' : '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform 0.15s ease' }} title={config?.label}>{config?.icon}</span>;
+                            return <span key={i} style={{ width: '32px', height: '32px', borderRadius: '8px', background: theme.accentMuted, border: `1px solid ${theme.accent}`, color: theme.accent, fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform 0.15s ease' }} title={SIGNAL_TYPES.find(s => s.id === signal)?.label}>{SIGNAL_TYPES.find(s => s.id === signal)?.icon}</span>;
                           })}
                         </div>
                       </td>
-                      <td style={{ padding: '18px', color: '#CBD5E1', fontSize: '13px', fontWeight: 500, maxWidth: '200px' }} onClick={() => setSelectedCompany(result)}>{result.whyNow}</td>
-                      <td style={{ padding: '18px', color: '#94A3B8', fontSize: '13px', fontWeight: 500 }} onClick={() => setSelectedCompany(result)}>{result.industry}</td>
+                      <td style={{ padding: '18px', color: theme.textSecondary, fontSize: '13px', fontWeight: 500, maxWidth: '200px' }} onClick={() => setSelectedCompany(result)}>{result.whyNow}</td>
+                      <td style={{ padding: '18px', color: theme.textMuted, fontSize: '13px', fontWeight: 500 }} onClick={() => setSelectedCompany(result)}>{result.industry}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1346,32 +1375,32 @@ const SAIScraper = () => {
 
         {/* Stats Bar */}
         {results.length > 0 && (
-          <div style={{ padding: '20px 28px', borderTop: '1px solid rgba(255, 255, 255, 0.06)', display: 'flex', gap: '48px', background: 'rgba(255, 255, 255, 0.02)' }}>
+          <div style={{ padding: '20px 28px', borderTop: `1px solid ${theme.border}`, display: 'flex', gap: '48px', background: theme.bgSecondary }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ color: '#FB923C' }}>{Icons.users}</span>
+              <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: theme.accentMuted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ color: theme.accent }}>{Icons.users}</span>
               </div>
               <div>
-                <div style={{ color: '#64748B', fontSize: '11px', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 600 }}>Total Found</div>
-                <div style={{ color: '#F8FAFC', fontSize: '22px', fontWeight: 800, letterSpacing: '-0.5px' }}>{results.length}</div>
+                <div style={{ color: theme.textMuted, fontSize: '11px', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 600 }}>Total Found</div>
+                <div style={{ color: theme.textPrimary, fontSize: '22px', fontWeight: 800, letterSpacing: '-0.5px' }}>{results.length}</div>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ color: '#FB923C' }}>{Icons.zap}</span>
+              <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: theme.accentMuted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ color: theme.accent }}>{Icons.zap}</span>
               </div>
               <div>
-                <div style={{ color: '#64748B', fontSize: '11px', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 600 }}>High Intent (70+)</div>
-                <div style={{ color: '#FB923C', fontSize: '22px', fontWeight: 800, letterSpacing: '-0.5px' }}>{results.filter(r => r.score >= 70).length}</div>
+                <div style={{ color: theme.textMuted, fontSize: '11px', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 600 }}>High Intent (70+)</div>
+                <div style={{ color: theme.accent, fontSize: '22px', fontWeight: 800, letterSpacing: '-0.5px' }}>{results.filter(r => r.score >= 70).length}</div>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ color: '#FB923C' }}>{Icons.target}</span>
+              <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: theme.accentMuted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ color: theme.accent }}>{Icons.target}</span>
               </div>
               <div>
-                <div style={{ color: '#64748B', fontSize: '11px', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 600 }}>Avg. Score</div>
-                <div style={{ color: '#FB923C', fontSize: '22px', fontWeight: 800, letterSpacing: '-0.5px' }}>{Math.round(results.reduce((a, r) => a + r.score, 0) / results.length)}</div>
+                <div style={{ color: theme.textMuted, fontSize: '11px', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 600 }}>Avg. Score</div>
+                <div style={{ color: theme.accent, fontSize: '22px', fontWeight: 800, letterSpacing: '-0.5px' }}>{Math.round(results.reduce((a, r) => a + r.score, 0) / results.length)}</div>
               </div>
             </div>
           </div>
@@ -1379,30 +1408,30 @@ const SAIScraper = () => {
 
         {/* Bulk Action Bar */}
         {selectedIds.size > 0 && (
-          <div style={{ position: 'absolute', bottom: '100px', left: '50%', transform: 'translateX(-50%)', background: '#1E293B', border: '1px solid #334155', borderRadius: '12px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', zIndex: 50 }}>
-            <span style={{ color: '#F1F5F9', fontSize: '14px', fontWeight: 500 }}>{selectedIds.size} selected</span>
-            <div style={{ width: '1px', height: '24px', background: '#334155' }} />
+          <div style={{ position: 'absolute', bottom: '100px', left: '50%', transform: 'translateX(-50%)', background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '12px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: theme.shadowLg, zIndex: 50 }}>
+            <span style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 500 }}>{selectedIds.size} selected</span>
+            <div style={{ width: '1px', height: '24px', background: theme.border }} />
             <div style={{ position: 'relative' }}>
-              <button onClick={() => setShowBulkListPicker(!showBulkListPicker)} style={{ background: '#F97316', border: 'none', borderRadius: '8px', padding: '10px 16px', color: 'white', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button onClick={() => setShowBulkListPicker(!showBulkListPicker)} style={{ background: theme.accent, border: 'none', borderRadius: '8px', padding: '10px 16px', color: 'white', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {Icons.plus} Add to List {Icons.chevronDown}
               </button>
               {showBulkListPicker && (
                 <>
                   <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60 }} onClick={() => setShowBulkListPicker(false)} />
-                  <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: '8px', background: '#0F172A', border: '1px solid #334155', borderRadius: '10px', overflow: 'hidden', minWidth: '200px', zIndex: 70 }}>
+                  <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: '8px', background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '10px', overflow: 'hidden', minWidth: '200px', zIndex: 70, boxShadow: theme.shadowLg }}>
                     {lists.map(list => (
-                      <button key={list.id} onClick={() => handleBulkAddToList(list.id)} style={{ width: '100%', padding: '12px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid #1E293B', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left' }}>
+                      <button key={list.id} onClick={() => handleBulkAddToList(list.id)} style={{ width: '100%', padding: '12px 16px', background: 'transparent', border: 'none', borderBottom: `1px solid ${theme.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left' }}>
                         <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: list.color }} />
-                        <span style={{ color: '#E2E8F0', fontSize: '14px', flex: 1 }}>{list.name}</span>
-                        <span style={{ color: '#64748B', fontSize: '12px' }}>{list.leads.length}</span>
+                        <span style={{ color: theme.textPrimary, fontSize: '14px', flex: 1 }}>{list.name}</span>
+                        <span style={{ color: theme.textMuted, fontSize: '12px' }}>{list.leads.length}</span>
                       </button>
                     ))}
-                    <button onClick={() => { setShowBulkListPicker(false); setShowCreateList(true); }} style={{ width: '100%', padding: '12px 16px', background: '#1E293B', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: '#F97316', fontSize: '13px' }}>{Icons.plus} Create new list</button>
+                    <button onClick={() => { setShowBulkListPicker(false); setShowCreateList(true); }} style={{ width: '100%', padding: '12px 16px', background: theme.bgTertiary, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: theme.accent, fontSize: '13px' }}>{Icons.plus} Create new list</button>
                   </div>
                 </>
               )}
             </div>
-            <button onClick={() => setSelectedIds(new Set())} style={{ background: 'transparent', border: '1px solid #334155', borderRadius: '8px', padding: '10px 16px', color: '#94A3B8', fontSize: '13px', cursor: 'pointer' }}>Clear selection</button>
+            <button onClick={() => setSelectedIds(new Set())} style={{ background: 'transparent', border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '10px 16px', color: theme.textSecondary, fontSize: '13px', cursor: 'pointer' }}>Clear selection</button>
           </div>
         )}
       </div>
@@ -1411,63 +1440,63 @@ const SAIScraper = () => {
 
   // ==================== RENDER LISTS ====================
   const renderListsPage = () => (
-    <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
+    <div style={{ flex: 1, overflow: 'auto', padding: '24px', background: theme.bgPrimary }}>
       {selectedListId && selectedList ? (
         <div>
-          <button onClick={() => setSelectedListId(null)} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '20px', padding: 0 }}>{Icons.arrowLeft} Back to all lists</button>
+          <button onClick={() => setSelectedListId(null)} style={{ background: 'none', border: 'none', color: theme.textSecondary, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '20px', padding: 0 }}>{Icons.arrowLeft} Back to all lists</button>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: selectedList.color }} />
               {editingListId === selectedList.id ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input type="text" value={editingListName} onChange={(e) => setEditingListName(e.target.value)} autoFocus style={{ padding: '8px 12px', background: '#0F172A', border: '1px solid #F97316', borderRadius: '6px', color: '#F1F5F9', fontSize: '18px', fontWeight: 600 }} />
-                  <button onClick={() => handleRenameList(selectedList.id)} style={{ background: '#F97316', border: 'none', borderRadius: '6px', padding: '8px 12px', color: 'white', cursor: 'pointer' }}>{Icons.check}</button>
-                  <button onClick={() => setEditingListId(null)} style={{ background: '#334155', border: 'none', borderRadius: '6px', padding: '8px 12px', color: '#94A3B8', cursor: 'pointer' }}>{Icons.x}</button>
+                  <input type="text" value={editingListName} onChange={(e) => setEditingListName(e.target.value)} autoFocus style={{ padding: '8px 12px', background: theme.bgSecondary, border: `1px solid ${theme.accent}`, borderRadius: '6px', color: theme.textPrimary, fontSize: '18px', fontWeight: 600 }} />
+                  <button onClick={() => handleRenameList(selectedList.id)} style={{ background: theme.accent, border: 'none', borderRadius: '6px', padding: '8px 12px', color: 'white', cursor: 'pointer' }}>{Icons.check}</button>
+                  <button onClick={() => setEditingListId(null)} style={{ background: theme.bgTertiary, border: 'none', borderRadius: '6px', padding: '8px 12px', color: theme.textSecondary, cursor: 'pointer' }}>{Icons.x}</button>
                 </div>
               ) : (
-                <h2 style={{ color: '#F1F5F9', fontSize: '24px', fontWeight: 600, margin: 0 }}>{selectedList.name}</h2>
+                <h2 style={{ color: theme.textPrimary, fontSize: '24px', fontWeight: 600, margin: 0 }}>{selectedList.name}</h2>
               )}
-              <span style={{ color: '#64748B', fontSize: '14px' }}>{selectedList.leads.length} leads</span>
+              <span style={{ color: theme.textMuted, fontSize: '14px' }}>{selectedList.leads.length} leads</span>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => { setEditingListId(selectedList.id); setEditingListName(selectedList.name); }} style={{ background: '#1E293B', border: '1px solid #334155', borderRadius: '6px', padding: '8px 12px', color: '#94A3B8', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>{Icons.edit} Rename</button>
-              <button onClick={() => handleDeleteList(selectedList.id)} style={{ background: '#7F1D1D', border: 'none', borderRadius: '6px', padding: '8px 12px', color: '#FCA5A5', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>{Icons.trash} Delete List</button>
+              <button onClick={() => { setEditingListId(selectedList.id); setEditingListName(selectedList.name); }} style={{ background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '6px', padding: '8px 12px', color: theme.textSecondary, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>{Icons.edit} Rename</button>
+              <button onClick={() => handleDeleteList(selectedList.id)} style={{ background: 'rgba(220, 38, 38, 0.1)', border: '1px solid rgba(220, 38, 38, 0.3)', borderRadius: '6px', padding: '8px 12px', color: '#DC2626', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>{Icons.trash} Delete List</button>
             </div>
           </div>
           {selectedList.leads.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px', color: '#64748B' }}>
+            <div style={{ textAlign: 'center', padding: '60px', color: theme.textMuted }}>
               <div style={{ marginBottom: '12px', opacity: 0.5 }}>{Icons.users}</div>
               <div style={{ fontSize: '14px' }}>No leads in this list yet</div>
               <div style={{ fontSize: '12px', marginTop: '8px' }}>Add leads from the scraper results</div>
             </div>
           ) : (
-            <div style={{ background: '#1E293B', borderRadius: '10px', border: '1px solid #334155', overflow: 'hidden' }}>
+            <div style={{ background: theme.bgSecondary, borderRadius: '10px', border: `1px solid ${theme.border}`, overflow: 'hidden', boxShadow: theme.shadow }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #334155' }}>
-                    <th style={{ padding: '14px 16px', textAlign: 'left', color: '#64748B', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' }}>Company</th>
-                    <th style={{ padding: '14px 16px', textAlign: 'left', color: '#64748B', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' }}>Score</th>
-                    <th style={{ padding: '14px 16px', textAlign: 'left', color: '#64748B', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' }}>Industry</th>
-                    <th style={{ padding: '14px 16px', textAlign: 'left', color: '#64748B', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' }}>Actions</th>
+                  <tr style={{ borderBottom: `1px solid ${theme.border}`, background: theme.bgTertiary }}>
+                    <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' }}>Company</th>
+                    <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' }}>Score</th>
+                    <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' }}>Industry</th>
+                    <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {selectedList.leads.map((lead, index) => (
-                    <tr key={lead.id} style={{ borderBottom: index < selectedList.leads.length - 1 ? '1px solid #334155' : 'none' }}>
+                    <tr key={lead.id} style={{ borderBottom: index < selectedList.leads.length - 1 ? `1px solid ${theme.border}` : 'none' }}>
                       <td style={{ padding: '16px' }}>
-                        <div style={{ color: '#F1F5F9', fontSize: '14px', fontWeight: 500 }}>{lead.name}</div>
-                        <div style={{ color: '#64748B', fontSize: '12px' }}>{lead.domain}</div>
+                        <div style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 500 }}>{lead.name}</div>
+                        <div style={{ color: theme.textMuted, fontSize: '12px' }}>{lead.domain}</div>
                       </td>
                       <td style={{ padding: '16px' }}>
-                        <span style={{ background: lead.score >= 70 ? '#065F46' : lead.score >= 50 ? '#78350F' : '#7F1D1D', color: lead.score >= 70 ? '#FB923C' : lead.score >= 50 ? '#FCD34D' : '#FCA5A5', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: 600 }}>{lead.score}</span>
+                        <span style={{ background: lead.score >= 70 ? theme.accentMuted : lead.score >= 50 ? 'rgba(212, 175, 55, 0.15)' : 'rgba(220, 38, 38, 0.1)', color: lead.score >= 70 ? theme.accent : lead.score >= 50 ? theme.accentLight : '#DC2626', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: 600 }}>{lead.score}</span>
                       </td>
-                      <td style={{ padding: '16px', color: '#94A3B8', fontSize: '13px' }}>{lead.industry}</td>
+                      <td style={{ padding: '16px', color: theme.textSecondary, fontSize: '13px' }}>{lead.industry}</td>
                       <td style={{ padding: '16px' }}>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <div style={{ position: 'relative' }}>
-                            <button onClick={() => { setLeadToMove(lead); setShowMoveToList(true); }} style={{ background: 'transparent', border: '1px solid #334155', borderRadius: '4px', padding: '6px 10px', color: '#94A3B8', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>{Icons.move} Move</button>
+                            <button onClick={() => { setLeadToMove(lead); setShowMoveToList(true); }} style={{ background: 'transparent', border: `1px solid ${theme.border}`, borderRadius: '4px', padding: '6px 10px', color: theme.textSecondary, fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>{Icons.move} Move</button>
                           </div>
-                          <button onClick={() => handleRemoveFromList(selectedList.id, lead.id)} style={{ background: 'transparent', border: '1px solid #7F1D1D', borderRadius: '4px', padding: '6px 10px', color: '#FCA5A5', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>{Icons.trash} Remove</button>
+                          <button onClick={() => handleRemoveFromList(selectedList.id, lead.id)} style={{ background: 'transparent', border: '1px solid rgba(220, 38, 38, 0.3)', borderRadius: '4px', padding: '6px 10px', color: '#DC2626', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>{Icons.trash} Remove</button>
                         </div>
                       </td>
                     </tr>
@@ -1479,18 +1508,18 @@ const SAIScraper = () => {
           {/* Move to list modal */}
           {showMoveToList && leadToMove && (
             <>
-              <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100 }} onClick={() => { setShowMoveToList(false); setLeadToMove(null); }} />
-              <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: '#1E293B', border: '1px solid #334155', borderRadius: '12px', padding: '24px', minWidth: '300px', zIndex: 101 }}>
-                <h3 style={{ color: '#F1F5F9', fontSize: '16px', fontWeight: 600, marginBottom: '16px', margin: '0 0 16px 0' }}>Move to list</h3>
+              <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.3)', zIndex: 100 }} onClick={() => { setShowMoveToList(false); setLeadToMove(null); }} />
+              <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '12px', padding: '24px', minWidth: '300px', zIndex: 101, boxShadow: theme.shadowLg }}>
+                <h3 style={{ color: theme.textPrimary, fontSize: '16px', fontWeight: 600, marginBottom: '16px', margin: '0 0 16px 0' }}>Move to list</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {lists.filter(l => l.id !== selectedListId).map(list => (
-                    <button key={list.id} onClick={() => handleMoveToList(selectedListId, list.id, leadToMove)} style={{ width: '100%', padding: '12px 16px', background: '#0F172A', border: '1px solid #334155', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left' }}>
+                    <button key={list.id} onClick={() => handleMoveToList(selectedListId, list.id, leadToMove)} style={{ width: '100%', padding: '12px 16px', background: theme.bgTertiary, border: `1px solid ${theme.border}`, borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left' }}>
                       <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: list.color }} />
-                      <span style={{ color: '#E2E8F0', fontSize: '14px' }}>{list.name}</span>
+                      <span style={{ color: theme.textPrimary, fontSize: '14px' }}>{list.name}</span>
                     </button>
                   ))}
                 </div>
-                <button onClick={() => { setShowMoveToList(false); setLeadToMove(null); }} style={{ width: '100%', marginTop: '16px', padding: '10px', background: '#334155', border: 'none', borderRadius: '8px', color: '#94A3B8', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
+                <button onClick={() => { setShowMoveToList(false); setLeadToMove(null); }} style={{ width: '100%', marginTop: '16px', padding: '10px', background: theme.bgTertiary, border: 'none', borderRadius: '8px', color: theme.textSecondary, fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
               </div>
             </>
           )}
@@ -1498,19 +1527,19 @@ const SAIScraper = () => {
       ) : (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-            <h2 style={{ color: '#F1F5F9', fontSize: '24px', fontWeight: 600, margin: 0 }}>Lead Lists</h2>
-            <button onClick={() => setShowCreateList(true)} style={{ background: '#F97316', border: 'none', borderRadius: '8px', padding: '10px 16px', color: 'white', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>{Icons.plus} New List</button>
+            <h2 style={{ color: theme.textPrimary, fontSize: '24px', fontWeight: 600, margin: 0 }}>Lead Lists</h2>
+            <button onClick={() => setShowCreateList(true)} style={{ background: theme.accent, border: 'none', borderRadius: '8px', padding: '10px 16px', color: 'white', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>{Icons.plus} New List</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
             {lists.map(list => (
-              <div key={list.id} onClick={() => setSelectedListId(list.id)} style={{ background: '#1E293B', border: '1px solid #334155', borderRadius: '10px', padding: '20px', cursor: 'pointer', transition: 'border-color 0.2s' }}>
+              <div key={list.id} onClick={() => setSelectedListId(list.id)} style={{ background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '10px', padding: '20px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: theme.shadow }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                   <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: list.color }} />
-                  <span style={{ color: '#F1F5F9', fontSize: '16px', fontWeight: 600 }}>{list.name}</span>
+                  <span style={{ color: theme.textPrimary, fontSize: '16px', fontWeight: 600 }}>{list.name}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#64748B', fontSize: '13px' }}>{list.leads.length} leads</span>
-                  <span style={{ color: '#475569', fontSize: '12px' }}>Created {list.createdAt}</span>
+                  <span style={{ color: theme.textSecondary, fontSize: '13px' }}>{list.leads.length} leads</span>
+                  <span style={{ color: theme.textMuted, fontSize: '12px' }}>Created {list.createdAt}</span>
                 </div>
               </div>
             ))}
@@ -1520,13 +1549,13 @@ const SAIScraper = () => {
       {/* Create list modal */}
       {showCreateList && (
         <>
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100 }} onClick={() => setShowCreateList(false)} />
-          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: '#1E293B', border: '1px solid #334155', borderRadius: '12px', padding: '24px', minWidth: '320px', zIndex: 101 }}>
-            <h3 style={{ color: '#F1F5F9', fontSize: '16px', fontWeight: 600, marginBottom: '16px', margin: '0 0 16px 0' }}>Create new list</h3>
-            <input type="text" value={newListName} onChange={(e) => setNewListName(e.target.value)} placeholder="List name" autoFocus style={{ width: '100%', padding: '12px', background: '#0F172A', border: '1px solid #334155', borderRadius: '8px', color: '#F1F5F9', fontSize: '14px', marginBottom: '16px', boxSizing: 'border-box' }} />
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.3)', zIndex: 100 }} onClick={() => setShowCreateList(false)} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '12px', padding: '24px', minWidth: '320px', zIndex: 101, boxShadow: theme.shadowLg }}>
+            <h3 style={{ color: theme.textPrimary, fontSize: '16px', fontWeight: 600, marginBottom: '16px', margin: '0 0 16px 0' }}>Create new list</h3>
+            <input type="text" value={newListName} onChange={(e) => setNewListName(e.target.value)} placeholder="List name" autoFocus style={{ width: '100%', padding: '12px', background: theme.bgTertiary, border: `1px solid ${theme.border}`, borderRadius: '8px', color: theme.textPrimary, fontSize: '14px', marginBottom: '16px', boxSizing: 'border-box' }} />
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => setShowCreateList(false)} style={{ flex: 1, padding: '10px', background: '#334155', border: 'none', borderRadius: '8px', color: '#94A3B8', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleCreateList} disabled={!newListName.trim()} style={{ flex: 1, padding: '10px', background: newListName.trim() ? '#F97316' : '#334155', border: 'none', borderRadius: '8px', color: newListName.trim() ? 'white' : '#64748B', fontSize: '13px', cursor: newListName.trim() ? 'pointer' : 'not-allowed' }}>Create</button>
+              <button onClick={() => setShowCreateList(false)} style={{ flex: 1, padding: '10px', background: theme.bgTertiary, border: 'none', borderRadius: '8px', color: theme.textSecondary, fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleCreateList} disabled={!newListName.trim()} style={{ flex: 1, padding: '10px', background: newListName.trim() ? theme.accent : theme.bgTertiary, border: 'none', borderRadius: '8px', color: newListName.trim() ? 'white' : theme.textMuted, fontSize: '13px', cursor: newListName.trim() ? 'pointer' : 'not-allowed' }}>Create</button>
             </div>
           </div>
         </>
@@ -1539,68 +1568,68 @@ const SAIScraper = () => {
     if (!selectedCompany) return null;
     return (
       <>
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100 }} onClick={() => setSelectedCompany(null)} />
-        <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '480px', background: '#0F172A', borderLeft: '1px solid #1E293B', zIndex: 101, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '20px', borderBottom: '1px solid #1E293B', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.3)', zIndex: 100 }} onClick={() => setSelectedCompany(null)} />
+        <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '480px', background: theme.bgSecondary, borderLeft: `1px solid ${theme.border}`, zIndex: 101, display: 'flex', flexDirection: 'column', boxShadow: theme.shadowLg }}>
+          <div style={{ padding: '20px', borderBottom: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <h2 style={{ color: '#F1F5F9', fontSize: '20px', fontWeight: 600, margin: '0 0 4px 0' }}>{selectedCompany.name}</h2>
-              <a href={`https://${selectedCompany.domain}`} target="_blank" rel="noopener noreferrer" style={{ color: '#F97316', fontSize: '13px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>{selectedCompany.domain} {Icons.externalLink}</a>
+              <h2 style={{ color: theme.textPrimary, fontSize: '20px', fontWeight: 600, margin: '0 0 4px 0' }}>{selectedCompany.name}</h2>
+              <a href={`https://${selectedCompany.domain}`} target="_blank" rel="noopener noreferrer" style={{ color: theme.accent, fontSize: '13px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>{selectedCompany.domain} {Icons.externalLink}</a>
             </div>
-            <button onClick={() => setSelectedCompany(null)} style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: '4px' }}>{Icons.x}</button>
+            <button onClick={() => setSelectedCompany(null)} style={{ background: 'none', border: 'none', color: theme.textMuted, cursor: 'pointer', padding: '4px' }}>{Icons.x}</button>
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
             {/* Score */}
-            <div style={{ background: '#1E293B', borderRadius: '10px', padding: '16px', marginBottom: '16px' }}>
+            <div style={{ background: theme.bgTertiary, borderRadius: '10px', padding: '16px', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ color: '#94A3B8', fontSize: '13px' }}>Intent Score</span>
-                <span style={{ background: selectedCompany.score >= 70 ? '#065F46' : selectedCompany.score >= 50 ? '#78350F' : '#7F1D1D', color: selectedCompany.score >= 70 ? '#FB923C' : selectedCompany.score >= 50 ? '#FCD34D' : '#FCA5A5', padding: '8px 16px', borderRadius: '8px', fontSize: '18px', fontWeight: 700 }}>{selectedCompany.score}</span>
+                <span style={{ color: theme.textSecondary, fontSize: '13px' }}>Intent Score</span>
+                <span style={{ background: selectedCompany.score >= 70 ? theme.accentMuted : selectedCompany.score >= 50 ? 'rgba(212, 175, 55, 0.15)' : 'rgba(220, 38, 38, 0.1)', color: selectedCompany.score >= 70 ? theme.accent : selectedCompany.score >= 50 ? theme.accentLight : '#DC2626', padding: '8px 16px', borderRadius: '8px', fontSize: '18px', fontWeight: 700 }}>{selectedCompany.score}</span>
               </div>
-              <div style={{ marginTop: '12px', padding: '12px', background: '#0F172A', borderRadius: '6px' }}>
-                <div style={{ color: '#F1F5F9', fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>Why Now</div>
-                <div style={{ color: '#94A3B8', fontSize: '13px' }}>{selectedCompany.whyNow}</div>
+              <div style={{ marginTop: '12px', padding: '12px', background: theme.bgSecondary, borderRadius: '6px', border: `1px solid ${theme.border}` }}>
+                <div style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>Why Now</div>
+                <div style={{ color: theme.textSecondary, fontSize: '13px' }}>{selectedCompany.whyNow}</div>
               </div>
             </div>
             {/* Signals */}
             <div style={{ marginBottom: '16px' }}>
-              <div style={{ color: '#94A3B8', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>Detected Signals</div>
+              <div style={{ color: theme.textSecondary, fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>Detected Signals</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {selectedCompany.signalDetails.map((signal, i) => (
-                  <div key={i} style={{ background: '#1E293B', borderRadius: '8px', padding: '14px' }}>
+                  <div key={i} style={{ background: theme.bgTertiary, borderRadius: '8px', padding: '14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                      <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: SIGNAL_TYPES.find(s => s.label === signal.type)?.color || '#64748B', color: 'white', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{SIGNAL_TYPES.find(s => s.label === signal.type)?.icon || '?'}</div>
-                      <span style={{ color: '#F1F5F9', fontSize: '14px', fontWeight: 500 }}>{signal.type}</span>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: theme.accent, color: 'white', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{SIGNAL_TYPES.find(s => s.label === signal.type)?.icon || '?'}</div>
+                      <span style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 500 }}>{signal.type}</span>
                     </div>
-                    <div style={{ color: '#94A3B8', fontSize: '13px', marginLeft: '38px' }}>{signal.value}</div>
+                    <div style={{ color: theme.textSecondary, fontSize: '13px', marginLeft: '38px' }}>{signal.value}</div>
                   </div>
                 ))}
               </div>
             </div>
             {/* Company Info */}
             <div style={{ marginBottom: '16px' }}>
-              <div style={{ color: '#94A3B8', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>Company Info</div>
-              <div style={{ background: '#1E293B', borderRadius: '8px', padding: '14px' }}>
+              <div style={{ color: theme.textSecondary, fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>Company Info</div>
+              <div style={{ background: theme.bgTertiary, borderRadius: '8px', padding: '14px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div><div style={{ color: '#64748B', fontSize: '11px', marginBottom: '4px' }}>Industry</div><div style={{ color: '#E2E8F0', fontSize: '13px' }}>{selectedCompany.industry}</div></div>
-                  <div><div style={{ color: '#64748B', fontSize: '11px', marginBottom: '4px' }}>Employees</div><div style={{ color: '#E2E8F0', fontSize: '13px' }}>{selectedCompany.employees}</div></div>
-                  <div><div style={{ color: '#64748B', fontSize: '11px', marginBottom: '4px' }}>Location</div><div style={{ color: '#E2E8F0', fontSize: '13px' }}>{selectedCompany.location}</div></div>
-                  <div><div style={{ color: '#64748B', fontSize: '11px', marginBottom: '4px' }}>Revenue</div><div style={{ color: '#E2E8F0', fontSize: '13px' }}>{selectedCompany.revenue}</div></div>
+                  <div><div style={{ color: theme.textMuted, fontSize: '11px', marginBottom: '4px' }}>Industry</div><div style={{ color: theme.textPrimary, fontSize: '13px' }}>{selectedCompany.industry}</div></div>
+                  <div><div style={{ color: theme.textMuted, fontSize: '11px', marginBottom: '4px' }}>Employees</div><div style={{ color: theme.textPrimary, fontSize: '13px' }}>{selectedCompany.employees}</div></div>
+                  <div><div style={{ color: theme.textMuted, fontSize: '11px', marginBottom: '4px' }}>Location</div><div style={{ color: theme.textPrimary, fontSize: '13px' }}>{selectedCompany.location}</div></div>
+                  <div><div style={{ color: theme.textMuted, fontSize: '11px', marginBottom: '4px' }}>Revenue</div><div style={{ color: theme.textPrimary, fontSize: '13px' }}>{selectedCompany.revenue}</div></div>
                 </div>
               </div>
             </div>
           </div>
           {/* Actions */}
-          <div style={{ padding: '20px', borderTop: '1px solid #1E293B' }}>
+          <div style={{ padding: '20px', borderTop: `1px solid ${theme.border}` }}>
             <div style={{ position: 'relative' }}>
-              <button onClick={() => setShowListPicker(!showListPicker)} style={{ width: '100%', padding: '14px', background: '#F97316', border: 'none', borderRadius: '8px', color: 'white', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>{Icons.plus} Add to List</button>
+              <button onClick={() => setShowListPicker(!showListPicker)} style={{ width: '100%', padding: '14px', background: theme.accent, border: 'none', borderRadius: '8px', color: 'white', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>{Icons.plus} Add to List</button>
               {showListPicker && (
                 <>
                   <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 110 }} onClick={() => setShowListPicker(false)} />
-                  <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: '8px', background: '#1E293B', border: '1px solid #334155', borderRadius: '10px', overflow: 'hidden', zIndex: 120 }}>
+                  <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: '8px', background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '10px', overflow: 'hidden', zIndex: 120, boxShadow: theme.shadowLg }}>
                     {lists.map(list => (
-                      <button key={list.id} onClick={() => handleAddToList(list.id)} style={{ width: '100%', padding: '12px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid #0F172A', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left' }}>
+                      <button key={list.id} onClick={() => handleAddToList(list.id)} style={{ width: '100%', padding: '12px 16px', background: 'transparent', border: 'none', borderBottom: `1px solid ${theme.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left' }}>
                         <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: list.color }} />
-                        <span style={{ color: '#E2E8F0', fontSize: '14px', flex: 1 }}>{list.name}</span>
-                        <span style={{ color: '#64748B', fontSize: '12px' }}>{list.leads.length}</span>
+                        <span style={{ color: theme.textPrimary, fontSize: '14px', flex: 1 }}>{list.name}</span>
+                        <span style={{ color: theme.textMuted, fontSize: '12px' }}>{list.leads.length}</span>
                       </button>
                     ))}
                   </div>
@@ -1615,21 +1644,21 @@ const SAIScraper = () => {
 
   // ==================== MAIN RENDER ====================
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #0a0f1a 0%, #111827 100%)', color: '#E2E8F0', fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: theme.bgPrimary, color: theme.textPrimary, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <header style={{ padding: '12px 24px', background: 'rgba(10, 15, 26, 0.8)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50 }}>
+      <header style={{ padding: '12px 24px', background: theme.bgSecondary, borderBottom: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50, boxShadow: theme.shadow }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '38px', height: '38px', background: 'linear-gradient(135deg, #F97316 0%, #F97316 100%)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>
+          <div style={{ width: '38px', height: '38px', background: `linear-gradient(135deg, ${theme.accent} 0%, ${theme.accentLight} 100%)`, borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: theme.shadowMd }}>
             <span style={{ color: 'white', fontWeight: 800, fontSize: '16px', letterSpacing: '-0.5px' }}>S</span>
           </div>
           <div>
-            <span style={{ color: '#F8FAFC', fontSize: '17px', fontWeight: 700, letterSpacing: '-0.3px' }}>SAI Scraper</span>
-            <span style={{ color: '#64748B', fontSize: '11px', marginLeft: '10px', fontWeight: 500 }}>Lead Intelligence</span>
+            <span style={{ color: theme.textPrimary, fontSize: '17px', fontWeight: 700, letterSpacing: '-0.3px' }}>SAI Scraper</span>
+            <span style={{ color: theme.textMuted, fontSize: '11px', marginLeft: '10px', fontWeight: 500 }}>Lead Intelligence</span>
           </div>
         </div>
-        <nav style={{ display: 'flex', gap: '6px', background: 'rgba(255, 255, 255, 0.03)', padding: '4px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-          <button onClick={() => setCurrentPage('scraper')} style={{ padding: '10px 20px', background: currentPage === 'scraper' ? 'rgba(59, 130, 246, 0.15)' : 'transparent', border: 'none', borderRadius: '8px', color: currentPage === 'scraper' ? '#FB923C' : '#64748B', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.search} Scraper</button>
-          <button onClick={() => setCurrentPage('lists')} style={{ padding: '10px 20px', background: currentPage === 'lists' ? 'rgba(59, 130, 246, 0.15)' : 'transparent', border: 'none', borderRadius: '8px', color: currentPage === 'lists' ? '#FB923C' : '#64748B', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.folder} Lists {lists.reduce((a, l) => a + l.leads.length, 0) > 0 && <span style={{ background: 'linear-gradient(135deg, #F97316 0%, #F97316 100%)', color: 'white', padding: '2px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600 }}>{lists.reduce((a, l) => a + l.leads.length, 0)}</span>}</button>
+        <nav style={{ display: 'flex', gap: '6px', background: theme.bgTertiary, padding: '4px', borderRadius: '12px', border: `1px solid ${theme.border}` }}>
+          <button onClick={() => setCurrentPage('scraper')} style={{ padding: '10px 20px', background: currentPage === 'scraper' ? theme.accentMuted : 'transparent', border: 'none', borderRadius: '8px', color: currentPage === 'scraper' ? theme.accent : theme.textSecondary, fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.search} Scraper</button>
+          <button onClick={() => setCurrentPage('lists')} style={{ padding: '10px 20px', background: currentPage === 'lists' ? theme.accentMuted : 'transparent', border: 'none', borderRadius: '8px', color: currentPage === 'lists' ? theme.accent : theme.textSecondary, fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.folder} Lists {lists.reduce((a, l) => a + l.leads.length, 0) > 0 && <span style={{ background: `linear-gradient(135deg, ${theme.accent} 0%, ${theme.accentLight} 100%)`, color: 'white', padding: '2px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600 }}>{lists.reduce((a, l) => a + l.leads.length, 0)}</span>}</button>
         </nav>
       </header>
 
