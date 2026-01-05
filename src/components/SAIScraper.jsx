@@ -843,6 +843,14 @@ const SAIScraper = () => {
   const [showMoveToList, setShowMoveToList] = useState(false);
   const [leadToMove, setLeadToMove] = useState(null);
 
+  // Webhook Export
+  const [webhookUrl, setWebhookUrl] = useState(() => {
+    try { return localStorage.getItem('sai_webhook_url') || ''; } catch { return ''; }
+  });
+  const [showWebhookModal, setShowWebhookModal] = useState(false);
+  const [webhookStatus, setWebhookStatus] = useState(null); // 'sending', 'success', 'error'
+  const [webhookError, setWebhookError] = useState(null);
+
   // Counts
   const activeSignalCount = Object.values(enabledSignals).filter(Boolean).length;
   const activeIcpCount = [
@@ -1333,7 +1341,10 @@ const SAIScraper = () => {
     const rows = data.map(lead => {
       // MANDATORY OUTPUT FIELDS - Use pre-computed values for consistency
       const email = lead.email || lead.enrichment?.website?.contact?.emails?.[0] || '';
-      const phone = lead.enrichment?.website?.contact?.phones?.[0] || '';
+      // Use mainPhone or tollFreePhone first, fallback to first phone in list
+      const phone = lead.enrichment?.website?.contact?.mainPhone ||
+                    lead.enrichment?.website?.contact?.tollFreePhone ||
+                    lead.enrichment?.website?.contact?.phones?.[0] || '';
       const website = lead.website || `https://${lead.domain}`;
       const personalization = lead.personalization || generatePersonalization(lead);
 
@@ -1377,6 +1388,90 @@ const SAIScraper = () => {
     a.download = `sai-leads-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // Webhook Export - Send leads to Zapier, Make, n8n, etc.
+  const handleWebhookExport = async () => {
+    if (!webhookUrl.trim()) {
+      setWebhookError('Please enter a webhook URL');
+      return;
+    }
+
+    const data = selectedIds.size > 0 ? results.filter(r => selectedIds.has(r.id)) : results;
+    if (data.length === 0) {
+      setWebhookError('No leads to export');
+      return;
+    }
+
+    setWebhookStatus('sending');
+    setWebhookError(null);
+
+    // Save webhook URL for future use
+    try { localStorage.setItem('sai_webhook_url', webhookUrl); } catch {}
+
+    // Format leads for webhook
+    const formattedLeads = data.map(lead => {
+      const email = lead.email || lead.enrichment?.website?.contact?.emails?.[0] || '';
+      const phone = lead.enrichment?.website?.contact?.mainPhone ||
+                    lead.enrichment?.website?.contact?.tollFreePhone ||
+                    lead.enrichment?.website?.contact?.phones?.[0] || '';
+
+      return {
+        // Core fields
+        companyName: lead.name,
+        domain: lead.domain,
+        website: lead.website || `https://${lead.domain}`,
+        email: email,
+        phone: phone,
+
+        // Company info
+        industry: lead.industry,
+        employees: lead.employees,
+        location: lead.location,
+        revenue: lead.revenue,
+
+        // Scoring & signals
+        score: lead.score,
+        signals: lead.signals.map(s => SIGNAL_TYPES.find(st => st.id === s)?.label || s),
+        whyNow: lead.whyNow,
+
+        // Enrichment data
+        hasLiveChat: lead.enrichment?.website?.contact?.hasChatWidget || false,
+        hasScheduling: lead.enrichment?.website?.contact?.hasScheduling || false,
+        isRunningAds: lead.enrichment?.ads?.isRunningAds || false,
+        hiringIntensity: lead.enrichment?.jobs?.hiringIntensity || 'none',
+        techStack: lead.enrichment?.techstack?.technologies || [],
+
+        // Meta
+        exportedAt: new Date().toISOString(),
+        source: 'SAI Scraper'
+      };
+    });
+
+    try {
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'leads_export',
+          count: formattedLeads.length,
+          leads: formattedLeads
+        })
+      });
+
+      if (response.ok) {
+        setWebhookStatus('success');
+        setTimeout(() => {
+          setShowWebhookModal(false);
+          setWebhookStatus(null);
+        }, 2000);
+      } else {
+        throw new Error(`Webhook returned ${response.status}`);
+      }
+    } catch (error) {
+      setWebhookStatus('error');
+      setWebhookError(error.message || 'Failed to send to webhook');
+    }
   };
 
   // List management
@@ -1997,6 +2092,7 @@ const SAIScraper = () => {
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={() => { setResults([]); setSelectedIds(new Set()); }} disabled={results.length === 0} style={{ padding: '10px 18px', background: theme.bgTertiary, border: `1px solid ${theme.border}`, borderRadius: '10px', color: results.length === 0 ? theme.textMuted : theme.textSecondary, fontSize: '13px', fontWeight: 600, cursor: results.length === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.refresh} Clear</button>
+            <button onClick={() => setShowWebhookModal(true)} disabled={results.length === 0} style={{ padding: '10px 18px', background: theme.bgTertiary, border: `1px solid ${theme.border}`, borderRadius: '10px', color: results.length === 0 ? theme.textMuted : theme.textSecondary, fontSize: '13px', fontWeight: 600, cursor: results.length === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.link || '🔗'} Webhook</button>
             <button onClick={handleExport} disabled={results.length === 0} style={{ padding: '10px 20px', background: results.length > 0 ? theme.accentMuted : theme.bgTertiary, border: results.length > 0 ? `1px solid ${theme.accent}` : `1px solid ${theme.border}`, borderRadius: '10px', color: results.length === 0 ? theme.textMuted : theme.accent, fontSize: '13px', fontWeight: 600, cursor: results.length === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.download} Export {selectedIds.size > 0 ? `(${selectedIds.size})` : ''}</button>
           </div>
         </div>
@@ -2321,6 +2417,53 @@ const SAIScraper = () => {
                 </div>
               </div>
             </div>
+            {/* Contact Info */}
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ color: theme.textSecondary, fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>Contact Info</div>
+              <div style={{ background: theme.bgTertiary, borderRadius: '8px', padding: '14px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {(selectedCompany.enrichment?.website?.contact?.mainPhone || selectedCompany.enrichment?.website?.contact?.phones?.[0]) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '14px' }}>{Icons.phone || '📞'}</span>
+                      <div>
+                        <div style={{ color: theme.textMuted, fontSize: '10px', marginBottom: '2px' }}>
+                          {selectedCompany.enrichment?.website?.contact?.mainPhone ? 'Main Phone' :
+                           selectedCompany.enrichment?.website?.contact?.tollFreePhone ? 'Toll-Free' : 'Phone'}
+                        </div>
+                        <a href={`tel:${selectedCompany.enrichment?.website?.contact?.mainPhone || selectedCompany.enrichment?.website?.contact?.phones?.[0]}`} style={{ color: theme.accent, fontSize: '13px', textDecoration: 'none' }}>
+                          {selectedCompany.enrichment?.website?.contact?.mainPhone || selectedCompany.enrichment?.website?.contact?.phones?.[0]}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  {selectedCompany.enrichment?.website?.contact?.tollFreePhone && selectedCompany.enrichment?.website?.contact?.tollFreePhone !== selectedCompany.enrichment?.website?.contact?.mainPhone && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '14px' }}>{Icons.phone || '📞'}</span>
+                      <div>
+                        <div style={{ color: theme.textMuted, fontSize: '10px', marginBottom: '2px' }}>Toll-Free</div>
+                        <a href={`tel:${selectedCompany.enrichment?.website?.contact?.tollFreePhone}`} style={{ color: theme.accent, fontSize: '13px', textDecoration: 'none' }}>
+                          {selectedCompany.enrichment?.website?.contact?.tollFreePhone}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  {(selectedCompany.email || selectedCompany.enrichment?.website?.contact?.emails?.[0]) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '14px' }}>{Icons.mail || '📧'}</span>
+                      <div>
+                        <div style={{ color: theme.textMuted, fontSize: '10px', marginBottom: '2px' }}>Email</div>
+                        <a href={`mailto:${selectedCompany.email || selectedCompany.enrichment?.website?.contact?.emails?.[0]}`} style={{ color: theme.accent, fontSize: '13px', textDecoration: 'none' }}>
+                          {selectedCompany.email || selectedCompany.enrichment?.website?.contact?.emails?.[0]}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  {!selectedCompany.enrichment?.website?.contact?.mainPhone && !selectedCompany.enrichment?.website?.contact?.phones?.[0] && !selectedCompany.email && !selectedCompany.enrichment?.website?.contact?.emails?.[0] && (
+                    <div style={{ color: theme.textMuted, fontSize: '12px', fontStyle: 'italic' }}>No contact info found</div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
           {/* Actions */}
           <div style={{ padding: '20px', borderTop: `1px solid ${theme.border}` }}>
@@ -2372,6 +2515,78 @@ const SAIScraper = () => {
 
       {/* Company Detail Sidebar */}
       {renderCompanyDetail()}
+
+      {/* Webhook Export Modal */}
+      {showWebhookModal && (
+        <>
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200 }} onClick={() => { setShowWebhookModal(false); setWebhookStatus(null); setWebhookError(null); }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '480px', background: theme.bgSecondary, borderRadius: '16px', border: `1px solid ${theme.border}`, boxShadow: theme.shadowLg, zIndex: 210, overflow: 'hidden' }}>
+            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ color: theme.textPrimary, fontSize: '16px', fontWeight: 700 }}>Export to Webhook</div>
+                <div style={{ color: theme.textMuted, fontSize: '12px', marginTop: '4px' }}>Send leads to Zapier, Make, n8n, or any webhook</div>
+              </div>
+              <button onClick={() => { setShowWebhookModal(false); setWebhookStatus(null); setWebhookError(null); }} style={{ background: 'none', border: 'none', color: theme.textMuted, fontSize: '20px', cursor: 'pointer', padding: '4px' }}>{Icons.x}</button>
+            </div>
+            <div style={{ padding: '24px' }}>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, marginBottom: '8px' }}>Webhook URL</label>
+                <input
+                  type="url"
+                  value={webhookUrl}
+                  onChange={(e) => setWebhookUrl(e.target.value)}
+                  placeholder="https://hooks.zapier.com/..."
+                  style={{ width: '100%', padding: '12px 14px', background: theme.bgTertiary, border: `1px solid ${theme.border}`, borderRadius: '8px', color: theme.textPrimary, fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div style={{ background: theme.bgTertiary, borderRadius: '8px', padding: '14px', marginBottom: '20px' }}>
+                <div style={{ color: theme.textMuted, fontSize: '12px', marginBottom: '8px' }}>Will export:</div>
+                <div style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 600 }}>
+                  {selectedIds.size > 0 ? `${selectedIds.size} selected leads` : `${results.length} leads`}
+                </div>
+                <div style={{ color: theme.textMuted, fontSize: '11px', marginTop: '8px' }}>
+                  Fields: company, email, phone, website, industry, employees, location, score, signals, enrichment data
+                </div>
+              </div>
+              {webhookError && (
+                <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', padding: '12px', marginBottom: '16px', color: '#ef4444', fontSize: '13px' }}>
+                  {webhookError}
+                </div>
+              )}
+              {webhookStatus === 'success' && (
+                <div style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '8px', padding: '12px', marginBottom: '16px', color: '#22c55e', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {Icons.check} Successfully sent to webhook!
+                </div>
+              )}
+              <button
+                onClick={handleWebhookExport}
+                disabled={webhookStatus === 'sending' || !webhookUrl.trim()}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  background: webhookStatus === 'sending' || !webhookUrl.trim() ? theme.bgTertiary : theme.accent,
+                  border: 'none',
+                  borderRadius: '10px',
+                  color: webhookStatus === 'sending' || !webhookUrl.trim() ? theme.textMuted : 'white',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: webhookStatus === 'sending' || !webhookUrl.trim() ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                {webhookStatus === 'sending' ? (
+                  <>{Icons.loader} Sending...</>
+                ) : (
+                  <>{Icons.send || '📤'} Send to Webhook</>
+                )}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

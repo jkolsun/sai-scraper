@@ -658,6 +658,133 @@ async function searchSerper(apiKey, query) {
   }
 }
 
+// ==================== DOMAIN QUALITY VALIDATION ====================
+function validateDomainQuality(domain) {
+  // Returns { valid: boolean, score: number, reason?: string }
+
+  // 1. Basic format validation
+  if (!domain || domain.length < 4 || domain.length > 63) {
+    return { valid: false, score: 0, reason: 'invalid_length' };
+  }
+
+  // 2. Must have valid TLD
+  const validTLDs = /\.(com|io|co|net|org|ai|app|dev|tech|biz|info|us|uk|ca|au|de|fr|es|it|nl|be|ch|at|se|no|dk|fi|nz|ie|mx|br|in|sg|hk|jp|kr|tv|fm|gg|ly|me|so|ac|agency|solutions|services|consulting|group|studio|digital|media|marketing|design|systems|software|cloud|global|world|online|site|pro|plus|works|team|lab|labs|ventures|partners|capital|fund|co\.uk|com\.au|co\.nz|co\.in)$/i;
+  if (!validTLDs.test(domain)) {
+    return { valid: false, score: 0, reason: 'invalid_tld' };
+  }
+
+  // 3. No IP addresses
+  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(domain)) {
+    return { valid: false, score: 0, reason: 'ip_address' };
+  }
+
+  // 4. No excessive numbers (spam indicator)
+  const numberCount = (domain.match(/\d/g) || []).length;
+  if (numberCount > 4) {
+    return { valid: false, score: 20, reason: 'too_many_numbers' };
+  }
+
+  // 5. No excessive hyphens (spam indicator)
+  const hyphenCount = (domain.match(/-/g) || []).length;
+  if (hyphenCount > 2) {
+    return { valid: false, score: 30, reason: 'too_many_hyphens' };
+  }
+
+  // 6. Check for spam/disposable domain patterns
+  const spamPatterns = [
+    /^[a-z]{15,}\./, // Very long random strings
+    /\d{4,}/, // 4+ consecutive numbers
+    /-{2,}/, // Multiple consecutive hyphens
+    /^(test|demo|example|sample|temp|fake|spam)/, // Test domains
+    /\.(xyz|top|click|link|gq|ml|cf|ga|tk|pw|cc|ws)$/i, // Spam TLDs
+    /(free|cheap|best|top|online|web|site|my|the|your)\d+/, // Generic + number pattern
+  ];
+
+  for (const pattern of spamPatterns) {
+    if (pattern.test(domain)) {
+      return { valid: false, score: 10, reason: 'spam_pattern' };
+    }
+  }
+
+  // 7. Check domain name part (without TLD)
+  const domainName = domain.split('.')[0];
+  if (domainName.length < 2) {
+    return { valid: false, score: 0, reason: 'name_too_short' };
+  }
+
+  // 8. Calculate quality score (0-100)
+  let score = 50; // Base score
+
+  // Bonus for good TLDs
+  if (/\.(com|io|co|net|org)$/i.test(domain)) score += 20;
+  else if (/\.(ai|app|dev|tech)$/i.test(domain)) score += 15;
+  else if (/\.(agency|solutions|services|consulting)$/i.test(domain)) score += 10;
+
+  // Bonus for clean domain name (letters only)
+  if (/^[a-z]+\.[a-z]+$/i.test(domain)) score += 15;
+
+  // Penalty for numbers
+  score -= numberCount * 3;
+
+  // Penalty for hyphens
+  score -= hyphenCount * 5;
+
+  // Penalty for very long names
+  if (domainName.length > 20) score -= 10;
+
+  // Bonus for reasonable length (6-15 chars)
+  if (domainName.length >= 6 && domainName.length <= 15) score += 10;
+
+  return { valid: true, score: Math.max(0, Math.min(100, score)) };
+}
+
+// ==================== COMPANY NAME QUALITY ====================
+function validateCompanyName(name) {
+  if (!name || name.length < 2) return { valid: false, cleanName: null };
+
+  // Clean the name
+  let cleanName = name
+    .replace(/\s+(Inc|LLC|Ltd|Corp|Co|Company|Services|Solutions|Group|Technologies|Tech|International|Intl)\.?$/i, '')
+    .replace(/[^\w\s&\-']/g, '') // Remove special chars except &, -, '
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Capitalize properly
+  cleanName = cleanName.split(' ').map(word => {
+    if (word.length <= 2 && word.toUpperCase() === word) return word; // Keep acronyms
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).join(' ');
+
+  // Validation checks
+  const issues = [];
+
+  // Too short or too long
+  if (cleanName.length < 2) issues.push('too_short');
+  if (cleanName.length > 50) issues.push('too_long');
+
+  // All numbers or mostly numbers
+  if (/^\d+$/.test(cleanName)) issues.push('all_numbers');
+  if ((cleanName.match(/\d/g) || []).length > cleanName.length * 0.5) issues.push('mostly_numbers');
+
+  // Generic/spam names
+  const genericNames = [
+    'home', 'page', 'welcome', 'index', 'about', 'contact', 'services',
+    'company', 'business', 'website', 'site', 'blog', 'news', 'media',
+    'online', 'web', 'digital', 'the', 'best', 'top', 'free'
+  ];
+  if (genericNames.includes(cleanName.toLowerCase())) issues.push('generic_name');
+
+  // Single word that's too generic
+  if (cleanName.split(' ').length === 1 && cleanName.length < 4) issues.push('too_generic');
+
+  return {
+    valid: issues.length === 0,
+    cleanName: issues.length === 0 ? cleanName : null,
+    originalName: name,
+    issues
+  };
+}
+
 // ==================== PROCESS RESULTS ====================
 function processAdvancedResults(organic, filters, maxResults) {
   const { excludeDomains = [] } = filters;
@@ -666,37 +793,72 @@ function processAdvancedResults(organic, filters, maxResults) {
   const skipDomains = new Set([
     // Social & Forums
     'facebook.com', 'twitter.com', 'linkedin.com', 'instagram.com', 'youtube.com', 'tiktok.com',
-    'reddit.com', 'quora.com', 'stackexchange.com', 'stackoverflow.com', 'discord.com',
+    'reddit.com', 'quora.com', 'stackexchange.com', 'stackoverflow.com', 'discord.com', 'x.com',
+    'threads.net', 'mastodon.social', 'bluesky.app', 'pinterest.com', 'snapchat.com',
     // Directories & Listings
     'yelp.com', 'yellowpages.com', 'bbb.org', 'mapquest.com', 'manta.com', 'dnb.com',
-    'angi.com', 'homeadvisor.com', 'thumbtack.com', 'houzz.com', 'porch.com',
-    'zillow.com', 'realtor.com', 'redfin.com', 'trulia.com', 'apartments.com',
-    'indeed.com', 'glassdoor.com', 'monster.com', 'ziprecruiter.com', 'salary.com',
-    'avvo.com', 'findlaw.com', 'healthgrades.com', 'zocdoc.com', 'vitals.com',
+    'angi.com', 'homeadvisor.com', 'thumbtack.com', 'houzz.com', 'porch.com', 'angieslist.com',
+    'zillow.com', 'realtor.com', 'redfin.com', 'trulia.com', 'apartments.com', 'homes.com',
+    'indeed.com', 'glassdoor.com', 'monster.com', 'ziprecruiter.com', 'salary.com', 'careerbuilder.com',
+    'avvo.com', 'findlaw.com', 'healthgrades.com', 'zocdoc.com', 'vitals.com', 'webmd.com',
+    'tripadvisor.com', 'expedia.com', 'booking.com', 'kayak.com', 'hotels.com',
     // News & Media
     'forbes.com', 'inc.com', 'wikipedia.org', 'medium.com', 'bloomberg.com', 'wsj.com',
     'techcrunch.com', 'wired.com', 'cnn.com', 'nytimes.com', 'theverge.com', 'venturebeat.com',
+    'businessinsider.com', 'entrepreneur.com', 'fastcompany.com', 'huffpost.com', 'buzzfeed.com',
+    'mashable.com', 'engadget.com', 'arstechnica.com', 'zdnet.com', 'cnet.com', 'pcmag.com',
     // Big Tech
     'amazon.com', 'google.com', 'apple.com', 'microsoft.com', 'meta.com', 'netflix.com',
+    'salesforce.com', 'oracle.com', 'ibm.com', 'adobe.com', 'sap.com', 'vmware.com',
     // E-commerce Platforms
-    'shopify.com', 'wix.com', 'squarespace.com', 'wordpress.com', 'godaddy.com',
+    'shopify.com', 'wix.com', 'squarespace.com', 'wordpress.com', 'godaddy.com', 'weebly.com',
+    'bigcommerce.com', 'magento.com', 'webflow.com', 'carrd.co', 'notion.so',
     // B2B Data/Review Sites
-    'crunchbase.com', 'pitchbook.com', 'owler.com', 'zoominfo.com', 'apollo.io',
-    'g2.com', 'capterra.com', 'trustradius.com', 'getapp.com', 'softwareadvice.com',
-    'clutch.co', 'goodfirms.co', 'sortlist.com', 'trustpilot.com',
+    'crunchbase.com', 'pitchbook.com', 'owler.com', 'zoominfo.com', 'apollo.io', 'clearbit.com',
+    'g2.com', 'capterra.com', 'trustradius.com', 'getapp.com', 'softwareadvice.com', 'gartner.com',
+    'clutch.co', 'goodfirms.co', 'sortlist.com', 'trustpilot.com', 'sitejabber.com',
     // Startup Lists
-    'topstartups.io', 'wellfound.com', 'ycombinator.com', 'builtin.com', 'angel.co',
-    'producthunt.com', 'betalist.com', 'f6s.com',
-    // Education
-    'coursera.org', 'udemy.com', 'skillshare.com', 'linkedin.com/learning',
-    // Other
-    'github.com', 'gitlab.com', 'npm.com', 'pypi.org'
+    'topstartups.io', 'wellfound.com', 'ycombinator.com', 'builtin.com', 'angel.co', 'seedtable.com',
+    'producthunt.com', 'betalist.com', 'f6s.com', 'startupranking.com', 'startupblink.com',
+    // Education & Learning
+    'coursera.org', 'udemy.com', 'skillshare.com', 'linkedin.com/learning', 'pluralsight.com',
+    'edx.org', 'khanacademy.org', 'codecademy.com', 'udacity.com', 'brilliant.org',
+    // Developer/Code
+    'github.com', 'gitlab.com', 'npm.com', 'pypi.org', 'bitbucket.org', 'codepen.io',
+    'jsfiddle.net', 'replit.com', 'codesandbox.io', 'vercel.com', 'netlify.com', 'heroku.com',
+    // Government & Institutional
+    'usa.gov', 'gov.uk', 'canada.ca', 'europa.eu', 'un.org', 'who.int',
+    // Reference & Tools
+    'dictionary.com', 'thesaurus.com', 'translate.google.com', 'wolframalpha.com',
+    'archive.org', 'scribd.com', 'slideshare.net', 'prezi.com', 'canva.com',
+    // Legal Directories
+    'martindale.com', 'lawyers.com', 'justia.com', 'nolo.com', 'lawinfo.com',
+    // Local/Maps
+    'google.com/maps', 'maps.apple.com', 'bing.com/maps', 'foursquare.com', 'citysearch.com'
   ]);
 
   // Add user-excluded domains
   excludeDomains.forEach(d => skipDomains.add(d.toLowerCase()));
 
-  const skipPatterns = ['wiki', 'news', 'directory', 'review', 'rating', 'compare', 'list-of', 'top-10', 'best-'];
+  // Enhanced skip patterns
+  const skipPatterns = [
+    'wiki', 'news', 'directory', 'review', 'rating', 'compare', 'list-of', 'top-10', 'best-',
+    'forum', 'community', 'blog', 'article', 'guide', 'tutorial', 'how-to', 'what-is',
+    'template', 'example', 'sample', 'demo', 'test', 'free-', '-free',
+    'download', 'torrent', 'crack', 'serial', 'keygen', 'hack',
+    'coupon', 'discount', 'deal', 'promo', 'offer', 'sale',
+    'jobs-at', 'careers-at', 'work-at', 'join-', 'hiring-'
+  ];
+
+  // URL patterns to skip
+  const skipUrlPatterns = [
+    '/blog/', '/articles/', '/news/', '/press/', '/media/',
+    '/careers/', '/jobs/', '/about-us/', '/contact-us/',
+    '/privacy', '/terms', '/legal/', '/sitemap',
+    '/tag/', '/category/', '/author/', '/page/',
+    '/wp-content/', '/wp-admin/', '/feed/',
+    '/search?', '/results?', '?q=', '&q='
+  ];
 
   const companies = [];
   const seenDomains = new Set();
@@ -712,54 +874,89 @@ function processAdvancedResults(organic, filters, maxResults) {
       continue;
     }
 
+    // ========== DOMAIN VALIDATION ==========
+    // 1. Skip seen domains
     if (seenDomains.has(domain)) continue;
+
+    // 2. Skip blocked domains
     if (skipDomains.has(domain)) continue;
 
-    // Check skip patterns
+    // 3. Validate domain quality
+    const domainQuality = validateDomainQuality(domain);
+    if (!domainQuality.valid || domainQuality.score < 40) continue;
+
+    // 4. Check skip patterns in domain
     let shouldSkip = false;
     for (const blocked of skipDomains) {
-      if (domain.includes(blocked.replace('.com', '').replace('.org', '').replace('.io', ''))) {
+      const blockedBase = blocked.replace(/\.(com|org|io|net|co)$/i, '');
+      if (domain.includes(blockedBase) && blockedBase.length > 4) {
         shouldSkip = true;
         break;
       }
     }
 
+    // 5. Check skip patterns
     for (const pattern of skipPatterns) {
-      if (domain.includes(pattern) || url.toLowerCase().includes(pattern)) {
+      if (domain.includes(pattern)) {
         shouldSkip = true;
         break;
       }
     }
 
-    // Skip government, education, military
+    // 6. Skip government, education, military
     if (domain.endsWith('.gov') || domain.endsWith('.edu') || domain.endsWith('.mil')) {
       shouldSkip = true;
     }
 
-    // Skip list/blog articles
+    // 7. Skip URL patterns
     const urlLower = url.toLowerCase();
-    if (urlLower.includes('/blog/') || urlLower.includes('/articles/') ||
-        urlLower.includes('/news/') || urlLower.includes('/press/')) {
-      shouldSkip = true;
+    for (const urlPattern of skipUrlPatterns) {
+      if (urlLower.includes(urlPattern)) {
+        shouldSkip = true;
+        break;
+      }
     }
 
     if (shouldSkip) continue;
 
-    seenDomains.add(domain);
+    // ========== COMPANY NAME VALIDATION ==========
+    // Extract and validate company name
+    let rawName = (result.title || '').split(/[|\-–—:•·]/)[0].trim();
 
-    // Extract company name
-    let name = (result.title || '').split(/[|\-–—:]/)[0].trim();
-    name = name.replace(/\s+(Inc|LLC|Ltd|Corp|Co|Company|Services|Solutions|Group|Technologies|Tech)\.?$/i, '').trim();
-
-    if (name.length < 2 || name.length > 60) {
-      name = domain.replace(/\.(com|io|co|net|org|ai|app)$/i, '').replace(/[-_]/g, ' ');
-      name = name.split('.').pop() || name;
-      name = name.charAt(0).toUpperCase() + name.slice(1);
+    // Try to get cleaner name from URL if title is bad
+    if (rawName.length < 3 || rawName.length > 60 || /^\d+$/.test(rawName)) {
+      rawName = domain.replace(/\.(com|io|co|net|org|ai|app)$/i, '').replace(/[-_]/g, ' ');
+      rawName = rawName.split('.').pop() || rawName;
     }
 
-    // Infer attributes from content
+    const nameValidation = validateCompanyName(rawName);
+
+    // Skip if name is invalid and we can't fix it
+    if (!nameValidation.valid && !nameValidation.cleanName) {
+      // Try one more time with domain-based name
+      const domainName = domain.replace(/\.(com|io|co|net|org|ai|app)$/i, '').replace(/[-_]/g, ' ');
+      const domainNameValidation = validateCompanyName(domainName);
+      if (!domainNameValidation.valid) continue;
+      rawName = domainNameValidation.cleanName || domainName;
+    } else {
+      rawName = nameValidation.cleanName || rawName;
+    }
+
+    // Final name cleanup
+    let name = rawName
+      .replace(/\s+(Inc|LLC|Ltd|Corp|Co|Company|Services|Solutions|Group|Technologies|Tech)\.?$/i, '')
+      .trim();
+
+    // Capitalize first letter of each word
+    name = name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+    // Final validation - skip if still too short/long
+    if (name.length < 2 || name.length > 50) continue;
+
+    seenDomains.add(domain);
+
+    // ========== ATTRIBUTE INFERENCE ==========
     const text = `${result.title} ${result.snippet}`.toLowerCase();
-    // Priority: customIndustry > selected industries > inferred from text
     const inferredIndustry = filters.customIndustry?.trim() || filters.industries?.[0] || inferIndustryAdvanced(text);
     const inferredLocation = filters.countries?.[0] || filters.states?.[0] || inferLocation(text);
 
@@ -774,9 +971,13 @@ function processAdvancedResults(organic, filters, maxResults) {
       businessModel: filters.businessModels?.[0] || inferBusinessModel(text),
       source: 'serper_discovery',
       snippet: (result.snippet || '').substring(0, 250),
-      sourceUrl: url
+      sourceUrl: url,
+      domainQualityScore: domainQuality.score
     });
   }
+
+  // Sort by domain quality score (higher is better)
+  companies.sort((a, b) => (b.domainQualityScore || 0) - (a.domainQualityScore || 0));
 
   return companies;
 }

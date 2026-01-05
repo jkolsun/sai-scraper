@@ -606,15 +606,40 @@ async function enrichWebsite(domain) {
 
     if (!html) return { found: false, data: null };
 
+    // Also try to fetch contact page for better phone/email discovery
+    const contactPageUrls = [
+      `${finalUrl}/contact`,
+      `${finalUrl}/contact-us`,
+      `${finalUrl}/about`,
+      `${finalUrl}/about-us`
+    ];
+
+    let contactPageHtml = '';
+    for (const contactUrl of contactPageUrls) {
+      try {
+        const response = await fetch(contactUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+          redirect: 'follow',
+          signal: AbortSignal.timeout(5000)
+        });
+        if (response.ok) {
+          contactPageHtml += await response.text();
+        }
+      } catch { /* ignore contact page errors */ }
+    }
+
+    // Combine all HTML for extraction
+    const allHtml = html + ' ' + contactPageHtml;
+
     // Extract emails
     const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-    const emails = [...new Set(html.match(emailRegex) || [])].filter(email =>
+    const emails = [...new Set(allHtml.match(emailRegex) || [])].filter(email =>
       !email.includes('example.') && !email.includes('.png') && !email.includes('.jpg')
     );
 
-    // Extract phones
-    const phoneRegex = /(?:\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}/g;
-    const phones = [...new Set(html.match(phoneRegex) || [])];
+    // Advanced phone extraction with multiple patterns
+    const phoneData = extractPhoneNumbers(allHtml);
+    const phones = phoneData.phones;
 
     // Check features
     const hasContactForm = /contact.*form|form.*contact|<form[^>]*contact/i.test(html);
@@ -638,7 +663,11 @@ async function enrichWebsite(domain) {
     if (hasScheduling) signals.push('Has demo/meeting scheduling - active sales process');
     if (hasFreeTrial) signals.push('Offers free trial/demo - product-led growth');
     if (emails.length > 0) signals.push(`Found ${emails.length} email(s) on website`);
-    if (phones.length > 0) signals.push(`Found ${phones.length} phone number(s) on website`);
+    if (phones.length > 0) {
+      signals.push(`Found ${phones.length} phone number(s) on website`);
+      if (phoneData.hasTollFree) signals.push('Has toll-free number - established business');
+      if (phoneData.hasLocalNumber) signals.push('Has local phone number - local presence');
+    }
 
     // Response risk score
     let responseRisk = 0;
@@ -652,7 +681,10 @@ async function enrichWebsite(domain) {
       data: {
         contact: {
           emails: emails.slice(0, 5),
-          phones: phones.slice(0, 3),
+          phones: phones.slice(0, 5),
+          phoneDetails: phoneData.details.slice(0, 5),
+          mainPhone: phoneData.mainPhone,
+          tollFreePhone: phoneData.tollFreePhone,
           hasContactForm,
           hasChatWidget,
           hasScheduling
@@ -673,6 +705,144 @@ async function enrichWebsite(domain) {
     console.error('Website enrichment error:', error);
     return { found: false, error: error.message };
   }
+}
+
+// ==================== PHONE NUMBER EXTRACTION ====================
+function extractPhoneNumbers(html) {
+  const results = {
+    phones: [],
+    details: [],
+    mainPhone: null,
+    tollFreePhone: null,
+    hasTollFree: false,
+    hasLocalNumber: false
+  };
+
+  // Multiple phone patterns for different formats
+  const phonePatterns = [
+    // US/Canada formats
+    /(?:tel:|phone:|call\s*us?\s*:?\s*)?(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/gi,
+    // Toll-free numbers (800, 888, 877, 866, 855, 844, 833)
+    /\b(?:1[-.\s]?)?(?:800|888|877|866|855|844|833)[-.\s]?\d{3}[-.\s]?\d{4}\b/gi,
+    // International format with +
+    /\+\d{1,3}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}/g,
+    // UK formats
+    /(?:\+?44[-.\s]?|0)(?:\d{2}[-.\s]?\d{4}[-.\s]?\d{4}|\d{3}[-.\s]?\d{3}[-.\s]?\d{4}|\d{4}[-.\s]?\d{6})/g,
+    // Format with text labels
+    /(?:main|sales|support|office|toll.?free)[\s:]+[\(]?\d{3}[\)]?[-.\s]?\d{3}[-.\s]?\d{4}/gi
+  ];
+
+  // Extract all potential phone numbers
+  const allMatches = new Set();
+  for (const pattern of phonePatterns) {
+    const matches = html.match(pattern) || [];
+    matches.forEach(m => allMatches.add(m));
+  }
+
+  // Also look for tel: links which are high confidence
+  const telLinkPattern = /href=["']tel:([^"']+)["']/gi;
+  let telMatch;
+  while ((telMatch = telLinkPattern.exec(html)) !== null) {
+    allMatches.add(telMatch[1]);
+  }
+
+  // Process and validate each phone number
+  for (const rawPhone of allMatches) {
+    const cleaned = cleanPhoneNumber(rawPhone);
+    if (!cleaned || cleaned.length < 10) continue;
+
+    // Skip fake/example numbers
+    if (cleaned.includes('1234567') || cleaned.includes('0000000') ||
+        cleaned.includes('5551234') || cleaned.includes('123456789')) continue;
+
+    // Determine phone type
+    const phoneType = categorizePhoneNumber(cleaned, rawPhone);
+
+    // Normalize the phone number
+    const formatted = formatPhoneNumber(cleaned);
+
+    if (!results.phones.includes(formatted)) {
+      results.phones.push(formatted);
+      results.details.push({
+        number: formatted,
+        raw: rawPhone.trim(),
+        type: phoneType.type,
+        label: phoneType.label,
+        confidence: phoneType.confidence
+      });
+
+      // Track main and toll-free
+      if (phoneType.type === 'toll_free' && !results.tollFreePhone) {
+        results.tollFreePhone = formatted;
+        results.hasTollFree = true;
+      } else if (phoneType.type === 'main' && !results.mainPhone) {
+        results.mainPhone = formatted;
+      } else if (!results.mainPhone && phoneType.type === 'local') {
+        results.mainPhone = formatted;
+        results.hasLocalNumber = true;
+      }
+    }
+  }
+
+  // If no main phone identified, use first local number
+  if (!results.mainPhone && results.phones.length > 0) {
+    results.mainPhone = results.phones[0];
+    results.hasLocalNumber = true;
+  }
+
+  // Sort by confidence
+  results.details.sort((a, b) => b.confidence - a.confidence);
+
+  return results;
+}
+
+function cleanPhoneNumber(phone) {
+  // Remove everything except digits and leading +
+  return phone.replace(/^.*?(?=[\d+])/, '').replace(/[^\d+]/g, '');
+}
+
+function formatPhoneNumber(cleaned) {
+  // Remove leading 1 for US numbers if present
+  let digits = cleaned.replace(/^\+?1/, '');
+
+  // Format as (XXX) XXX-XXXX for 10-digit US numbers
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+
+  // Return original cleaned number for international
+  return cleaned;
+}
+
+function categorizePhoneNumber(cleaned, raw) {
+  const rawLower = raw.toLowerCase();
+  const digits = cleaned.replace(/\D/g, '');
+
+  // Toll-free detection (800, 888, 877, 866, 855, 844, 833)
+  const tollFreePrefix = /^1?(?:800|888|877|866|855|844|833)/;
+  if (tollFreePrefix.test(digits)) {
+    return { type: 'toll_free', label: 'Toll-Free', confidence: 95 };
+  }
+
+  // Label-based detection from surrounding text
+  if (rawLower.includes('main') || rawLower.includes('office') || rawLower.includes('corporate')) {
+    return { type: 'main', label: 'Main', confidence: 90 };
+  }
+  if (rawLower.includes('sales')) {
+    return { type: 'sales', label: 'Sales', confidence: 90 };
+  }
+  if (rawLower.includes('support') || rawLower.includes('help') || rawLower.includes('service')) {
+    return { type: 'support', label: 'Support', confidence: 85 };
+  }
+  if (rawLower.includes('fax')) {
+    return { type: 'fax', label: 'Fax', confidence: 80 };
+  }
+  if (rawLower.includes('mobile') || rawLower.includes('cell')) {
+    return { type: 'mobile', label: 'Mobile', confidence: 80 };
+  }
+
+  // Default to local
+  return { type: 'local', label: 'Business', confidence: 70 };
 }
 
 // ==================== FUNDING ENRICHMENT ====================
