@@ -897,80 +897,67 @@ function processAdvancedResults(organic, filters, maxResults) {
     // 1. Skip seen domains
     if (seenDomains.has(domain)) continue;
 
-    // 2. Skip blocked domains
+    // 2. Skip exact match blocked domains only
     if (skipDomains.has(domain)) continue;
 
-    // 3. Validate domain quality
+    // 3. Validate domain quality (very permissive)
     const domainQuality = validateDomainQuality(domain);
-    if (!domainQuality.valid) continue; // Only skip truly invalid domains, not low-score ones
+    if (!domainQuality.valid) continue;
 
-    // 4. Check skip patterns in domain
+    // 4. Skip government, education, military
+    if (domain.endsWith('.gov') || domain.endsWith('.edu') || domain.endsWith('.mil')) continue;
+
+    // 5. Check skip patterns in domain (only for strict mode)
     let shouldSkip = false;
-    for (const blocked of skipDomains) {
-      const blockedBase = blocked.replace(/\.(com|org|io|net|co)$/i, '');
-      if (domain.includes(blockedBase) && blockedBase.length > 4) {
-        shouldSkip = true;
-        break;
+    if (strictnessLevel === 'strict') {
+      for (const pattern of skipPatterns) {
+        if (domain.includes(pattern)) {
+          shouldSkip = true;
+          break;
+        }
       }
-    }
 
-    // 5. Check skip patterns
-    for (const pattern of skipPatterns) {
-      if (domain.includes(pattern)) {
-        shouldSkip = true;
-        break;
-      }
-    }
-
-    // 6. Skip government, education, military
-    if (domain.endsWith('.gov') || domain.endsWith('.edu') || domain.endsWith('.mil')) {
-      shouldSkip = true;
-    }
-
-    // 7. Skip URL patterns
-    const urlLower = url.toLowerCase();
-    for (const urlPattern of skipUrlPatterns) {
-      if (urlLower.includes(urlPattern)) {
-        shouldSkip = true;
-        break;
+      // Check URL patterns only in strict mode
+      const urlLower = url.toLowerCase();
+      for (const urlPattern of skipUrlPatterns) {
+        if (urlLower.includes(urlPattern)) {
+          shouldSkip = true;
+          break;
+        }
       }
     }
 
     if (shouldSkip) continue;
 
-    // ========== COMPANY NAME VALIDATION ==========
-    // Extract and validate company name
-    let rawName = (result.title || '').split(/[|\-–—:•·]/)[0].trim();
+    // ========== COMPANY NAME EXTRACTION ==========
+    // Extract name from title (split on common separators)
+    let name = (result.title || '').split(/[|\-–—:•·]/)[0].trim();
 
-    // Try to get cleaner name from URL if title is bad
-    if (rawName.length < 3 || rawName.length > 60 || /^\d+$/.test(rawName)) {
-      rawName = domain.replace(/\.(com|io|co|net|org|ai|app)$/i, '').replace(/[-_]/g, ' ');
-      rawName = rawName.split('.').pop() || rawName;
+    // If title-based name is bad, use domain
+    if (!name || name.length < 2 || name.length > 80 || /^\d+$/.test(name)) {
+      name = domain.replace(/\.(com|io|co|net|org|ai|app|biz|us|ca|uk)$/i, '').replace(/[-_]/g, ' ');
     }
 
-    const nameValidation = validateCompanyName(rawName);
-
-    // Skip if name is invalid and we can't fix it
-    if (!nameValidation.valid && !nameValidation.cleanName) {
-      // Try one more time with domain-based name
-      const domainName = domain.replace(/\.(com|io|co|net|org|ai|app)$/i, '').replace(/[-_]/g, ' ');
-      const domainNameValidation = validateCompanyName(domainName);
-      if (!domainNameValidation.valid) continue;
-      rawName = domainNameValidation.cleanName || domainName;
-    } else {
-      rawName = nameValidation.cleanName || rawName;
-    }
-
-    // Final name cleanup
-    let name = rawName
-      .replace(/\s+(Inc|LLC|Ltd|Corp|Co|Company|Services|Solutions|Group|Technologies|Tech)\.?$/i, '')
+    // Clean up the name
+    name = name
+      .replace(/\s+(Inc|LLC|Ltd|Corp|Co|Company|Services|Solutions|Group|Technologies|Tech|International|Intl)\.?$/gi, '')
+      .replace(/[^\w\s&\-']/g, '')
+      .replace(/\s+/g, ' ')
       .trim();
 
-    // Capitalize first letter of each word
-    name = name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    // Capitalize each word
+    name = name.split(' ').map(w =>
+      w.length > 0 ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : ''
+    ).filter(w => w).join(' ');
 
-    // Final validation - skip if still too short/long
-    if (name.length < 2 || name.length > 50) continue;
+    // Skip only if completely unusable
+    if (!name || name.length < 2) {
+      // Last resort: use domain name directly
+      name = domain.split('.')[0].replace(/[-_]/g, ' ');
+      name = name.charAt(0).toUpperCase() + name.slice(1);
+    }
+
+    if (name.length > 60) name = name.substring(0, 60);
 
     seenDomains.add(domain);
 
@@ -1000,13 +987,13 @@ function processAdvancedResults(organic, filters, maxResults) {
 
   console.log(`Found ${companies.length} companies after filtering (target: ${maxResults})`);
 
-  // If we didn't get enough and we were strict, do a second pass with relaxed filtering
-  if (companies.length < maxResults && strictnessLevel === 'strict') {
-    console.log('Running relaxed second pass to fill remaining slots...');
+  // If we didn't get enough, do a second pass with minimal filtering
+  if (companies.length < maxResults) {
+    console.log(`Only got ${companies.length}/${maxResults}, running relaxed second pass...`);
     const remainingNeeded = maxResults - companies.length;
     const relaxedCompanies = processWithRelaxedFiltering(organic, seenDomains, skipDomains, remainingNeeded);
     companies.push(...relaxedCompanies);
-    console.log(`Added ${relaxedCompanies.length} more companies from relaxed pass`);
+    console.log(`Added ${relaxedCompanies.length} more companies from relaxed pass (total: ${companies.length})`);
   }
 
   return companies.slice(0, maxResults);
