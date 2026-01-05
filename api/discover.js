@@ -661,16 +661,16 @@ async function searchSerper(apiKey, query) {
 // ==================== DOMAIN QUALITY VALIDATION ====================
 function validateDomainQuality(domain) {
   // Returns { valid: boolean, score: number, reason?: string }
+  // NOTE: Be permissive - we want more results, not fewer. Only block obvious spam.
 
   // 1. Basic format validation
-  if (!domain || domain.length < 4 || domain.length > 63) {
+  if (!domain || domain.length < 3 || domain.length > 100) {
     return { valid: false, score: 0, reason: 'invalid_length' };
   }
 
-  // 2. Must have valid TLD
-  const validTLDs = /\.(com|io|co|net|org|ai|app|dev|tech|biz|info|us|uk|ca|au|de|fr|es|it|nl|be|ch|at|se|no|dk|fi|nz|ie|mx|br|in|sg|hk|jp|kr|tv|fm|gg|ly|me|so|ac|agency|solutions|services|consulting|group|studio|digital|media|marketing|design|systems|software|cloud|global|world|online|site|pro|plus|works|team|lab|labs|ventures|partners|capital|fund|co\.uk|com\.au|co\.nz|co\.in)$/i;
-  if (!validTLDs.test(domain)) {
-    return { valid: false, score: 0, reason: 'invalid_tld' };
+  // 2. Must have a TLD (any TLD with 2+ chars is valid)
+  if (!/\.[a-z]{2,}$/i.test(domain)) {
+    return { valid: false, score: 0, reason: 'no_tld' };
   }
 
   // 3. No IP addresses
@@ -678,26 +678,17 @@ function validateDomainQuality(domain) {
     return { valid: false, score: 0, reason: 'ip_address' };
   }
 
-  // 4. No excessive numbers (spam indicator)
-  const numberCount = (domain.match(/\d/g) || []).length;
-  if (numberCount > 4) {
-    return { valid: false, score: 20, reason: 'too_many_numbers' };
+  // 4. Only block OBVIOUS spam TLDs (very limited list)
+  const spamTLDs = /\.(xyz|top|click|gq|ml|cf|ga|tk|pw|ws)$/i;
+  if (spamTLDs.test(domain)) {
+    return { valid: false, score: 10, reason: 'spam_tld' };
   }
 
-  // 5. No excessive hyphens (spam indicator)
-  const hyphenCount = (domain.match(/-/g) || []).length;
-  if (hyphenCount > 2) {
-    return { valid: false, score: 30, reason: 'too_many_hyphens' };
-  }
-
-  // 6. Check for spam/disposable domain patterns
+  // 5. Check for obvious spam patterns only
   const spamPatterns = [
-    /^[a-z]{15,}\./, // Very long random strings
-    /\d{4,}/, // 4+ consecutive numbers
-    /-{2,}/, // Multiple consecutive hyphens
-    /^(test|demo|example|sample|temp|fake|spam)/, // Test domains
-    /\.(xyz|top|click|link|gq|ml|cf|ga|tk|pw|cc|ws)$/i, // Spam TLDs
-    /(free|cheap|best|top|online|web|site|my|the|your)\d+/, // Generic + number pattern
+    /^[a-z]{20,}\./, // Very long random strings (20+ chars)
+    /-{3,}/, // 3+ consecutive hyphens
+    /^(test|demo|example|sample|fake|spam)\./, // Test domains at start
   ];
 
   for (const pattern of spamPatterns) {
@@ -706,36 +697,31 @@ function validateDomainQuality(domain) {
     }
   }
 
-  // 7. Check domain name part (without TLD)
+  // 6. Check domain name part (without TLD)
   const domainName = domain.split('.')[0];
   if (domainName.length < 2) {
     return { valid: false, score: 0, reason: 'name_too_short' };
   }
 
-  // 8. Calculate quality score (0-100)
-  let score = 50; // Base score
+  // 7. Calculate quality score (0-100) - be generous
+  let score = 60; // Higher base score
 
-  // Bonus for good TLDs
-  if (/\.(com|io|co|net|org)$/i.test(domain)) score += 20;
-  else if (/\.(ai|app|dev|tech)$/i.test(domain)) score += 15;
-  else if (/\.(agency|solutions|services|consulting)$/i.test(domain)) score += 10;
+  // Bonus for common business TLDs
+  if (/\.(com|io|co|net|org)$/i.test(domain)) score += 15;
+  else if (/\.(ai|app|dev|tech|biz|us|ca|uk)$/i.test(domain)) score += 10;
 
-  // Bonus for clean domain name (letters only)
-  if (/^[a-z]+\.[a-z]+$/i.test(domain)) score += 15;
+  // Small penalty for numbers (but don't block)
+  const numberCount = (domain.match(/\d/g) || []).length;
+  score -= numberCount * 2;
 
-  // Penalty for numbers
-  score -= numberCount * 3;
+  // Small penalty for hyphens (but don't block)
+  const hyphenCount = (domain.match(/-/g) || []).length;
+  score -= hyphenCount * 3;
 
-  // Penalty for hyphens
-  score -= hyphenCount * 5;
+  // Bonus for reasonable length
+  if (domainName.length >= 4 && domainName.length <= 20) score += 10;
 
-  // Penalty for very long names
-  if (domainName.length > 20) score -= 10;
-
-  // Bonus for reasonable length (6-15 chars)
-  if (domainName.length >= 6 && domainName.length <= 15) score += 10;
-
-  return { valid: true, score: Math.max(0, Math.min(100, score)) };
+  return { valid: true, score: Math.max(30, Math.min(100, score)) };
 }
 
 // ==================== COMPANY NAME QUALITY ====================
@@ -883,7 +869,7 @@ function processAdvancedResults(organic, filters, maxResults) {
 
     // 3. Validate domain quality
     const domainQuality = validateDomainQuality(domain);
-    if (!domainQuality.valid || domainQuality.score < 40) continue;
+    if (!domainQuality.valid) continue; // Only skip truly invalid domains, not low-score ones
 
     // 4. Check skip patterns in domain
     let shouldSkip = false;
