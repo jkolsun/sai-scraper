@@ -1,23 +1,29 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
-// ==================== THEME ====================
-const darkTheme = {
-  bgPrimary: '#0a0a0f',
-  bgSecondary: '#12121a',
-  bgTertiary: '#1a1a24',
-  bgHover: '#22222e',
-  border: '#2a2a3a',
-  borderLight: '#3a3a4a',
-  textPrimary: '#ffffff',
-  textSecondary: '#a0a0b0',
-  textMuted: '#606070',
-  accent: '#6366f1',
-  accentHover: '#818cf8',
+// ==================== THEME (Matching SAIScraper beige/cream) ====================
+const theme = {
+  // Backgrounds
+  bgPrimary: '#F5F5F0',      // Light beige/cream
+  bgSecondary: '#FFFFFF',     // White
+  bgTertiary: '#EEEEE8',      // Slightly darker beige
+  bgHover: '#E8E8E0',         // Hover state
+  // Text
+  textPrimary: '#1A1A1A',     // Near black
+  textSecondary: '#6B6B6B',   // Grey
+  textMuted: '#9A9A9A',       // Light grey
+  // Accent (Golden/Olive)
+  accent: '#B8960C',          // Golden olive
+  accentLight: '#D4AF37',     // Lighter gold
+  // Status colors
   success: '#10b981',
   warning: '#f59e0b',
   error: '#ef4444',
-  gradientStart: '#6366f1',
-  gradientEnd: '#8b5cf6'
+  // Borders
+  border: '#E5E5E0',          // Light border
+  borderLight: '#D0D0C8',     // Darker border
+  // Gradients
+  gradientStart: '#B8960C',
+  gradientEnd: '#D4AF37'
 };
 
 // ==================== ICONS ====================
@@ -56,7 +62,7 @@ const getApiBase = () => {
 
 // ==================== MAIN COMPONENT ====================
 function EnrichmentPlatform() {
-  const theme = darkTheme;
+  // Theme is defined at module level
 
   // Core state
   const [activeTab, setActiveTab] = useState('upload'); // 'upload', 'enriching', 'results'
