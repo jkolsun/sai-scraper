@@ -3053,11 +3053,19 @@ const SAIScraper = () => {
             <span style={{ color: theme.textMuted, fontSize: '11px', marginLeft: '10px', fontWeight: 500 }}>Lead Intelligence</span>
           </div>
         </div>
-        <nav style={{ display: 'flex', gap: '6px', background: theme.bgTertiary, padding: '4px', borderRadius: '12px', border: `1px solid ${theme.border}` }}>
-          <button onClick={() => setCurrentPage('scraper')} style={{ padding: '10px 20px', background: currentPage === 'scraper' ? theme.accentMuted : 'transparent', border: 'none', borderRadius: '8px', color: currentPage === 'scraper' ? theme.accent : theme.textSecondary, fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.search} Scraper</button>
-          <button onClick={() => setCurrentPage('lists')} style={{ padding: '10px 20px', background: currentPage === 'lists' ? theme.accentMuted : 'transparent', border: 'none', borderRadius: '8px', color: currentPage === 'lists' ? theme.accent : theme.textSecondary, fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.folder} Lists {lists.reduce((a, l) => a + l.leads.length, 0) > 0 && <span style={{ background: `linear-gradient(135deg, ${theme.accent} 0%, ${theme.accentLight} 100%)`, color: 'white', padding: '2px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600 }}>{lists.reduce((a, l) => a + l.leads.length, 0)}</span>}</button>
-          <button onClick={() => setCurrentPage('campaigns')} style={{ padding: '10px 20px', background: currentPage === 'campaigns' ? theme.accentMuted : 'transparent', border: 'none', borderRadius: '8px', color: currentPage === 'campaigns' ? theme.accent : theme.textSecondary, fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.mail} Campaigns {campaigns.length > 0 && <span style={{ background: `linear-gradient(135deg, ${theme.accent} 0%, ${theme.accentLight} 100%)`, color: 'white', padding: '2px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600 }}>{campaigns.length}</span>}</button>
-        </nav>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <nav style={{ display: 'flex', gap: '6px', background: theme.bgTertiary, padding: '4px', borderRadius: '12px', border: `1px solid ${theme.border}` }}>
+            <button onClick={() => setCurrentPage('scraper')} style={{ padding: '10px 20px', background: currentPage === 'scraper' ? theme.accentMuted : 'transparent', border: 'none', borderRadius: '8px', color: currentPage === 'scraper' ? theme.accent : theme.textSecondary, fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.search} Scraper</button>
+            <button onClick={() => setCurrentPage('lists')} style={{ padding: '10px 20px', background: currentPage === 'lists' ? theme.accentMuted : 'transparent', border: 'none', borderRadius: '8px', color: currentPage === 'lists' ? theme.accent : theme.textSecondary, fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.folder} Lists {lists.reduce((a, l) => a + l.leads.length, 0) > 0 && <span style={{ background: `linear-gradient(135deg, ${theme.accent} 0%, ${theme.accentLight} 100%)`, color: 'white', padding: '2px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600 }}>{lists.reduce((a, l) => a + l.leads.length, 0)}</span>}</button>
+            <button onClick={() => setCurrentPage('campaigns')} style={{ padding: '10px 20px', background: currentPage === 'campaigns' ? theme.accentMuted : 'transparent', border: 'none', borderRadius: '8px', color: currentPage === 'campaigns' ? theme.accent : theme.textSecondary, fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.mail} Campaigns {campaigns.length > 0 && <span style={{ background: `linear-gradient(135deg, ${theme.accent} 0%, ${theme.accentLight} 100%)`, color: 'white', padding: '2px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600 }}>{campaigns.length}</span>}</button>
+          </nav>
+          <button
+            onClick={() => setShowCrmModal(true)}
+            style={{ padding: '10px 12px', background: crmSettings.syncEnabled ? 'rgba(16,185,129,0.1)' : theme.bgTertiary, border: `1px solid ${crmSettings.syncEnabled ? '#10B981' : theme.border}`, borderRadius: '10px', color: crmSettings.syncEnabled ? '#10B981' : theme.textSecondary, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 500 }}
+          >
+            {Icons.link} {crmSettings.syncEnabled ? 'CRM Connected' : 'Connect CRM'}
+          </button>
+        </div>
       </header>
 
       {/* Main Content */}
@@ -3133,6 +3141,210 @@ const SAIScraper = () => {
                   <>{Icons.send || '📤'} Send to Webhook</>
                 )}
               </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* CRM Integration Modal */}
+      {showCrmModal && (
+        <>
+          <div
+            onClick={() => setShowCrmModal(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 1000 }}
+          />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: theme.bgSecondary, borderRadius: '16px', padding: '0', width: '500px', maxHeight: '80vh', overflowY: 'auto', zIndex: 1001, border: `1px solid ${theme.border}` }}>
+            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: theme.textPrimary }}>CRM Integration</h2>
+              <button onClick={() => setShowCrmModal(false)} style={{ background: 'none', border: 'none', color: theme.textMuted, cursor: 'pointer', fontSize: '20px', padding: '4px' }}>×</button>
+            </div>
+
+            <div style={{ padding: '24px' }}>
+              {/* Provider Selection */}
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: theme.textSecondary, marginBottom: '12px' }}>Select CRM Provider</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                  {[
+                    { id: 'hubspot', name: 'HubSpot', color: '#FF7A59' },
+                    { id: 'pipedrive', name: 'Pipedrive', color: '#00C875' },
+                    { id: 'salesforce', name: 'Salesforce', color: '#00A1E0' }
+                  ].map(crm => (
+                    <button
+                      key={crm.id}
+                      onClick={() => setCrmSettings(prev => ({ ...prev, provider: crm.id }))}
+                      style={{
+                        padding: '16px 12px',
+                        background: crmSettings.provider === crm.id ? `${crm.color}15` : theme.bgTertiary,
+                        border: `2px solid ${crmSettings.provider === crm.id ? crm.color : theme.border}`,
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '8px',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: crm.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: '14px' }}>
+                        {crm.name[0]}
+                      </div>
+                      <span style={{ fontSize: '12px', fontWeight: 500, color: crmSettings.provider === crm.id ? crm.color : theme.textSecondary }}>{crm.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* API Key Input */}
+              {crmSettings.provider && (
+                <>
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: theme.textSecondary, marginBottom: '8px' }}>
+                      {crmSettings.provider === 'hubspot' && 'HubSpot Private App Access Token'}
+                      {crmSettings.provider === 'pipedrive' && 'Pipedrive API Token'}
+                      {crmSettings.provider === 'salesforce' && 'Salesforce Access Token'}
+                    </label>
+                    <input
+                      type="password"
+                      value={crmSettings.apiKey}
+                      onChange={(e) => setCrmSettings(prev => ({ ...prev, apiKey: e.target.value }))}
+                      placeholder="Paste your API key here..."
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        background: theme.bgTertiary,
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: '8px',
+                        color: theme.textPrimary,
+                        fontSize: '14px',
+                        outline: 'none'
+                      }}
+                    />
+                    <p style={{ fontSize: '11px', color: theme.textMuted, marginTop: '8px' }}>
+                      {crmSettings.provider === 'hubspot' && 'Find this in HubSpot → Settings → Integrations → Private Apps'}
+                      {crmSettings.provider === 'pipedrive' && 'Find this in Pipedrive → Settings → Personal preferences → API'}
+                      {crmSettings.provider === 'salesforce' && 'Generate via Connected App in Salesforce Setup'}
+                    </p>
+                  </div>
+
+                  {/* Sync Options */}
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: theme.textSecondary, marginBottom: '12px' }}>Sync Settings</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={crmSettings.syncNewLeads}
+                          onChange={(e) => setCrmSettings(prev => ({ ...prev, syncNewLeads: e.target.checked }))}
+                          style={{ width: '16px', height: '16px', accentColor: theme.accent }}
+                        />
+                        <span style={{ fontSize: '13px', color: theme.textPrimary }}>Auto-sync new leads to CRM</span>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={crmSettings.syncStatusChanges}
+                          onChange={(e) => setCrmSettings(prev => ({ ...prev, syncStatusChanges: e.target.checked }))}
+                          style={{ width: '16px', height: '16px', accentColor: theme.accent }}
+                        />
+                        <span style={{ fontSize: '13px', color: theme.textPrimary }}>Sync status changes back to CRM</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Field Mapping Preview */}
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: theme.textSecondary, marginBottom: '12px' }}>Field Mapping</label>
+                    <div style={{ background: theme.bgTertiary, borderRadius: '8px', padding: '12px', fontSize: '12px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 20px 1fr', gap: '8px', alignItems: 'center' }}>
+                        <span style={{ color: theme.textMuted }}>Company Name</span>
+                        <span style={{ color: theme.textMuted, textAlign: 'center' }}>→</span>
+                        <span style={{ color: theme.textPrimary }}>
+                          {crmSettings.provider === 'hubspot' && 'Company.name'}
+                          {crmSettings.provider === 'pipedrive' && 'Organization.name'}
+                          {crmSettings.provider === 'salesforce' && 'Account.Name'}
+                        </span>
+
+                        <span style={{ color: theme.textMuted }}>Email</span>
+                        <span style={{ color: theme.textMuted, textAlign: 'center' }}>→</span>
+                        <span style={{ color: theme.textPrimary }}>
+                          {crmSettings.provider === 'hubspot' && 'Contact.email'}
+                          {crmSettings.provider === 'pipedrive' && 'Person.email'}
+                          {crmSettings.provider === 'salesforce' && 'Contact.Email'}
+                        </span>
+
+                        <span style={{ color: theme.textMuted }}>Website</span>
+                        <span style={{ color: theme.textMuted, textAlign: 'center' }}>→</span>
+                        <span style={{ color: theme.textPrimary }}>
+                          {crmSettings.provider === 'hubspot' && 'Company.domain'}
+                          {crmSettings.provider === 'pipedrive' && 'Organization.web'}
+                          {crmSettings.provider === 'salesforce' && 'Account.Website'}
+                        </span>
+
+                        <span style={{ color: theme.textMuted }}>Industry</span>
+                        <span style={{ color: theme.textMuted, textAlign: 'center' }}>→</span>
+                        <span style={{ color: theme.textPrimary }}>
+                          {crmSettings.provider === 'hubspot' && 'Company.industry'}
+                          {crmSettings.provider === 'pipedrive' && 'Custom Field'}
+                          {crmSettings.provider === 'salesforce' && 'Account.Industry'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Connect Button */}
+              <div style={{ display: 'flex', gap: '12px' }}>
+                {crmSettings.syncEnabled && (
+                  <button
+                    onClick={() => setCrmSettings(prev => ({ ...prev, syncEnabled: false, apiKey: '', provider: null }))}
+                    style={{
+                      flex: 1,
+                      padding: '14px',
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      borderRadius: '10px',
+                      color: '#ef4444',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Disconnect
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    if (crmSettings.provider && crmSettings.apiKey) {
+                      setCrmSettings(prev => ({ ...prev, syncEnabled: true }));
+                      setShowCrmModal(false);
+                    }
+                  }}
+                  disabled={!crmSettings.provider || !crmSettings.apiKey}
+                  style={{
+                    flex: 1,
+                    padding: '14px',
+                    background: !crmSettings.provider || !crmSettings.apiKey ? theme.bgTertiary : theme.accent,
+                    border: 'none',
+                    borderRadius: '10px',
+                    color: !crmSettings.provider || !crmSettings.apiKey ? theme.textMuted : 'white',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    cursor: !crmSettings.provider || !crmSettings.apiKey ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {crmSettings.syncEnabled ? 'Save Changes' : 'Connect CRM'}
+                </button>
+              </div>
+
+              {/* Status */}
+              {crmSettings.syncEnabled && (
+                <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10B981', fontSize: '13px', fontWeight: 500 }}>
+                    {Icons.check} Connected to {crmSettings.provider === 'hubspot' ? 'HubSpot' : crmSettings.provider === 'pipedrive' ? 'Pipedrive' : 'Salesforce'}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </>

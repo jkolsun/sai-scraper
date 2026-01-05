@@ -1,8 +1,8 @@
 import React from 'react';
-import SAIScraper from './components/SAIScraper';
+import EnrichmentPlatform from './components/EnrichmentPlatform';
 
 function App() {
-  return <SAIScraper />;
+  return <EnrichmentPlatform />;
 }
 
 export default App;

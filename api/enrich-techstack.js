@@ -86,7 +86,7 @@ export default async function handler(req, res) {
       'Lucky Orange': [/luckyorange/i],
       'Microsoft Clarity': [/clarity\.ms/i]
     };
-
+    
     // E-commerce & Payments
     const ecomPatterns = {
       'Shopify': [/shopify/i, /cdn\.shopify/i],
