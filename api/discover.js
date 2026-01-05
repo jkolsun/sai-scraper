@@ -60,12 +60,21 @@ export default async function handler(req, res) {
 
     console.log('Generated queries:', queries);
 
-    // Run parallel searches (up to 5 for comprehensive coverage)
-    const searchPromises = queries.slice(0, 5).map(query => searchSerper(SERPER_KEY, query));
+    // DYNAMIC SEARCH STRATEGY:
+    // - For small maxResults (≤25): Run more queries for better quality selection
+    // - For large maxResults (>25): Run max queries to get volume
+    const numQueries = maxResults <= 25 ? Math.min(queries.length, 8) : Math.min(queries.length, 10);
+    const resultsPerQuery = maxResults <= 25 ? 50 : 100; // More results per query
+
+    // Run parallel searches
+    const searchPromises = queries.slice(0, numQueries).map(query =>
+      searchSerper(SERPER_KEY, query, resultsPerQuery)
+    );
     const searchResults = await Promise.all(searchPromises);
 
     // Combine results
     const allOrganic = searchResults.flatMap(r => r.organic || []);
+    console.log(`Got ${allOrganic.length} raw results from ${numQueries} queries`);
 
     // Process with advanced filtering
     const companies = processAdvancedResults(allOrganic, {
@@ -630,7 +639,7 @@ function buildAdvancedQueries(filters) {
 }
 
 // ==================== SERPER API ====================
-async function searchSerper(apiKey, query) {
+async function searchSerper(apiKey, query, numResults = 50) {
   try {
     const response = await fetch('https://google.serper.dev/search', {
       method: 'POST',
@@ -642,7 +651,7 @@ async function searchSerper(apiKey, query) {
         q: query,
         gl: 'us',
         hl: 'en',
-        num: 30
+        num: Math.min(numResults, 100) // Serper max is 100
       }),
     });
 
@@ -772,8 +781,16 @@ function validateCompanyName(name) {
 }
 
 // ==================== PROCESS RESULTS ====================
+// GUARANTEE: Always try to return maxResults companies
+// Strategy: Multiple passes with decreasing strictness
 function processAdvancedResults(organic, filters, maxResults) {
   const { excludeDomains = [] } = filters;
+
+  // Calculate strictness based on maxResults
+  // Low max (10-25) = strict filtering, high quality
+  // High max (50-100) = relaxed filtering, more volume
+  const strictnessLevel = maxResults <= 10 ? 'strict' : maxResults <= 25 ? 'medium' : 'relaxed';
+  console.log(`Processing with strictness: ${strictnessLevel} for max ${maxResults}`);
 
   // Comprehensive skip list
   const skipDomains = new Set([
@@ -826,25 +843,41 @@ function processAdvancedResults(organic, filters, maxResults) {
   // Add user-excluded domains
   excludeDomains.forEach(d => skipDomains.add(d.toLowerCase()));
 
-  // Enhanced skip patterns
-  const skipPatterns = [
-    'wiki', 'news', 'directory', 'review', 'rating', 'compare', 'list-of', 'top-10', 'best-',
-    'forum', 'community', 'blog', 'article', 'guide', 'tutorial', 'how-to', 'what-is',
-    'template', 'example', 'sample', 'demo', 'test', 'free-', '-free',
+  // Skip patterns - vary by strictness
+  // Strict: skip all these patterns (quality over quantity)
+  // Relaxed: only skip the worst offenders (quantity matters)
+  const coreSkipPatterns = [
+    'wiki', 'directory', 'review', 'rating', 'compare', 'list-of', 'top-10',
+    'forum', 'community',
     'download', 'torrent', 'crack', 'serial', 'keygen', 'hack',
-    'coupon', 'discount', 'deal', 'promo', 'offer', 'sale',
+    'coupon', 'discount', 'deal', 'promo'
+  ];
+
+  const strictSkipPatterns = [
+    ...coreSkipPatterns,
+    'blog', 'article', 'guide', 'tutorial', 'how-to', 'what-is',
+    'template', 'example', 'sample', 'demo', 'test', 'free-', '-free',
+    'news', 'best-', 'offer', 'sale',
     'jobs-at', 'careers-at', 'work-at', 'join-', 'hiring-'
   ];
 
-  // URL patterns to skip
-  const skipUrlPatterns = [
-    '/blog/', '/articles/', '/news/', '/press/', '/media/',
-    '/careers/', '/jobs/', '/about-us/', '/contact-us/',
-    '/privacy', '/terms', '/legal/', '/sitemap',
-    '/tag/', '/category/', '/author/', '/page/',
+  const skipPatterns = strictnessLevel === 'strict' ? strictSkipPatterns : coreSkipPatterns;
+
+  // URL patterns to skip - also vary by strictness
+  const coreUrlSkipPatterns = [
     '/wp-content/', '/wp-admin/', '/feed/',
     '/search?', '/results?', '?q=', '&q='
   ];
+
+  const strictUrlSkipPatterns = [
+    ...coreUrlSkipPatterns,
+    '/blog/', '/articles/', '/news/', '/press/', '/media/',
+    '/careers/', '/jobs/', '/about-us/', '/contact-us/',
+    '/privacy', '/terms', '/legal/', '/sitemap',
+    '/tag/', '/category/', '/author/', '/page/'
+  ];
+
+  const skipUrlPatterns = strictnessLevel === 'strict' ? strictUrlSkipPatterns : coreUrlSkipPatterns;
 
   const companies = [];
   const seenDomains = new Set();
@@ -964,6 +997,96 @@ function processAdvancedResults(organic, filters, maxResults) {
 
   // Sort by domain quality score (higher is better)
   companies.sort((a, b) => (b.domainQualityScore || 0) - (a.domainQualityScore || 0));
+
+  console.log(`Found ${companies.length} companies after filtering (target: ${maxResults})`);
+
+  // If we didn't get enough and we were strict, do a second pass with relaxed filtering
+  if (companies.length < maxResults && strictnessLevel === 'strict') {
+    console.log('Running relaxed second pass to fill remaining slots...');
+    const remainingNeeded = maxResults - companies.length;
+    const relaxedCompanies = processWithRelaxedFiltering(organic, seenDomains, skipDomains, remainingNeeded);
+    companies.push(...relaxedCompanies);
+    console.log(`Added ${relaxedCompanies.length} more companies from relaxed pass`);
+  }
+
+  return companies.slice(0, maxResults);
+}
+
+// Second pass with minimal filtering to fill remaining slots
+function processWithRelaxedFiltering(organic, alreadySeen, skipDomains, needed) {
+  const companies = [];
+
+  // Minimal skip patterns - only the worst
+  const minimalSkipPatterns = ['wiki', 'forum', 'torrent', 'crack', 'keygen'];
+
+  for (const result of organic) {
+    if (companies.length >= needed) break;
+
+    const url = result.link || '';
+    let domain;
+    try {
+      domain = new URL(url).hostname.replace('www.', '').toLowerCase();
+    } catch {
+      continue;
+    }
+
+    // Skip already seen
+    if (alreadySeen.has(domain)) continue;
+
+    // Skip only the core blocked domains
+    if (skipDomains.has(domain)) continue;
+
+    // Very basic domain validation
+    if (!domain || domain.length < 4 || !/\.[a-z]{2,}$/i.test(domain)) continue;
+
+    // Skip .gov, .edu, .mil
+    if (/\.(gov|edu|mil)$/.test(domain)) continue;
+
+    // Minimal pattern check
+    let skip = false;
+    for (const pattern of minimalSkipPatterns) {
+      if (domain.includes(pattern)) {
+        skip = true;
+        break;
+      }
+    }
+    if (skip) continue;
+
+    // Extract name more permissively
+    let name = (result.title || '').split(/[|\-–—:•·]/)[0].trim();
+    if (name.length < 2 || name.length > 80) {
+      name = domain.replace(/\.(com|io|co|net|org|ai|app)$/i, '').replace(/[-_]/g, ' ');
+    }
+
+    // Basic cleanup
+    name = name
+      .replace(/\s+(Inc|LLC|Ltd|Corp|Co|Company|Services|Solutions|Group|Technologies|Tech)\.?$/i, '')
+      .trim();
+
+    // Capitalize
+    name = name.split(' ').map(w =>
+      w.length > 0 ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : ''
+    ).join(' ').trim();
+
+    if (name.length < 2 || name.length > 50) continue;
+
+    alreadySeen.add(domain);
+
+    companies.push({
+      name,
+      domain,
+      industry: 'Professional Services',
+      location: 'United States',
+      employees: '11-50 (Small)',
+      revenue: '$1M - $10M',
+      companyType: 'Private Company',
+      businessModel: 'B2B',
+      source: 'serper_discovery',
+      snippet: (result.snippet || '').substring(0, 250),
+      sourceUrl: url,
+      domainQualityScore: 50 // Lower score for relaxed-pass results
+    });
+  }
 
   return companies;
 }
