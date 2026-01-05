@@ -84,39 +84,14 @@ function App() {
   return (
     <ThemeContext.Provider value={{ theme, isDark, setIsDark }}>
       <div style={{ minHeight: '100vh', background: theme.bgPrimary, transition: 'background 0.3s ease' }}>
-        {/* Control Bar */}
+        {/* Mode Switcher - Centered */}
         <div style={{
           position: 'fixed',
           top: '16px',
-          right: '16px',
-          zIndex: 9999,
-          display: 'flex',
-          gap: '8px',
-          alignItems: 'center'
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 9999
         }}>
-          {/* Theme Toggle */}
-          <button
-            onClick={() => setIsDark(!isDark)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '42px',
-              height: '42px',
-              background: theme.bgSecondary,
-              border: `1px solid ${theme.border}`,
-              borderRadius: '10px',
-              color: theme.textSecondary,
-              cursor: 'pointer',
-              boxShadow: theme.shadowMd,
-              transition: 'all 0.15s'
-            }}
-            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {isDark ? Icons.sun : Icons.moon}
-          </button>
-
-          {/* Mode Switcher */}
           <div style={{
             display: 'flex',
             background: theme.bgSecondary,
@@ -167,6 +142,32 @@ function App() {
             </button>
           </div>
         </div>
+
+        {/* Theme Toggle - Right side */}
+        <button
+          onClick={() => setIsDark(!isDark)}
+          style={{
+            position: 'fixed',
+            top: '16px',
+            right: '16px',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '42px',
+            height: '42px',
+            background: theme.bgSecondary,
+            border: `1px solid ${theme.border}`,
+            borderRadius: '10px',
+            color: theme.textSecondary,
+            cursor: 'pointer',
+            boxShadow: theme.shadowMd,
+            transition: 'all 0.15s'
+          }}
+          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {isDark ? Icons.sun : Icons.moon}
+        </button>
 
         {/* Render active mode */}
         {mode === 'scraper' ? <SAIScraper /> : <EnrichmentPlatform />}
