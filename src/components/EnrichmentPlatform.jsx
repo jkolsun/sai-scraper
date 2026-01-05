@@ -1,30 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-
-// ==================== THEME (Matching SAIScraper beige/cream) ====================
-const theme = {
-  // Backgrounds
-  bgPrimary: '#F5F5F0',      // Light beige/cream
-  bgSecondary: '#FFFFFF',     // White
-  bgTertiary: '#EEEEE8',      // Slightly darker beige
-  bgHover: '#E8E8E0',         // Hover state
-  // Text
-  textPrimary: '#1A1A1A',     // Near black
-  textSecondary: '#6B6B6B',   // Grey
-  textMuted: '#9A9A9A',       // Light grey
-  // Accent (Golden/Olive)
-  accent: '#B8960C',          // Golden olive
-  accentLight: '#D4AF37',     // Lighter gold
-  // Status colors
-  success: '#10b981',
-  warning: '#f59e0b',
-  error: '#ef4444',
-  // Borders
-  border: '#E5E5E0',          // Light border
-  borderLight: '#D0D0C8',     // Darker border
-  // Gradients
-  gradientStart: '#B8960C',
-  gradientEnd: '#D4AF37'
-};
+import { useTheme } from '../App';
 
 // ==================== ICONS ====================
 const Icons = {
@@ -62,7 +37,7 @@ const getApiBase = () => {
 
 // ==================== MAIN COMPONENT ====================
 function EnrichmentPlatform() {
-  // Theme is defined at module level
+  const { theme } = useTheme();
 
   // Core state
   const [activeTab, setActiveTab] = useState('upload'); // 'upload', 'enriching', 'results'

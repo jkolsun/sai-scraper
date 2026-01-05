@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { discoverCompanies, enrichCompanies } from '../services/n8nService';
+import { useTheme } from '../App';
 
 // ==================== COMPREHENSIVE ICP FILTER OPTIONS ====================
 
@@ -480,39 +481,16 @@ const Icons = {
   activity: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
 };
 
-// ==================== DESIGN TOKENS (Beige/Grey Theme) ====================
-const theme = {
-  // Backgrounds
-  bgPrimary: '#F5F5F0',      // Light beige/cream
-  bgSecondary: '#FFFFFF',     // White
-  bgTertiary: '#EEEEE8',      // Slightly darker beige
-  bgDark: '#1A1A1A',          // Near black
-  // Text
-  textPrimary: '#1A1A1A',     // Near black
-  textSecondary: '#6B6B6B',   // Grey
-  textMuted: '#9A9A9A',       // Light grey
-  textLight: '#FFFFFF',       // White
-  // Accent (Golden/Olive like Bright SAI)
-  accent: '#B8960C',          // Golden olive
-  accentLight: '#D4AF37',     // Lighter gold
-  accentMuted: 'rgba(184, 150, 12, 0.1)',
-  // Borders
-  border: '#E5E5E0',          // Light border
-  borderDark: '#D0D0C8',      // Darker border
-  // Shadows
-  shadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-  shadowMd: '0 4px 16px rgba(0, 0, 0, 0.08)',
-  shadowLg: '0 8px 32px rgba(0, 0, 0, 0.12)'
-};
+// Theme is now provided via context from App.js
 
 // ==================== CHECKBOX COMPONENT ====================
-const Checkbox = ({ checked, indeterminate, onChange, disabled }) => (
+const Checkbox = ({ checked, indeterminate, onChange, disabled, theme }) => (
   <div
     onClick={(e) => { e.stopPropagation(); if (!disabled) onChange(!checked); }}
     style={{
       width: '18px', height: '18px', borderRadius: '4px',
-      border: checked || indeterminate ? 'none' : `1.5px solid ${theme.borderDark}`,
-      background: checked || indeterminate ? theme.accent : 'transparent',
+      border: checked || indeterminate ? 'none' : `1.5px solid ${theme?.borderDark || '#D0D0C8'}`,
+      background: checked || indeterminate ? (theme?.accent || '#B8960C') : 'transparent',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       cursor: disabled ? 'not-allowed' : 'pointer', flexShrink: 0,
       opacity: disabled ? 0.5 : 1,
@@ -525,7 +503,7 @@ const Checkbox = ({ checked, indeterminate, onChange, disabled }) => (
 );
 
 // ==================== REUSABLE COMPONENTS ====================
-const MultiSelect = ({ label, options, selected, onChange, placeholder }) => {
+const MultiSelect = ({ label, options, selected, onChange, placeholder, theme }) => {
   const [isOpen, setIsOpen] = useState(false);
   const toggleOption = (option) => {
     if (selected.includes(option)) onChange(selected.filter(s => s !== option));
@@ -561,7 +539,7 @@ const MultiSelect = ({ label, options, selected, onChange, placeholder }) => {
   );
 };
 
-const Select = ({ label, options, value, onChange, placeholder }) => {
+const Select = ({ label, options, value, onChange, placeholder, theme }) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <div style={{ position: 'relative' }}>
@@ -593,6 +571,9 @@ const Select = ({ label, options, value, onChange, placeholder }) => {
 
 // ==================== MAIN APP ====================
 const SAIScraper = () => {
+  // Get theme from context
+  const { theme } = useTheme();
+
   // Navigation
   const [currentPage, setCurrentPage] = useState('scraper');
   const [selectedListId, setSelectedListId] = useState(null);
@@ -2066,7 +2047,7 @@ const SAIScraper = () => {
               {/* FIRMOGRAPHIC */}
               {activeFilterTab === 'firmographic' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <MultiSelect label="Industry" options={INDUSTRIES} selected={icpFilters.industries} onChange={(v) => setIcpFilters({ ...icpFilters, industries: v, subIndustries: icpFilters.subIndustries.filter(si => v.some(ind => SUB_INDUSTRIES[ind]?.includes(si))) })} placeholder="Select industries" />
+                  <MultiSelect label="Industry" options={INDUSTRIES} selected={icpFilters.industries} onChange={(v) => setIcpFilters({ ...icpFilters, industries: v, subIndustries: icpFilters.subIndustries.filter(si => v.some(ind => SUB_INDUSTRIES[ind]?.includes(si))) })} placeholder="Select industries" theme={theme} />
                   {icpFilters.industries.length > 0 && (
                     <MultiSelect
                       label="Sub-Industry (Precision Targeting)"
@@ -2074,6 +2055,7 @@ const SAIScraper = () => {
                       selected={icpFilters.subIndustries}
                       onChange={(v) => setIcpFilters({ ...icpFilters, subIndustries: v })}
                       placeholder="Narrow by specialty niche"
+                      theme={theme}
                     />
                   )}
                   <div>
@@ -2090,21 +2072,21 @@ const SAIScraper = () => {
                     />
                     <p style={{ color: theme.textMuted, fontSize: '11px', marginTop: '6px' }}>Search any industry/niche not in the list above. Supports: trades, local services, verticals, niches.</p>
                   </div>
-                  <MultiSelect label="Company Size (Employees)" options={EMPLOYEE_RANGES.map(r => r.label)} selected={icpFilters.employeeRanges} onChange={(v) => setIcpFilters({ ...icpFilters, employeeRanges: v })} placeholder="Any size" />
-                  <MultiSelect label="Revenue Range" options={REVENUE_RANGES.map(r => r.label)} selected={icpFilters.revenueRanges} onChange={(v) => setIcpFilters({ ...icpFilters, revenueRanges: v })} placeholder="Any revenue" />
-                  <MultiSelect label="Company Type" options={COMPANY_TYPES} selected={icpFilters.companyTypes} onChange={(v) => setIcpFilters({ ...icpFilters, companyTypes: v })} placeholder="Any type" />
-                  <MultiSelect label="Business Model" options={BUSINESS_MODELS} selected={icpFilters.businessModels} onChange={(v) => setIcpFilters({ ...icpFilters, businessModels: v })} placeholder="Any model" />
+                  <MultiSelect label="Company Size (Employees)" options={EMPLOYEE_RANGES.map(r => r.label)} selected={icpFilters.employeeRanges} onChange={(v) => setIcpFilters({ ...icpFilters, employeeRanges: v })} placeholder="Any size" theme={theme} />
+                  <MultiSelect label="Revenue Range" options={REVENUE_RANGES.map(r => r.label)} selected={icpFilters.revenueRanges} onChange={(v) => setIcpFilters({ ...icpFilters, revenueRanges: v })} placeholder="Any revenue" theme={theme} />
+                  <MultiSelect label="Company Type" options={COMPANY_TYPES} selected={icpFilters.companyTypes} onChange={(v) => setIcpFilters({ ...icpFilters, companyTypes: v })} placeholder="Any type" theme={theme} />
+                  <MultiSelect label="Business Model" options={BUSINESS_MODELS} selected={icpFilters.businessModels} onChange={(v) => setIcpFilters({ ...icpFilters, businessModels: v })} placeholder="Any model" theme={theme} />
                 </div>
               )}
 
               {/* GEOGRAPHIC */}
               {activeFilterTab === 'geographic' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <MultiSelect label="Country" options={COUNTRIES} selected={icpFilters.countries} onChange={(v) => setIcpFilters({ ...icpFilters, countries: v })} placeholder="Select countries" />
+                  <MultiSelect label="Country" options={COUNTRIES} selected={icpFilters.countries} onChange={(v) => setIcpFilters({ ...icpFilters, countries: v })} placeholder="Select countries" theme={theme} />
                   {icpFilters.countries.includes('United States') && (
                     <>
-                      <MultiSelect label="US State" options={US_STATES} selected={icpFilters.states} onChange={(v) => setIcpFilters({ ...icpFilters, states: v })} placeholder="All states" />
-                      <MultiSelect label="Metro Area" options={US_METRO_AREAS} selected={icpFilters.metroAreas} onChange={(v) => setIcpFilters({ ...icpFilters, metroAreas: v })} placeholder="All metro areas" />
+                      <MultiSelect label="US State" options={US_STATES} selected={icpFilters.states} onChange={(v) => setIcpFilters({ ...icpFilters, states: v })} placeholder="All states" theme={theme} />
+                      <MultiSelect label="Metro Area" options={US_METRO_AREAS} selected={icpFilters.metroAreas} onChange={(v) => setIcpFilters({ ...icpFilters, metroAreas: v })} placeholder="All metro areas" theme={theme} />
                     </>
                   )}
                 </div>
@@ -2114,9 +2096,9 @@ const SAIScraper = () => {
               {activeFilterTab === 'contact' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <p style={{ color: '#737373', fontSize: '12px', marginBottom: '4px' }}>Filter by decision makers you want to reach</p>
-                  <MultiSelect label="Job Titles" options={JOB_TITLES} selected={icpFilters.jobTitles} onChange={(v) => setIcpFilters({ ...icpFilters, jobTitles: v })} placeholder="Any title" />
-                  <MultiSelect label="Seniority Level" options={SENIORITY_LEVELS} selected={icpFilters.seniorityLevels} onChange={(v) => setIcpFilters({ ...icpFilters, seniorityLevels: v })} placeholder="Any level" />
-                  <MultiSelect label="Department" options={DEPARTMENTS} selected={icpFilters.departments} onChange={(v) => setIcpFilters({ ...icpFilters, departments: v })} placeholder="Any department" />
+                  <MultiSelect label="Job Titles" options={JOB_TITLES} selected={icpFilters.jobTitles} onChange={(v) => setIcpFilters({ ...icpFilters, jobTitles: v })} placeholder="Any title" theme={theme} />
+                  <MultiSelect label="Seniority Level" options={SENIORITY_LEVELS} selected={icpFilters.seniorityLevels} onChange={(v) => setIcpFilters({ ...icpFilters, seniorityLevels: v })} placeholder="Any level" theme={theme} />
+                  <MultiSelect label="Department" options={DEPARTMENTS} selected={icpFilters.departments} onChange={(v) => setIcpFilters({ ...icpFilters, departments: v })} placeholder="Any department" theme={theme} />
                 </div>
               )}
 
@@ -2124,8 +2106,8 @@ const SAIScraper = () => {
               {activeFilterTab === 'technographic' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <p style={{ color: '#737373', fontSize: '12px', marginBottom: '4px' }}>Find companies using specific technologies</p>
-                  <MultiSelect label="Tech Category" options={Object.keys(TECH_CATEGORIES)} selected={icpFilters.techCategories} onChange={(v) => setIcpFilters({ ...icpFilters, techCategories: v })} placeholder="All categories" />
-                  <MultiSelect label="Specific Technologies" options={icpFilters.techCategories.length > 0 ? icpFilters.techCategories.flatMap(c => TECH_CATEGORIES[c] || []) : ALL_TECHNOLOGIES} selected={icpFilters.technologies} onChange={(v) => setIcpFilters({ ...icpFilters, technologies: v })} placeholder="Any technology" />
+                  <MultiSelect label="Tech Category" options={Object.keys(TECH_CATEGORIES)} selected={icpFilters.techCategories} onChange={(v) => setIcpFilters({ ...icpFilters, techCategories: v })} placeholder="All categories" theme={theme} />
+                  <MultiSelect label="Specific Technologies" options={icpFilters.techCategories.length > 0 ? icpFilters.techCategories.flatMap(c => TECH_CATEGORIES[c] || []) : ALL_TECHNOLOGIES} selected={icpFilters.technologies} onChange={(v) => setIcpFilters({ ...icpFilters, technologies: v })} placeholder="Any technology" theme={theme} />
                 </div>
               )}
 
@@ -2133,8 +2115,8 @@ const SAIScraper = () => {
               {activeFilterTab === 'funding' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <p style={{ color: '#737373', fontSize: '12px', marginBottom: '4px' }}>Target companies by funding stage and activity</p>
-                  <MultiSelect label="Funding Stage" options={FUNDING_STAGES} selected={icpFilters.fundingStages} onChange={(v) => setIcpFilters({ ...icpFilters, fundingStages: v })} placeholder="Any stage" />
-                  <Select label="Funding Recency" options={FUNDING_RECENCY} value={icpFilters.fundingRecency} onChange={(v) => setIcpFilters({ ...icpFilters, fundingRecency: v })} placeholder="Any time" />
+                  <MultiSelect label="Funding Stage" options={FUNDING_STAGES} selected={icpFilters.fundingStages} onChange={(v) => setIcpFilters({ ...icpFilters, fundingStages: v })} placeholder="Any stage" theme={theme} />
+                  <Select label="Funding Recency" options={FUNDING_RECENCY} value={icpFilters.fundingRecency} onChange={(v) => setIcpFilters({ ...icpFilters, fundingRecency: v })} placeholder="Any time" theme={theme} />
                 </div>
               )}
 
@@ -2142,8 +2124,8 @@ const SAIScraper = () => {
               {activeFilterTab === 'hiring' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <p style={{ color: '#737373', fontSize: '12px', marginBottom: '4px' }}>Find growing companies actively hiring</p>
-                  <MultiSelect label="Hiring in Departments" options={HIRING_DEPARTMENTS} selected={icpFilters.hiringDepartments} onChange={(v) => setIcpFilters({ ...icpFilters, hiringDepartments: v })} placeholder="Any department" />
-                  <Select label="Hiring Intensity" options={HIRING_INTENSITY.map(h => h.label)} value={icpFilters.hiringIntensity} onChange={(v) => setIcpFilters({ ...icpFilters, hiringIntensity: v })} placeholder="Any intensity" />
+                  <MultiSelect label="Hiring in Departments" options={HIRING_DEPARTMENTS} selected={icpFilters.hiringDepartments} onChange={(v) => setIcpFilters({ ...icpFilters, hiringDepartments: v })} placeholder="Any department" theme={theme} />
+                  <Select label="Hiring Intensity" options={HIRING_INTENSITY.map(h => h.label)} value={icpFilters.hiringIntensity} onChange={(v) => setIcpFilters({ ...icpFilters, hiringIntensity: v })} placeholder="Any intensity" theme={theme} />
                 </div>
               )}
 
@@ -2151,7 +2133,7 @@ const SAIScraper = () => {
               {activeFilterTab === 'intent' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <p style={{ color: theme.textMuted, fontSize: '12px', marginBottom: '4px' }}>Target companies showing buying intent</p>
-                  <MultiSelect label="Intent Signals" options={INTENT_SIGNALS.map(s => s.label)} selected={icpFilters.intentSignals} onChange={(v) => setIcpFilters({ ...icpFilters, intentSignals: v })} placeholder="Any signal" />
+                  <MultiSelect label="Intent Signals" options={INTENT_SIGNALS.map(s => s.label)} selected={icpFilters.intentSignals} onChange={(v) => setIcpFilters({ ...icpFilters, intentSignals: v })} placeholder="Any signal" theme={theme} />
                   <div style={{ marginTop: '8px' }}>
                     {INTENT_SIGNALS.filter(s => icpFilters.intentSignals.includes(s.label)).map(signal => (
                       <div key={signal.id} style={{ padding: '10px 12px', background: theme.accentMuted, border: `1px solid ${theme.accent}`, borderRadius: '8px', marginBottom: '8px' }}>
@@ -2192,7 +2174,7 @@ const SAIScraper = () => {
                       onChange={(e) => setIcpFilters({ ...icpFilters, excludeDomains: e.target.value.split(',').map(k => k.trim()).filter(k => k) })}
                     />
                   </div>
-                  <MultiSelect label="Compliance/Certifications" options={COMPLIANCE_CERTIFICATIONS} selected={icpFilters.keywords.filter(k => COMPLIANCE_CERTIFICATIONS.includes(k))} onChange={(v) => setIcpFilters({ ...icpFilters, keywords: [...icpFilters.keywords.filter(k => !COMPLIANCE_CERTIFICATIONS.includes(k)), ...v] })} placeholder="Any certification" />
+                  <MultiSelect label="Compliance/Certifications" options={COMPLIANCE_CERTIFICATIONS} selected={icpFilters.keywords.filter(k => COMPLIANCE_CERTIFICATIONS.includes(k))} onChange={(v) => setIcpFilters({ ...icpFilters, keywords: [...icpFilters.keywords.filter(k => !COMPLIANCE_CERTIFICATIONS.includes(k)), ...v] })} placeholder="Any certification" theme={theme} />
                 </div>
               )}
             </div>
@@ -2217,6 +2199,7 @@ const SAIScraper = () => {
                 setEnabledSignals(newSignals);
               }}
               placeholder="Select signals to search for"
+              theme={theme}
             />
             {activeSignalCount > 0 && (
               <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -2326,7 +2309,7 @@ const SAIScraper = () => {
                 <thead>
                   <tr style={{ borderBottom: `1px solid ${theme.border}`, background: theme.bgTertiary }}>
                     <th style={{ padding: '16px 18px', textAlign: 'left', width: '50px' }}>
-                      <Checkbox checked={allSelected} indeterminate={someSelected} onChange={toggleSelectAll} />
+                      <Checkbox checked={allSelected} indeterminate={someSelected} onChange={toggleSelectAll} theme={theme} />
                     </th>
                     <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Company</th>
                     <th style={{ padding: '16px 18px', textAlign: 'left', color: theme.textSecondary, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Email</th>
@@ -2340,7 +2323,7 @@ const SAIScraper = () => {
                   {results.map((result, index) => (
                     <tr key={result.id} style={{ borderBottom: index < results.length - 1 ? `1px solid ${theme.border}` : 'none', cursor: 'pointer', background: selectedIds.has(result.id) ? theme.accentMuted : 'transparent', transition: 'background 0.15s ease' }}>
                       <td style={{ padding: '18px' }} onClick={(e) => e.stopPropagation()}>
-                        <Checkbox checked={selectedIds.has(result.id)} onChange={() => toggleSelect(result.id)} />
+                        <Checkbox checked={selectedIds.has(result.id)} onChange={() => toggleSelect(result.id)} theme={theme} />
                       </td>
                       <td style={{ padding: '18px' }} onClick={() => setSelectedCompany(result)}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
