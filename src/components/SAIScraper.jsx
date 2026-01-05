@@ -470,7 +470,14 @@ const Icons = {
   star: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
   starFilled: <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
   clock: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-  copy: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+  copy: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>,
+  mail: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
+  send: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+  play: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
+  pause: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>,
+  settings: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>,
+  link: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>,
+  activity: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
 };
 
 // ==================== DESIGN TOKENS (Beige/Grey Theme) ====================
@@ -850,6 +857,212 @@ const SAIScraper = () => {
   const [showWebhookModal, setShowWebhookModal] = useState(false);
   const [webhookStatus, setWebhookStatus] = useState(null); // 'sending', 'success', 'error'
   const [webhookError, setWebhookError] = useState(null);
+
+  // ==================== CAMPAIGNS & SEQUENCES ====================
+  const [campaigns, setCampaigns] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sai_campaigns');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [showCampaignModal, setShowCampaignModal] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState(null);
+  const [newCampaign, setNewCampaign] = useState({
+    name: '',
+    description: '',
+    status: 'draft', // draft, active, paused, completed
+    leads: [], // lead IDs
+    sequences: [
+      { id: 1, type: 'email', subject: '', body: '', delay: 0, delayUnit: 'days' }
+    ],
+    settings: {
+      sendingWindow: { start: '09:00', end: '17:00' },
+      timezone: 'America/New_York',
+      dailyLimit: 50,
+      trackOpens: true,
+      trackClicks: true
+    },
+    stats: {
+      sent: 0,
+      opened: 0,
+      clicked: 0,
+      replied: 0,
+      bounced: 0
+    },
+    createdAt: null,
+    updatedAt: null
+  });
+
+  // Lead status tracking (per lead, across campaigns)
+  const [leadStatuses, setLeadStatuses] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sai_lead_statuses');
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+
+  // CRM Integration settings
+  const [crmSettings, setCrmSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sai_crm_settings');
+      return saved ? JSON.parse(saved) : {
+        provider: null, // 'hubspot', 'pipedrive', 'salesforce'
+        apiKey: '',
+        syncEnabled: false,
+        syncNewLeads: true,
+        syncStatusChanges: true,
+        fieldMappings: {}
+      };
+    } catch { return { provider: null, apiKey: '', syncEnabled: false }; }
+  });
+  const [showCrmModal, setShowCrmModal] = useState(false);
+
+  // Persist campaigns to localStorage
+  useEffect(() => {
+    try { localStorage.setItem('sai_campaigns', JSON.stringify(campaigns)); } catch {}
+  }, [campaigns]);
+
+  // Persist lead statuses to localStorage
+  useEffect(() => {
+    try { localStorage.setItem('sai_lead_statuses', JSON.stringify(leadStatuses)); } catch {}
+  }, [leadStatuses]);
+
+  // Persist CRM settings to localStorage
+  useEffect(() => {
+    try { localStorage.setItem('sai_crm_settings', JSON.stringify(crmSettings)); } catch {}
+  }, [crmSettings]);
+
+  // Lead status options
+  const LEAD_STATUSES = [
+    { value: 'new', label: 'New', color: '#6B7280' },
+    { value: 'contacted', label: 'Contacted', color: '#3B82F6' },
+    { value: 'opened', label: 'Opened', color: '#8B5CF6' },
+    { value: 'replied', label: 'Replied', color: '#10B981' },
+    { value: 'interested', label: 'Interested', color: '#F59E0B' },
+    { value: 'meeting', label: 'Meeting Set', color: '#EC4899' },
+    { value: 'converted', label: 'Converted', color: '#059669' },
+    { value: 'lost', label: 'Lost', color: '#EF4444' },
+    { value: 'unsubscribed', label: 'Unsubscribed', color: '#9CA3AF' }
+  ];
+
+  // Update lead status
+  const updateLeadStatus = (leadId, status) => {
+    setLeadStatuses(prev => ({
+      ...prev,
+      [leadId]: {
+        status,
+        updatedAt: new Date().toISOString(),
+        history: [
+          ...(prev[leadId]?.history || []),
+          { status, timestamp: new Date().toISOString() }
+        ]
+      }
+    }));
+  };
+
+  // Get lead status
+  const getLeadStatus = (leadId) => {
+    return leadStatuses[leadId]?.status || 'new';
+  };
+
+  // Campaign CRUD
+  const createCampaign = () => {
+    const campaign = {
+      ...newCampaign,
+      id: Date.now(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    setCampaigns(prev => [...prev, campaign]);
+    setNewCampaign({
+      name: '',
+      description: '',
+      status: 'draft',
+      leads: [],
+      sequences: [{ id: 1, type: 'email', subject: '', body: '', delay: 0, delayUnit: 'days' }],
+      settings: {
+        sendingWindow: { start: '09:00', end: '17:00' },
+        timezone: 'America/New_York',
+        dailyLimit: 50,
+        trackOpens: true,
+        trackClicks: true
+      },
+      stats: { sent: 0, opened: 0, clicked: 0, replied: 0, bounced: 0 },
+      createdAt: null,
+      updatedAt: null
+    });
+    setShowCampaignModal(false);
+  };
+
+  const updateCampaign = (id, updates) => {
+    setCampaigns(prev => prev.map(c =>
+      c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c
+    ));
+  };
+
+  const deleteCampaign = (id) => {
+    setCampaigns(prev => prev.filter(c => c.id !== id));
+  };
+
+  const addSequenceStep = () => {
+    const newStep = {
+      id: Date.now(),
+      type: 'email',
+      subject: '',
+      body: '',
+      delay: 2,
+      delayUnit: 'days'
+    };
+    if (editingCampaign) {
+      setEditingCampaign(prev => ({
+        ...prev,
+        sequences: [...prev.sequences, newStep]
+      }));
+    } else {
+      setNewCampaign(prev => ({
+        ...prev,
+        sequences: [...prev.sequences, newStep]
+      }));
+    }
+  };
+
+  const updateSequenceStep = (stepId, updates) => {
+    const updateFn = (prev) => ({
+      ...prev,
+      sequences: prev.sequences.map(s =>
+        s.id === stepId ? { ...s, ...updates } : s
+      )
+    });
+    if (editingCampaign) {
+      setEditingCampaign(updateFn);
+    } else {
+      setNewCampaign(updateFn);
+    }
+  };
+
+  const removeSequenceStep = (stepId) => {
+    const updateFn = (prev) => ({
+      ...prev,
+      sequences: prev.sequences.filter(s => s.id !== stepId)
+    });
+    if (editingCampaign) {
+      setEditingCampaign(updateFn);
+    } else {
+      setNewCampaign(updateFn);
+    }
+  };
+
+  // Add leads to campaign
+  const addLeadsToCampaign = (campaignId, leadIds) => {
+    setCampaigns(prev => prev.map(c => {
+      if (c.id === campaignId) {
+        const existingIds = new Set(c.leads);
+        const newLeads = leadIds.filter(id => !existingIds.has(id));
+        return { ...c, leads: [...c.leads, ...newLeads], updatedAt: new Date().toISOString() };
+      }
+      return c;
+    }));
+  };
 
   // Counts
   const activeSignalCount = Object.values(enabledSignals).filter(Boolean).length;
@@ -2490,6 +2703,342 @@ const SAIScraper = () => {
     );
   };
 
+  // ==================== CAMPAIGNS PAGE ====================
+  const renderCampaignsPage = () => {
+    const currentCampaign = editingCampaign || newCampaign;
+    const setCurrentCampaign = editingCampaign ? setEditingCampaign : setNewCampaign;
+
+    return (
+      <main style={{ flex: 1, padding: '24px', maxWidth: '1400px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: 700, color: theme.textPrimary, margin: 0 }}>Campaigns</h1>
+            <p style={{ color: theme.textMuted, fontSize: '14px', marginTop: '4px' }}>Create email sequences and track outreach performance</p>
+          </div>
+          <button
+            onClick={() => { setEditingCampaign(null); setShowCampaignModal(true); }}
+            style={{ padding: '12px 20px', background: theme.accent, border: 'none', borderRadius: '10px', color: 'white', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            {Icons.plus} New Campaign
+          </button>
+        </div>
+
+        {/* Campaign Stats Overview */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px', marginBottom: '24px' }}>
+          {[
+            { label: 'Total Campaigns', value: campaigns.length, color: theme.accent },
+            { label: 'Active', value: campaigns.filter(c => c.status === 'active').length, color: '#10B981' },
+            { label: 'Total Sent', value: campaigns.reduce((a, c) => a + c.stats.sent, 0), color: '#3B82F6' },
+            { label: 'Total Opens', value: campaigns.reduce((a, c) => a + c.stats.opened, 0), color: '#8B5CF6' },
+            { label: 'Total Replies', value: campaigns.reduce((a, c) => a + c.stats.replied, 0), color: '#F59E0B' }
+          ].map((stat, i) => (
+            <div key={i} style={{ background: theme.bgSecondary, borderRadius: '12px', padding: '20px', border: `1px solid ${theme.border}` }}>
+              <div style={{ color: theme.textMuted, fontSize: '12px', fontWeight: 500, marginBottom: '8px' }}>{stat.label}</div>
+              <div style={{ fontSize: '28px', fontWeight: 700, color: stat.color }}>{stat.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Campaign List */}
+        {campaigns.length === 0 ? (
+          <div style={{ background: theme.bgSecondary, borderRadius: '16px', padding: '60px', textAlign: 'center', border: `1px solid ${theme.border}` }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>{Icons.mail}</div>
+            <h3 style={{ color: theme.textPrimary, fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>No campaigns yet</h3>
+            <p style={{ color: theme.textMuted, fontSize: '14px', marginBottom: '20px' }}>Create your first email sequence to start reaching out to leads</p>
+            <button
+              onClick={() => { setEditingCampaign(null); setShowCampaignModal(true); }}
+              style={{ padding: '12px 24px', background: theme.accent, border: 'none', borderRadius: '10px', color: 'white', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Create Campaign
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: '16px' }}>
+            {campaigns.map(campaign => (
+              <div key={campaign.id} style={{ background: theme.bgSecondary, borderRadius: '12px', border: `1px solid ${theme.border}`, overflow: 'hidden' }}>
+                <div style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '20px' }}>
+                  {/* Status indicator */}
+                  <div style={{
+                    width: '12px', height: '12px', borderRadius: '50%',
+                    background: campaign.status === 'active' ? '#10B981' : campaign.status === 'paused' ? '#F59E0B' : campaign.status === 'completed' ? '#6B7280' : '#3B82F6'
+                  }} />
+
+                  {/* Campaign info */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <h3 style={{ color: theme.textPrimary, fontSize: '16px', fontWeight: 600, margin: 0 }}>{campaign.name}</h3>
+                      <span style={{
+                        padding: '4px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600,
+                        background: campaign.status === 'active' ? 'rgba(16,185,129,0.1)' : campaign.status === 'paused' ? 'rgba(245,158,11,0.1)' : 'rgba(107,114,128,0.1)',
+                        color: campaign.status === 'active' ? '#10B981' : campaign.status === 'paused' ? '#F59E0B' : '#6B7280'
+                      }}>
+                        {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
+                      </span>
+                    </div>
+                    <p style={{ color: theme.textMuted, fontSize: '13px', marginTop: '4px' }}>
+                      {campaign.sequences.length} step{campaign.sequences.length !== 1 ? 's' : ''} • {campaign.leads.length} lead{campaign.leads.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+
+                  {/* Stats */}
+                  <div style={{ display: 'flex', gap: '24px' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ color: theme.textMuted, fontSize: '11px', marginBottom: '4px' }}>Sent</div>
+                      <div style={{ color: theme.textPrimary, fontSize: '16px', fontWeight: 600 }}>{campaign.stats.sent}</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ color: theme.textMuted, fontSize: '11px', marginBottom: '4px' }}>Opens</div>
+                      <div style={{ color: '#8B5CF6', fontSize: '16px', fontWeight: 600 }}>{campaign.stats.opened}</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ color: theme.textMuted, fontSize: '11px', marginBottom: '4px' }}>Replies</div>
+                      <div style={{ color: '#10B981', fontSize: '16px', fontWeight: 600 }}>{campaign.stats.replied}</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ color: theme.textMuted, fontSize: '11px', marginBottom: '4px' }}>Rate</div>
+                      <div style={{ color: theme.textPrimary, fontSize: '16px', fontWeight: 600 }}>
+                        {campaign.stats.sent > 0 ? Math.round((campaign.stats.opened / campaign.stats.sent) * 100) : 0}%
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {campaign.status === 'draft' && (
+                      <button
+                        onClick={() => updateCampaign(campaign.id, { status: 'active' })}
+                        style={{ padding: '8px 16px', background: '#10B981', border: 'none', borderRadius: '8px', color: 'white', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        {Icons.play} Start
+                      </button>
+                    )}
+                    {campaign.status === 'active' && (
+                      <button
+                        onClick={() => updateCampaign(campaign.id, { status: 'paused' })}
+                        style={{ padding: '8px 16px', background: '#F59E0B', border: 'none', borderRadius: '8px', color: 'white', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        {Icons.pause} Pause
+                      </button>
+                    )}
+                    {campaign.status === 'paused' && (
+                      <button
+                        onClick={() => updateCampaign(campaign.id, { status: 'active' })}
+                        style={{ padding: '8px 16px', background: '#10B981', border: 'none', borderRadius: '8px', color: 'white', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        {Icons.play} Resume
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { setEditingCampaign(campaign); setShowCampaignModal(true); }}
+                      style={{ padding: '8px 12px', background: theme.bgTertiary, border: `1px solid ${theme.border}`, borderRadius: '8px', color: theme.textSecondary, cursor: 'pointer' }}
+                    >
+                      {Icons.edit}
+                    </button>
+                    <button
+                      onClick={() => { if (window.confirm('Delete this campaign?')) deleteCampaign(campaign.id); }}
+                      style={{ padding: '8px 12px', background: theme.bgTertiary, border: `1px solid ${theme.border}`, borderRadius: '8px', color: '#EF4444', cursor: 'pointer' }}
+                    >
+                      {Icons.trash}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Campaign Modal */}
+        {showCampaignModal && (
+          <>
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200 }} onClick={() => { setShowCampaignModal(false); setEditingCampaign(null); }} />
+            <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '800px', maxHeight: '90vh', background: theme.bgSecondary, borderRadius: '16px', border: `1px solid ${theme.border}`, boxShadow: theme.shadowLg, zIndex: 210, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              {/* Modal Header */}
+              <div style={{ padding: '20px 24px', borderBottom: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ color: theme.textPrimary, fontSize: '18px', fontWeight: 700 }}>{editingCampaign ? 'Edit Campaign' : 'Create Campaign'}</div>
+                  <div style={{ color: theme.textMuted, fontSize: '13px', marginTop: '4px' }}>Build your email sequence</div>
+                </div>
+                <button onClick={() => { setShowCampaignModal(false); setEditingCampaign(null); }} style={{ background: 'none', border: 'none', color: theme.textMuted, fontSize: '20px', cursor: 'pointer' }}>{Icons.x}</button>
+              </div>
+
+              {/* Modal Body */}
+              <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
+                {/* Campaign Name & Description */}
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px', marginBottom: '24px' }}>
+                  <div>
+                    <label style={{ display: 'block', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, marginBottom: '8px' }}>Campaign Name</label>
+                    <input
+                      type="text"
+                      value={currentCampaign.name}
+                      onChange={(e) => setCurrentCampaign(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="e.g., Q1 Outreach - SaaS Companies"
+                      style={{ width: '100%', padding: '12px 14px', background: theme.bgTertiary, border: `1px solid ${theme.border}`, borderRadius: '8px', color: theme.textPrimary, fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, marginBottom: '8px' }}>Daily Send Limit</label>
+                    <input
+                      type="number"
+                      value={currentCampaign.settings.dailyLimit}
+                      onChange={(e) => setCurrentCampaign(prev => ({ ...prev, settings: { ...prev.settings, dailyLimit: parseInt(e.target.value) || 50 } }))}
+                      style={{ width: '100%', padding: '12px 14px', background: theme.bgTertiary, border: `1px solid ${theme.border}`, borderRadius: '8px', color: theme.textPrimary, fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Email Sequence Builder */}
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <label style={{ color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Email Sequence</label>
+                    <button
+                      onClick={addSequenceStep}
+                      style={{ padding: '8px 14px', background: theme.bgTertiary, border: `1px solid ${theme.border}`, borderRadius: '8px', color: theme.textSecondary, fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      {Icons.plus} Add Step
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {currentCampaign.sequences.map((step, index) => (
+                      <div key={step.id} style={{ background: theme.bgTertiary, borderRadius: '12px', border: `1px solid ${theme.border}`, overflow: 'hidden' }}>
+                        {/* Step Header */}
+                        <div style={{ padding: '14px 16px', borderBottom: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: theme.bgSecondary }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: theme.accent, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 600 }}>{index + 1}</div>
+                            <span style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 600 }}>Email {index + 1}</span>
+                            {index > 0 && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '12px' }}>
+                                <span style={{ color: theme.textMuted, fontSize: '12px' }}>Wait</span>
+                                <input
+                                  type="number"
+                                  value={step.delay}
+                                  onChange={(e) => updateSequenceStep(step.id, { delay: parseInt(e.target.value) || 0 })}
+                                  style={{ width: '50px', padding: '6px 8px', background: theme.bgPrimary, border: `1px solid ${theme.border}`, borderRadius: '6px', color: theme.textPrimary, fontSize: '13px', textAlign: 'center' }}
+                                />
+                                <select
+                                  value={step.delayUnit}
+                                  onChange={(e) => updateSequenceStep(step.id, { delayUnit: e.target.value })}
+                                  style={{ padding: '6px 10px', background: theme.bgPrimary, border: `1px solid ${theme.border}`, borderRadius: '6px', color: theme.textPrimary, fontSize: '13px' }}
+                                >
+                                  <option value="hours">hours</option>
+                                  <option value="days">days</option>
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                          {currentCampaign.sequences.length > 1 && (
+                            <button onClick={() => removeSequenceStep(step.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: '4px' }}>{Icons.trash}</button>
+                          )}
+                        </div>
+
+                        {/* Step Content */}
+                        <div style={{ padding: '16px' }}>
+                          <div style={{ marginBottom: '12px' }}>
+                            <label style={{ display: 'block', color: theme.textMuted, fontSize: '11px', fontWeight: 500, marginBottom: '6px' }}>Subject Line</label>
+                            <input
+                              type="text"
+                              value={step.subject}
+                              onChange={(e) => updateSequenceStep(step.id, { subject: e.target.value })}
+                              placeholder="e.g., Quick question about {{company}}"
+                              style={{ width: '100%', padding: '10px 12px', background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '8px', color: theme.textPrimary, fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', color: theme.textMuted, fontSize: '11px', fontWeight: 500, marginBottom: '6px' }}>Email Body</label>
+                            <textarea
+                              value={step.body}
+                              onChange={(e) => updateSequenceStep(step.id, { body: e.target.value })}
+                              placeholder="Hi {{firstName}},&#10;&#10;I noticed {{company}} is..."
+                              rows={5}
+                              style={{ width: '100%', padding: '12px', background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '8px', color: theme.textPrimary, fontSize: '14px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                            />
+                          </div>
+                          <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <span style={{ color: theme.textMuted, fontSize: '11px' }}>Variables:</span>
+                            {['{{firstName}}', '{{company}}', '{{industry}}', '{{website}}'].map(v => (
+                              <button key={v} onClick={() => updateSequenceStep(step.id, { body: step.body + ' ' + v })} style={{ padding: '4px 8px', background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '4px', color: theme.accent, fontSize: '11px', cursor: 'pointer' }}>{v}</button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Send Settings */}
+                <div style={{ background: theme.bgTertiary, borderRadius: '12px', padding: '16px', border: `1px solid ${theme.border}` }}>
+                  <label style={{ display: 'block', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, marginBottom: '12px' }}>Send Window</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <input
+                      type="time"
+                      value={currentCampaign.settings.sendingWindow.start}
+                      onChange={(e) => setCurrentCampaign(prev => ({ ...prev, settings: { ...prev.settings, sendingWindow: { ...prev.settings.sendingWindow, start: e.target.value } } }))}
+                      style={{ padding: '8px 12px', background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '6px', color: theme.textPrimary, fontSize: '14px' }}
+                    />
+                    <span style={{ color: theme.textMuted }}>to</span>
+                    <input
+                      type="time"
+                      value={currentCampaign.settings.sendingWindow.end}
+                      onChange={(e) => setCurrentCampaign(prev => ({ ...prev, settings: { ...prev.settings, sendingWindow: { ...prev.settings.sendingWindow, end: e.target.value } } }))}
+                      style={{ padding: '8px 12px', background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '6px', color: theme.textPrimary, fontSize: '14px' }}
+                    />
+                    <select
+                      value={currentCampaign.settings.timezone}
+                      onChange={(e) => setCurrentCampaign(prev => ({ ...prev, settings: { ...prev.settings, timezone: e.target.value } }))}
+                      style={{ padding: '8px 12px', background: theme.bgSecondary, border: `1px solid ${theme.border}`, borderRadius: '6px', color: theme.textPrimary, fontSize: '14px', marginLeft: 'auto' }}
+                    >
+                      <option value="America/New_York">Eastern Time</option>
+                      <option value="America/Chicago">Central Time</option>
+                      <option value="America/Denver">Mountain Time</option>
+                      <option value="America/Los_Angeles">Pacific Time</option>
+                      <option value="Europe/London">London</option>
+                    </select>
+                  </div>
+                  <div style={{ display: 'flex', gap: '20px', marginTop: '16px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={currentCampaign.settings.trackOpens} onChange={(e) => setCurrentCampaign(prev => ({ ...prev, settings: { ...prev.settings, trackOpens: e.target.checked } }))} style={{ accentColor: theme.accent }} />
+                      <span style={{ color: theme.textSecondary, fontSize: '13px' }}>Track opens</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={currentCampaign.settings.trackClicks} onChange={(e) => setCurrentCampaign(prev => ({ ...prev, settings: { ...prev.settings, trackClicks: e.target.checked } }))} style={{ accentColor: theme.accent }} />
+                      <span style={{ color: theme.textSecondary, fontSize: '13px' }}>Track link clicks</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div style={{ padding: '16px 24px', borderTop: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button
+                  onClick={() => { setShowCampaignModal(false); setEditingCampaign(null); }}
+                  style={{ padding: '12px 20px', background: theme.bgTertiary, border: `1px solid ${theme.border}`, borderRadius: '8px', color: theme.textSecondary, fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (editingCampaign) {
+                      updateCampaign(editingCampaign.id, editingCampaign);
+                      setEditingCampaign(null);
+                      setShowCampaignModal(false);
+                    } else {
+                      createCampaign();
+                    }
+                  }}
+                  disabled={!currentCampaign.name.trim()}
+                  style={{ padding: '12px 24px', background: currentCampaign.name.trim() ? theme.accent : theme.bgTertiary, border: 'none', borderRadius: '8px', color: currentCampaign.name.trim() ? 'white' : theme.textMuted, fontSize: '14px', fontWeight: 600, cursor: currentCampaign.name.trim() ? 'pointer' : 'not-allowed' }}
+                >
+                  {editingCampaign ? 'Save Changes' : 'Create Campaign'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </main>
+    );
+  };
+
   // ==================== MAIN RENDER ====================
   return (
     <div style={{ minHeight: '100vh', background: theme.bgPrimary, color: theme.textPrimary, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", display: 'flex', flexDirection: 'column' }}>
@@ -2507,11 +3056,12 @@ const SAIScraper = () => {
         <nav style={{ display: 'flex', gap: '6px', background: theme.bgTertiary, padding: '4px', borderRadius: '12px', border: `1px solid ${theme.border}` }}>
           <button onClick={() => setCurrentPage('scraper')} style={{ padding: '10px 20px', background: currentPage === 'scraper' ? theme.accentMuted : 'transparent', border: 'none', borderRadius: '8px', color: currentPage === 'scraper' ? theme.accent : theme.textSecondary, fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.search} Scraper</button>
           <button onClick={() => setCurrentPage('lists')} style={{ padding: '10px 20px', background: currentPage === 'lists' ? theme.accentMuted : 'transparent', border: 'none', borderRadius: '8px', color: currentPage === 'lists' ? theme.accent : theme.textSecondary, fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.folder} Lists {lists.reduce((a, l) => a + l.leads.length, 0) > 0 && <span style={{ background: `linear-gradient(135deg, ${theme.accent} 0%, ${theme.accentLight} 100%)`, color: 'white', padding: '2px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600 }}>{lists.reduce((a, l) => a + l.leads.length, 0)}</span>}</button>
+          <button onClick={() => setCurrentPage('campaigns')} style={{ padding: '10px 20px', background: currentPage === 'campaigns' ? theme.accentMuted : 'transparent', border: 'none', borderRadius: '8px', color: currentPage === 'campaigns' ? theme.accent : theme.textSecondary, fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s ease' }}>{Icons.mail} Campaigns {campaigns.length > 0 && <span style={{ background: `linear-gradient(135deg, ${theme.accent} 0%, ${theme.accentLight} 100%)`, color: 'white', padding: '2px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600 }}>{campaigns.length}</span>}</button>
         </nav>
       </header>
 
       {/* Main Content */}
-      {currentPage === 'scraper' ? renderScraperPage() : renderListsPage()}
+      {currentPage === 'scraper' ? renderScraperPage() : currentPage === 'lists' ? renderListsPage() : renderCampaignsPage()}
 
       {/* Company Detail Sidebar */}
       {renderCompanyDetail()}
