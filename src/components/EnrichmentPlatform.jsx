@@ -24,7 +24,18 @@ const Icons = {
   filter: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>,
   trash: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
   play: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
-  trendingUp: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+  trendingUp: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+  target: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
+  clock: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  messageCircle: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>,
+  lightbulb: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>,
+  alertCircle: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+  award: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>,
+  chevronDown: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>,
+  chevronUp: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="18 15 12 9 6 15"/></svg>,
+  tiktok: <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>,
+  youtube: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>,
+  facebook: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
 };
 
 // ==================== API BASE URL ====================
@@ -40,7 +51,7 @@ function EnrichmentPlatform() {
   const { theme } = useTheme();
 
   // Core state
-  const [activeTab, setActiveTab] = useState('upload'); // 'upload', 'enriching', 'results'
+  const [activeTab, setActiveTab] = useState('upload');
   const [leads, setLeads] = useState([]);
   const [enrichedLeads, setEnrichedLeads] = useState([]);
   const [enrichmentProgress, setEnrichmentProgress] = useState({ current: 0, total: 0, status: 'idle' });
@@ -49,16 +60,17 @@ function EnrichmentPlatform() {
   // UI state
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState(null);
-  const [selectedLeads, setSelectedLeads] = useState(new Set());
   const [expandedLead, setExpandedLead] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [detailTab, setDetailTab] = useState('overview');
 
   // Stats
   const [stats, setStats] = useState({
     totalEnriched: 0,
     emailsFound: 0,
     socialsFound: 0,
-    techStackFound: 0
+    techStackFound: 0,
+    highUrgency: 0
   });
 
   // Load saved data
@@ -90,13 +102,14 @@ function EnrichmentPlatform() {
     } catch (e) {}
   }, [enrichedLeads]);
 
-  // Update stats when enriched leads change
+  // Update stats
   useEffect(() => {
     const newStats = {
       totalEnriched: enrichedLeads.length,
       emailsFound: enrichedLeads.filter(l => l.primaryEmail || l.enrichment?.email?.emails?.length > 0).length,
       socialsFound: enrichedLeads.filter(l => l.socialScore > 0 || Object.values(l.socialProfiles || {}).some(Boolean)).length,
-      techStackFound: enrichedLeads.filter(l => l.technologies?.length > 0).length
+      techStackFound: enrichedLeads.filter(l => l.technologies?.length > 0).length,
+      highUrgency: enrichedLeads.filter(l => (l.outreachIntelligence?.urgencyScore || 0) >= 50).length
     };
     setStats(newStats);
   }, [enrichedLeads]);
@@ -118,7 +131,6 @@ function EnrichmentPlatform() {
         row[header] = values[idx]?.trim().replace(/['"]/g, '') || '';
       });
 
-      // Map common column names
       const lead = {
         name: row.name || row.company || row.companyname || row['company name'] || row.business || '',
         domain: row.domain || row.website || row.url || row.site || '',
@@ -131,12 +143,10 @@ function EnrichmentPlatform() {
         source: 'csv_upload'
       };
 
-      // Clean domain
       if (lead.domain) {
         lead.domain = lead.domain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '').toLowerCase();
       }
 
-      // Only add if we have at least name or domain
       if (lead.name || lead.domain) {
         rows.push(lead);
       }
@@ -241,7 +251,6 @@ function EnrichmentPlatform() {
           const data = await response.json();
           results.push(...(data.results || []));
         } else {
-          // If API fails, add leads without enrichment
           results.push(...batch.map(lead => ({
             ...lead,
             enrichmentStatus: 'failed',
@@ -249,7 +258,6 @@ function EnrichmentPlatform() {
           })));
         }
       } catch (err) {
-        // Network error - add leads without enrichment
         results.push(...batch.map(lead => ({
           ...lead,
           enrichmentStatus: 'failed',
@@ -264,7 +272,6 @@ function EnrichmentPlatform() {
       });
       setEnrichedLeads([...results]);
 
-      // Small delay between batches
       if (i + batchSize < leads.length) {
         await new Promise(r => setTimeout(r, 500));
       }
@@ -280,30 +287,41 @@ function EnrichmentPlatform() {
 
     const headers = [
       'name', 'domain', 'primaryEmail', 'phone', 'industry', 'location', 'employees',
-      'technologies', 'socialScore', 'instagram', 'linkedin', 'twitter', 'tiktok',
-      'isHiring', 'fundingRound', 'fundingAmount', 'enrichmentScore', 'signals'
+      'technologies', 'socialScore', 'instagram', 'linkedin', 'twitter', 'tiktok', 'youtube', 'facebook',
+      'isHiring', 'hiringDepartments', 'fundingRound', 'fundingAmount',
+      'urgencyScore', 'bestTimeToReach', 'whyReachOut', 'icebreaker', 'painPoints', 'enrichmentScore'
     ];
 
-    const rows = enrichedLeads.map(lead => [
-      lead.name || '',
-      lead.domain || '',
-      lead.primaryEmail || lead.enrichment?.email?.emails?.[0] || '',
-      lead.phone || '',
-      lead.industry || '',
-      lead.location || '',
-      lead.employees || '',
-      (lead.technologies || []).join('; '),
-      lead.socialScore || 0,
-      lead.socialProfiles?.instagram?.url || lead.enrichment?.social?.profiles?.instagram?.url || '',
-      lead.socialProfiles?.linkedin?.url || lead.enrichment?.social?.profiles?.linkedin?.url || '',
-      lead.socialProfiles?.twitter?.url || lead.enrichment?.social?.profiles?.twitter?.url || '',
-      lead.socialProfiles?.tiktok?.url || lead.enrichment?.social?.profiles?.tiktok?.url || '',
-      lead.isHiring ? 'Yes' : 'No',
-      lead.fundingInfo?.round || '',
-      lead.fundingInfo?.amount || '',
-      lead.enrichmentScore || 0,
-      (lead.allSignals || []).join('; ')
-    ]);
+    const rows = enrichedLeads.map(lead => {
+      const intel = lead.outreachIntelligence || {};
+      return [
+        lead.name || '',
+        lead.domain || '',
+        lead.primaryEmail || lead.enrichment?.email?.emails?.[0] || '',
+        lead.phone || '',
+        lead.industry || '',
+        lead.location || '',
+        lead.employees || '',
+        (lead.technologies || []).join('; '),
+        lead.socialScore || 0,
+        lead.socialProfiles?.instagram?.url || lead.enrichment?.social?.profiles?.instagram?.url || '',
+        lead.socialProfiles?.linkedin?.url || lead.enrichment?.social?.profiles?.linkedin?.url || '',
+        lead.socialProfiles?.twitter?.url || lead.enrichment?.social?.profiles?.twitter?.url || '',
+        lead.socialProfiles?.tiktok?.url || lead.enrichment?.social?.profiles?.tiktok?.url || '',
+        lead.socialProfiles?.youtube?.url || lead.enrichment?.social?.profiles?.youtube?.url || '',
+        lead.socialProfiles?.facebook?.url || lead.enrichment?.social?.profiles?.facebook?.url || '',
+        lead.isHiring ? 'Yes' : 'No',
+        lead.enrichment?.funding?.hiring?.departments?.join('; ') || '',
+        lead.fundingInfo?.series || lead.enrichment?.funding?.funding?.series || '',
+        lead.fundingInfo?.amount || lead.enrichment?.funding?.funding?.amount || '',
+        intel.urgencyScore || 0,
+        intel.whenToReachOut?.bestTime || '',
+        (intel.whyReachOut || []).map(w => w.reason).join('; '),
+        intel.icebreakers?.[0]?.opener || '',
+        (intel.painPoints || []).map(p => p.pain).join('; '),
+        lead.enrichmentScore || 0
+      ];
+    });
 
     const csv = [
       headers.join(','),
@@ -319,10 +337,9 @@ function EnrichmentPlatform() {
     URL.revokeObjectURL(url);
   };
 
-  // ==================== RENDER HELPERS ====================
+  // ==================== RENDER: UPLOAD TAB ====================
   const renderUploadTab = () => (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '40px 20px' }}>
-      {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
         <h1 style={{
           fontSize: '32px',
@@ -336,11 +353,10 @@ function EnrichmentPlatform() {
           Lead Enrichment Platform
         </h1>
         <p style={{ color: theme.textSecondary, fontSize: '16px' }}>
-          Upload your leads and enrich them with emails, social profiles, tech stack, and growth signals
+          Upload your leads and get actionable outreach intelligence: emails, social profiles, WHY to reach out, WHEN to reach out, and personalized talking points
         </p>
       </div>
 
-      {/* Upload Zone */}
       <div
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
@@ -391,7 +407,6 @@ function EnrichmentPlatform() {
         </div>
       )}
 
-      {/* Leads Preview */}
       {leads.length > 0 && (
         <div style={{ marginTop: '30px' }}>
           <div style={{
@@ -420,7 +435,6 @@ function EnrichmentPlatform() {
             </button>
           </div>
 
-          {/* Preview table */}
           <div style={{
             background: theme.bgSecondary,
             borderRadius: '12px',
@@ -457,7 +471,6 @@ function EnrichmentPlatform() {
             )}
           </div>
 
-          {/* Enrichment Options */}
           <div style={{
             background: theme.bgSecondary,
             borderRadius: '12px',
@@ -513,7 +526,6 @@ function EnrichmentPlatform() {
             </div>
           </div>
 
-          {/* Start Button */}
           <button
             onClick={startEnrichment}
             disabled={selectedEnrichments.length === 0}
@@ -540,6 +552,7 @@ function EnrichmentPlatform() {
     </div>
   );
 
+  // ==================== RENDER: ENRICHING TAB ====================
   const renderEnrichingTab = () => (
     <div style={{ maxWidth: '600px', margin: '0 auto', padding: '80px 20px', textAlign: 'center' }}>
       <div style={{
@@ -560,10 +573,9 @@ function EnrichmentPlatform() {
         Enriching Your Leads
       </h2>
       <p style={{ color: theme.textSecondary, fontSize: '14px', marginBottom: '32px' }}>
-        Finding emails, social profiles, tech stack, and growth signals...
+        Finding emails, social profiles, tech stack, growth signals, and generating outreach intelligence...
       </p>
 
-      {/* Progress Bar */}
       <div style={{
         background: theme.bgTertiary,
         borderRadius: '8px',
@@ -584,7 +596,6 @@ function EnrichmentPlatform() {
         {enrichmentProgress.current} of {enrichmentProgress.total} leads processed
       </p>
 
-      {/* Live Stats */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(4, 1fr)',
@@ -595,7 +606,7 @@ function EnrichmentPlatform() {
           { label: 'Processed', value: enrichedLeads.length, icon: Icons.check },
           { label: 'Emails Found', value: enrichedLeads.filter(l => l.primaryEmail).length, icon: Icons.mail },
           { label: 'Socials Found', value: enrichedLeads.filter(l => l.socialScore > 0).length, icon: Icons.users },
-          { label: 'Tech Detected', value: enrichedLeads.filter(l => l.technologies?.length > 0).length, icon: Icons.code }
+          { label: 'High Priority', value: enrichedLeads.filter(l => (l.outreachIntelligence?.urgencyScore || 0) >= 50).length, icon: Icons.target }
         ].map((stat, idx) => (
           <div key={idx} style={{
             background: theme.bgSecondary,
@@ -619,6 +630,410 @@ function EnrichmentPlatform() {
     </div>
   );
 
+  // ==================== RENDER: LEAD DETAIL PANEL ====================
+  const renderLeadDetail = (lead) => {
+    const intel = lead.outreachIntelligence || {};
+    const social = lead.enrichment?.social || {};
+    const funding = lead.enrichment?.funding || {};
+    const profiles = social.profiles || lead.socialProfiles || {};
+
+    return (
+      <tr>
+        <td colSpan="7" style={{ padding: 0 }}>
+          <div style={{
+            background: theme.bgTertiary,
+            borderTop: `1px solid ${theme.border}`,
+            padding: '24px'
+          }}>
+            {/* Detail Tabs */}
+            <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', borderBottom: `1px solid ${theme.border}`, paddingBottom: '12px' }}>
+              {[
+                { id: 'overview', label: 'Overview', icon: Icons.target },
+                { id: 'outreach', label: 'Why Reach Out', icon: Icons.lightbulb },
+                { id: 'timing', label: 'When to Reach', icon: Icons.clock },
+                { id: 'personalization', label: 'Personalization', icon: Icons.messageCircle },
+                { id: 'social', label: 'Social Profiles', icon: Icons.users }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={(e) => { e.stopPropagation(); setDetailTab(tab.id); }}
+                  style={{
+                    padding: '8px 16px',
+                    background: detailTab === tab.id ? theme.bgSecondary : 'transparent',
+                    border: detailTab === tab.id ? `1px solid ${theme.border}` : '1px solid transparent',
+                    borderRadius: '8px',
+                    color: detailTab === tab.id ? theme.textPrimary : theme.textMuted,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  {tab.icon} {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Overview Tab */}
+            {detailTab === 'overview' && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                {/* Contact Info */}
+                <div style={{ background: theme.bgSecondary, borderRadius: '12px', padding: '16px', border: `1px solid ${theme.border}` }}>
+                  <h4 style={{ color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', marginBottom: '12px' }}>Contact Information</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div>
+                      <div style={{ color: theme.textMuted, fontSize: '11px' }}>Primary Email</div>
+                      <div style={{ color: theme.textPrimary, fontSize: '14px' }}>{lead.primaryEmail || lead.enrichment?.email?.emails?.[0] || '-'}</div>
+                    </div>
+                    <div>
+                      <div style={{ color: theme.textMuted, fontSize: '11px' }}>Domain</div>
+                      <div style={{ color: theme.textPrimary, fontSize: '14px' }}>{lead.domain || '-'}</div>
+                    </div>
+                    <div>
+                      <div style={{ color: theme.textMuted, fontSize: '11px' }}>Phone</div>
+                      <div style={{ color: theme.textPrimary, fontSize: '14px' }}>{lead.phone || '-'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tech Stack */}
+                <div style={{ background: theme.bgSecondary, borderRadius: '12px', padding: '16px', border: `1px solid ${theme.border}` }}>
+                  <h4 style={{ color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', marginBottom: '12px' }}>Tech Stack</h4>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {(lead.technologies || []).length > 0 ? (
+                      lead.technologies.map((tech, i) => (
+                        <span key={i} style={{
+                          background: `${theme.accent}20`,
+                          color: theme.accent,
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          fontSize: '12px'
+                        }}>
+                          {tech}
+                        </span>
+                      ))
+                    ) : (
+                      <span style={{ color: theme.textMuted, fontSize: '13px' }}>No tech stack detected</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Growth Signals */}
+                <div style={{ background: theme.bgSecondary, borderRadius: '12px', padding: '16px', border: `1px solid ${theme.border}` }}>
+                  <h4 style={{ color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', marginBottom: '12px' }}>Growth Signals</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {funding.funding?.recentRound && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', background: `${theme.success}15`, borderRadius: '6px' }}>
+                        <span style={{ color: theme.success }}>{Icons.dollar}</span>
+                        <div>
+                          <div style={{ color: theme.textPrimary, fontSize: '13px', fontWeight: 500 }}>
+                            {funding.funding.series} {funding.funding.amount ? `- ${funding.funding.amount}` : ''}
+                          </div>
+                          <div style={{ color: theme.textMuted, fontSize: '11px' }}>Recent funding round</div>
+                        </div>
+                      </div>
+                    )}
+                    {funding.hiring?.isHiring && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', background: `${theme.warning}15`, borderRadius: '6px' }}>
+                        <span style={{ color: theme.warning }}>{Icons.briefcase}</span>
+                        <div>
+                          <div style={{ color: theme.textPrimary, fontSize: '13px', fontWeight: 500 }}>
+                            Hiring {funding.hiring.openRoles ? `${funding.hiring.openRoles}+ roles` : ''}
+                          </div>
+                          <div style={{ color: theme.textMuted, fontSize: '11px' }}>{funding.hiring.departments?.join(', ') || 'Multiple departments'}</div>
+                        </div>
+                      </div>
+                    )}
+                    {!funding.funding?.recentRound && !funding.hiring?.isHiring && (
+                      <span style={{ color: theme.textMuted, fontSize: '13px' }}>No recent growth signals detected</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Why Reach Out Tab */}
+            {detailTab === 'outreach' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                {/* Reasons to Reach Out */}
+                <div style={{ background: theme.bgSecondary, borderRadius: '12px', padding: '20px', border: `1px solid ${theme.border}` }}>
+                  <h4 style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ color: theme.accent }}>{Icons.lightbulb}</span>
+                    Why You Should Reach Out
+                  </h4>
+                  {(intel.whyReachOut || []).length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {intel.whyReachOut.map((reason, i) => (
+                        <div key={i} style={{ padding: '12px', background: theme.bgTertiary, borderRadius: '8px', borderLeft: `3px solid ${reason.urgency === 'high' ? theme.error : theme.accent}` }}>
+                          <div style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>
+                            {reason.reason}
+                            {reason.urgency === 'high' && <span style={{ marginLeft: '8px', background: theme.error, color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>URGENT</span>}
+                          </div>
+                          <div style={{ color: theme.textSecondary, fontSize: '13px', marginBottom: '6px' }}>{reason.insight}</div>
+                          <div style={{ color: theme.accent, fontSize: '12px' }}>Angle: {reason.angle}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ color: theme.textMuted, fontSize: '13px' }}>No specific outreach reasons identified yet. Try enabling more enrichment types.</p>
+                  )}
+                </div>
+
+                {/* Pain Points */}
+                <div style={{ background: theme.bgSecondary, borderRadius: '12px', padding: '20px', border: `1px solid ${theme.border}` }}>
+                  <h4 style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ color: theme.warning }}>{Icons.alertCircle}</span>
+                    Potential Pain Points
+                  </h4>
+                  {(intel.painPoints || []).length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {intel.painPoints.map((pain, i) => (
+                        <div key={i} style={{ padding: '12px', background: theme.bgTertiary, borderRadius: '8px' }}>
+                          <div style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>{pain.pain}</div>
+                          <div style={{ color: theme.textSecondary, fontSize: '13px', marginBottom: '6px' }}>Impact: {pain.implication}</div>
+                          <div style={{ color: theme.success, fontSize: '12px' }}>Opportunity: {pain.opportunity}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ color: theme.textMuted, fontSize: '13px' }}>No obvious pain points detected.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* When to Reach Out Tab */}
+            {detailTab === 'timing' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                {/* Timing */}
+                <div style={{ background: theme.bgSecondary, borderRadius: '12px', padding: '20px', border: `1px solid ${theme.border}` }}>
+                  <h4 style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ color: theme.accent }}>{Icons.clock}</span>
+                    Best Time to Reach Out
+                  </h4>
+                  <div style={{
+                    padding: '16px',
+                    background: intel.whenToReachOut?.urgency === 'high' ? `${theme.error}15` : theme.bgTertiary,
+                    borderRadius: '10px',
+                    border: intel.whenToReachOut?.urgency === 'high' ? `1px solid ${theme.error}30` : `1px solid ${theme.border}`
+                  }}>
+                    <div style={{ color: theme.textPrimary, fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>
+                      {intel.whenToReachOut?.bestTime || 'Tuesday-Thursday, 9-11am their local time'}
+                    </div>
+                    {intel.whenToReachOut?.urgency === 'high' && (
+                      <div style={{ display: 'inline-block', background: theme.error, color: 'white', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, marginBottom: '12px' }}>
+                        HIGH URGENCY - Act Now!
+                      </div>
+                    )}
+                    {(intel.whenToReachOut?.triggers || []).length > 0 && (
+                      <div style={{ marginTop: '12px' }}>
+                        <div style={{ color: theme.textSecondary, fontSize: '12px', marginBottom: '8px' }}>Timing Triggers:</div>
+                        {intel.whenToReachOut.triggers.map((trigger, i) => (
+                          <div key={i} style={{ color: theme.textPrimary, fontSize: '13px', padding: '6px 0', borderBottom: i < intel.whenToReachOut.triggers.length - 1 ? `1px solid ${theme.border}` : 'none' }}>
+                            {trigger}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Urgency Score */}
+                <div style={{ background: theme.bgSecondary, borderRadius: '12px', padding: '20px', border: `1px solid ${theme.border}` }}>
+                  <h4 style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ color: theme.accent }}>{Icons.zap}</span>
+                    Urgency Score
+                  </h4>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div style={{
+                      width: '100px',
+                      height: '100px',
+                      borderRadius: '50%',
+                      background: `conic-gradient(${intel.urgencyScore >= 70 ? theme.error : intel.urgencyScore >= 40 ? theme.warning : theme.success} ${(intel.urgencyScore || 0) * 3.6}deg, ${theme.bgTertiary} 0deg)`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      position: 'relative'
+                    }}>
+                      <div style={{
+                        width: '80px',
+                        height: '80px',
+                        borderRadius: '50%',
+                        background: theme.bgSecondary,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'column'
+                      }}>
+                        <div style={{ fontSize: '28px', fontWeight: 700, color: intel.urgencyScore >= 70 ? theme.error : intel.urgencyScore >= 40 ? theme.warning : theme.success }}>
+                          {intel.urgencyScore || 0}
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ color: theme.textPrimary, fontSize: '16px', fontWeight: 600 }}>
+                        {intel.urgencyScore >= 70 ? 'Hot Lead!' : intel.urgencyScore >= 40 ? 'Warm Lead' : 'Standard Lead'}
+                      </div>
+                      <div style={{ color: theme.textSecondary, fontSize: '13px', marginTop: '4px' }}>
+                        {intel.urgencyScore >= 70 ? 'Multiple high-priority signals detected. Prioritize this lead!' :
+                         intel.urgencyScore >= 40 ? 'Good signals present. Worth pursuing soon.' :
+                         'Normal priority. Follow standard outreach cadence.'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Personalization Tab */}
+            {detailTab === 'personalization' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                {/* Icebreakers */}
+                <div style={{ background: theme.bgSecondary, borderRadius: '12px', padding: '20px', border: `1px solid ${theme.border}` }}>
+                  <h4 style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ color: theme.accent }}>{Icons.messageCircle}</span>
+                    Icebreaker Openers
+                  </h4>
+                  {(intel.icebreakers || []).length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {intel.icebreakers.map((ice, i) => (
+                        <div key={i} style={{ padding: '12px', background: theme.bgTertiary, borderRadius: '8px' }}>
+                          <div style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 500, marginBottom: '6px', fontStyle: 'italic' }}>
+                            "{ice.opener}"
+                          </div>
+                          <div style={{ color: theme.textSecondary, fontSize: '12px' }}>{ice.context}</div>
+                          <div style={{
+                            display: 'inline-block',
+                            marginTop: '8px',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            fontSize: '10px',
+                            fontWeight: 600,
+                            background: ice.effectiveness === 'high' ? `${theme.success}20` : `${theme.warning}20`,
+                            color: ice.effectiveness === 'high' ? theme.success : theme.warning
+                          }}>
+                            {ice.effectiveness === 'high' ? 'HIGH IMPACT' : 'MEDIUM IMPACT'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ color: theme.textMuted, fontSize: '13px' }}>No specific icebreakers generated.</p>
+                  )}
+                </div>
+
+                {/* Personalization Hooks */}
+                <div style={{ background: theme.bgSecondary, borderRadius: '12px', padding: '20px', border: `1px solid ${theme.border}` }}>
+                  <h4 style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ color: theme.accent }}>{Icons.award}</span>
+                    Personalization Hooks
+                  </h4>
+                  {(intel.personalization || []).length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {intel.personalization.map((p, i) => (
+                        <div key={i} style={{ padding: '12px', background: theme.bgTertiary, borderRadius: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                            <span style={{
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '10px',
+                              fontWeight: 600,
+                              background: `${theme.accent}20`,
+                              color: theme.accent,
+                              textTransform: 'uppercase'
+                            }}>
+                              {p.type}
+                            </span>
+                          </div>
+                          <div style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>{p.hook}</div>
+                          <div style={{ color: theme.textSecondary, fontSize: '12px' }}>{p.usage}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ color: theme.textMuted, fontSize: '13px' }}>No personalization hooks available.</p>
+                  )}
+
+                  {/* Value Props */}
+                  {(intel.valueProps || []).length > 0 && (
+                    <div style={{ marginTop: '20px' }}>
+                      <h5 style={{ color: theme.textSecondary, fontSize: '12px', fontWeight: 600, marginBottom: '12px', textTransform: 'uppercase' }}>Value Propositions to Use</h5>
+                      {intel.valueProps.map((vp, i) => (
+                        <div key={i} style={{ padding: '10px', background: `${theme.success}10`, borderRadius: '6px', marginBottom: '8px' }}>
+                          <div style={{ color: theme.textPrimary, fontSize: '13px', fontWeight: 500 }}>{vp.prop}</div>
+                          <div style={{ color: theme.textSecondary, fontSize: '12px', marginTop: '4px' }}>Angle: {vp.angle}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Social Profiles Tab */}
+            {detailTab === 'social' && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+                {[
+                  { key: 'linkedin', name: 'LinkedIn', icon: Icons.linkedin, color: '#0A66C2' },
+                  { key: 'twitter', name: 'Twitter/X', icon: Icons.twitter, color: '#1DA1F2' },
+                  { key: 'instagram', name: 'Instagram', icon: Icons.instagram, color: '#E4405F' },
+                  { key: 'tiktok', name: 'TikTok', icon: Icons.tiktok, color: '#000000' },
+                  { key: 'youtube', name: 'YouTube', icon: Icons.youtube, color: '#FF0000' },
+                  { key: 'facebook', name: 'Facebook', icon: Icons.facebook, color: '#1877F2' }
+                ].map(platform => {
+                  const profile = profiles[platform.key];
+                  return (
+                    <div
+                      key={platform.key}
+                      style={{
+                        background: theme.bgSecondary,
+                        borderRadius: '12px',
+                        padding: '16px',
+                        border: `1px solid ${profile ? platform.color + '40' : theme.border}`,
+                        opacity: profile ? 1 : 0.5
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                        <span style={{ color: platform.color }}>{platform.icon}</span>
+                        <span style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 500 }}>{platform.name}</span>
+                        {profile && <span style={{ color: theme.success, marginLeft: 'auto' }}>{Icons.check}</span>}
+                      </div>
+                      {profile ? (
+                        <div>
+                          {profile.title && <div style={{ color: theme.textSecondary, fontSize: '13px', marginBottom: '8px' }}>{profile.title}</div>}
+                          <a
+                            href={profile.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              color: platform.color,
+                              fontSize: '12px',
+                              textDecoration: 'none'
+                            }}
+                          >
+                            View Profile {Icons.externalLink}
+                          </a>
+                        </div>
+                      ) : (
+                        <div style={{ color: theme.textMuted, fontSize: '13px' }}>Not found</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
+  // ==================== RENDER: RESULTS TAB ====================
   const renderResultsTab = () => {
     const filteredLeads = enrichedLeads.filter(lead => {
       if (!searchQuery) return true;
@@ -644,7 +1059,7 @@ function EnrichmentPlatform() {
             { label: 'Emails Found', value: stats.emailsFound, icon: Icons.mail, color: '#10B981' },
             { label: 'Social Profiles', value: stats.socialsFound, icon: Icons.instagram, color: '#F59E0B' },
             { label: 'Tech Stacks', value: stats.techStackFound, icon: Icons.code, color: '#8B5CF6' },
-            { label: 'Avg Score', value: Math.round(enrichedLeads.reduce((sum, l) => sum + (l.enrichmentScore || 0), 0) / (enrichedLeads.length || 1)), icon: Icons.zap, color: '#EC4899' }
+            { label: 'High Priority', value: stats.highUrgency, icon: Icons.target, color: '#EF4444' }
           ].map((stat, idx) => (
             <div key={idx} style={{
               background: theme.bgSecondary,
@@ -748,134 +1163,127 @@ function EnrichmentPlatform() {
           overflow: 'hidden'
         }}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1200px' }}>
               <thead>
                 <tr style={{ background: theme.bgTertiary }}>
                   <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Company</th>
                   <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Email</th>
                   <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Social</th>
                   <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Tech Stack</th>
-                  <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Signals</th>
-                  <th style={{ padding: '14px 16px', textAlign: 'center', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Score</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Why Reach Out</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'center', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Urgency</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'center', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', width: '40px' }}></th>
                 </tr>
               </thead>
               <tbody>
                 {filteredLeads.map((lead, idx) => (
-                  <tr
-                    key={idx}
-                    onClick={() => setExpandedLead(expandedLead === idx ? null : idx)}
-                    style={{
-                      borderTop: `1px solid ${theme.border}`,
-                      cursor: 'pointer',
-                      background: expandedLead === idx ? theme.bgTertiary : 'transparent'
-                    }}
-                  >
-                    <td style={{ padding: '14px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <React.Fragment key={idx}>
+                    <tr
+                      onClick={() => { setExpandedLead(expandedLead === idx ? null : idx); setDetailTab('overview'); }}
+                      style={{
+                        borderTop: `1px solid ${theme.border}`,
+                        cursor: 'pointer',
+                        background: expandedLead === idx ? theme.bgTertiary : 'transparent',
+                        transition: 'background 0.15s'
+                      }}
+                    >
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '8px',
+                            background: theme.bgTertiary,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: theme.textMuted,
+                            fontSize: '14px',
+                            fontWeight: 600
+                          }}>
+                            {(lead.name || lead.domain || '?')[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <div style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 500 }}>{lead.name || '-'}</div>
+                            <div style={{ color: theme.textMuted, fontSize: '12px' }}>{lead.domain || '-'}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        {lead.primaryEmail || lead.enrichment?.email?.emails?.[0] ? (
+                          <div style={{ color: theme.textPrimary, fontSize: '13px' }}>
+                            {lead.primaryEmail || lead.enrichment?.email?.emails?.[0]}
+                          </div>
+                        ) : (
+                          <span style={{ color: theme.textMuted, fontSize: '13px' }}>-</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          {(lead.socialProfiles?.instagram || lead.enrichment?.social?.profiles?.instagram) && <span style={{ color: '#E4405F' }} title="Instagram">{Icons.instagram}</span>}
+                          {(lead.socialProfiles?.linkedin || lead.enrichment?.social?.profiles?.linkedin) && <span style={{ color: '#0A66C2' }} title="LinkedIn">{Icons.linkedin}</span>}
+                          {(lead.socialProfiles?.twitter || lead.enrichment?.social?.profiles?.twitter) && <span style={{ color: '#1DA1F2' }} title="Twitter">{Icons.twitter}</span>}
+                          {(lead.socialProfiles?.tiktok || lead.enrichment?.social?.profiles?.tiktok) && <span style={{ color: '#000' }} title="TikTok">{Icons.tiktok}</span>}
+                          {Object.values(lead.socialProfiles || lead.enrichment?.social?.profiles || {}).filter(Boolean).length === 0 && <span style={{ color: theme.textMuted }}>-</span>}
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                          {(lead.technologies || []).slice(0, 3).map((tech, i) => (
+                            <span key={i} style={{
+                              background: theme.bgTertiary,
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              color: theme.textSecondary
+                            }}>
+                              {tech}
+                            </span>
+                          ))}
+                          {(lead.technologies || []).length > 3 && <span style={{ color: theme.textMuted, fontSize: '11px' }}>+{lead.technologies.length - 3}</span>}
+                          {(!lead.technologies || lead.technologies.length === 0) && <span style={{ color: theme.textMuted, fontSize: '13px' }}>-</span>}
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                          {(lead.outreachIntelligence?.whyReachOut || []).slice(0, 2).map((reason, i) => (
+                            <span key={i} style={{
+                              background: reason.urgency === 'high' ? `${theme.error}20` : `${theme.accent}20`,
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              color: reason.urgency === 'high' ? theme.error : theme.accent
+                            }}>
+                              {reason.reason.slice(0, 25)}{reason.reason.length > 25 ? '...' : ''}
+                            </span>
+                          ))}
+                          {(!lead.outreachIntelligence?.whyReachOut || lead.outreachIntelligence.whyReachOut.length === 0) && <span style={{ color: theme.textMuted, fontSize: '13px' }}>-</span>}
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                         <div style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '8px',
-                          background: theme.bgTertiary,
-                          display: 'flex',
+                          display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: theme.textMuted,
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          background: `${(lead.outreachIntelligence?.urgencyScore || 0) >= 70 ? theme.error : (lead.outreachIntelligence?.urgencyScore || 0) >= 40 ? theme.warning : theme.success}20`,
+                          color: (lead.outreachIntelligence?.urgencyScore || 0) >= 70 ? theme.error : (lead.outreachIntelligence?.urgencyScore || 0) >= 40 ? theme.warning : theme.success,
                           fontSize: '14px',
                           fontWeight: 600
                         }}>
-                          {(lead.name || lead.domain || '?')[0].toUpperCase()}
+                          {lead.outreachIntelligence?.urgencyScore || 0}
                         </div>
-                        <div>
-                          <div style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 500 }}>{lead.name || '-'}</div>
-                          <div style={{ color: theme.textMuted, fontSize: '12px' }}>{lead.domain || '-'}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      {lead.primaryEmail || lead.enrichment?.email?.emails?.[0] ? (
-                        <div style={{ color: theme.textPrimary, fontSize: '13px' }}>
-                          {lead.primaryEmail || lead.enrichment?.email?.emails?.[0]}
-                        </div>
-                      ) : (
-                        <span style={{ color: theme.textMuted, fontSize: '13px' }}>-</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        {(lead.socialProfiles?.instagram || lead.enrichment?.social?.profiles?.instagram) && (
-                          <span style={{ color: '#E4405F' }} title="Instagram">{Icons.instagram}</span>
-                        )}
-                        {(lead.socialProfiles?.linkedin || lead.enrichment?.social?.profiles?.linkedin) && (
-                          <span style={{ color: '#0A66C2' }} title="LinkedIn">{Icons.linkedin}</span>
-                        )}
-                        {(lead.socialProfiles?.twitter || lead.enrichment?.social?.profiles?.twitter) && (
-                          <span style={{ color: '#1DA1F2' }} title="Twitter">{Icons.twitter}</span>
-                        )}
-                        {!lead.socialProfiles?.instagram && !lead.socialProfiles?.linkedin && !lead.socialProfiles?.twitter &&
-                         !lead.enrichment?.social?.profiles?.instagram && !lead.enrichment?.social?.profiles?.linkedin && !lead.enrichment?.social?.profiles?.twitter && (
-                          <span style={{ color: theme.textMuted }}>-</span>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                        {(lead.technologies || []).slice(0, 3).map((tech, i) => (
-                          <span key={i} style={{
-                            background: theme.bgTertiary,
-                            padding: '3px 8px',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            color: theme.textSecondary
-                          }}>
-                            {tech}
-                          </span>
-                        ))}
-                        {(lead.technologies || []).length > 3 && (
-                          <span style={{ color: theme.textMuted, fontSize: '11px' }}>
-                            +{lead.technologies.length - 3}
-                          </span>
-                        )}
-                        {(!lead.technologies || lead.technologies.length === 0) && (
-                          <span style={{ color: theme.textMuted, fontSize: '13px' }}>-</span>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                        {(lead.allSignals || []).slice(0, 2).map((signal, i) => (
-                          <span key={i} style={{
-                            background: `${theme.accent}20`,
-                            padding: '3px 8px',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            color: theme.accent
-                          }}>
-                            {signal.slice(0, 30)}{signal.length > 30 ? '...' : ''}
-                          </span>
-                        ))}
-                        {(!lead.allSignals || lead.allSignals.length === 0) && (
-                          <span style={{ color: theme.textMuted, fontSize: '13px' }}>-</span>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                      <div style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '50%',
-                        background: `${lead.enrichmentScore >= 70 ? theme.success : lead.enrichmentScore >= 40 ? theme.warning : theme.error}20`,
-                        color: lead.enrichmentScore >= 70 ? theme.success : lead.enrichmentScore >= 40 ? theme.warning : theme.error,
-                        fontSize: '14px',
-                        fontWeight: 600
-                      }}>
-                        {lead.enrichmentScore || 0}
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        <span style={{ color: theme.textMuted }}>
+                          {expandedLead === idx ? Icons.chevronUp : Icons.chevronDown}
+                        </span>
+                      </td>
+                    </tr>
+                    {expandedLead === idx && renderLeadDetail(lead)}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -898,7 +1306,6 @@ function EnrichmentPlatform() {
       background: theme.bgPrimary,
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
-      {/* Navigation */}
       <nav style={{
         background: theme.bgSecondary,
         borderBottom: `1px solid ${theme.border}`,
@@ -963,14 +1370,12 @@ function EnrichmentPlatform() {
         </div>
       </nav>
 
-      {/* Content */}
       <main>
         {activeTab === 'upload' && renderUploadTab()}
         {activeTab === 'enriching' && renderEnrichingTab()}
         {activeTab === 'results' && renderResultsTab()}
       </main>
 
-      {/* Global Styles */}
       <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
