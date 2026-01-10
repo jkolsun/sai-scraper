@@ -109,7 +109,21 @@ export default async function handler(req, res) {
       // Generate Outreach Intelligence based on all enrichment data
       generateOutreachIntelligence(enrichedData);
 
-      // Calculate overall enrichment score
+      // Calculate Lead Score
+      const leadScoreResult = calculateLeadScore(enrichedData);
+      enrichedData.leadScore = leadScoreResult.score;
+      enrichedData.leadTier = leadScoreResult.tier;
+      enrichedData.leadTierLabel = leadScoreResult.tierLabel;
+      enrichedData.leadScoreBreakdown = leadScoreResult.breakdown;
+      enrichedData.leadScoreFactors = leadScoreResult.topFactors;
+
+      // Recommend Best Outreach Channel
+      const channelResult = recommendOutreachChannel(enrichedData);
+      enrichedData.recommendedChannel = channelResult.recommended;
+      enrichedData.alternativeChannels = channelResult.alternatives;
+      enrichedData.allChannels = channelResult.allChannels;
+
+      // Calculate overall enrichment score (data completeness)
       let score = 0;
       if (enrichedData.primaryEmail) score += 20;
       if (enrichedData.technologies?.length > 0) score += 20;
@@ -476,6 +490,294 @@ function generateValueProps(data) {
   });
 
   return valueProps;
+}
+
+// ==================== LEAD SCORING ENGINE ====================
+
+function calculateLeadScore(data) {
+  let score = 0;
+  const breakdown = {};
+  const factors = [];
+
+  // 1. ENGAGEMENT READINESS (0-25 points)
+  // Companies showing buying signals
+  let engagementScore = 0;
+
+  const funding = data.enrichment.funding || {};
+  if (funding.funding?.recentRound) {
+    engagementScore += 15;
+    factors.push({ factor: 'Recent funding', points: 15, category: 'engagement' });
+  }
+  if (funding.hiring?.isHiring) {
+    engagementScore += 10;
+    factors.push({ factor: 'Actively hiring', points: 10, category: 'engagement' });
+  }
+  breakdown.engagement = Math.min(25, engagementScore);
+  score += breakdown.engagement;
+
+  // 2. SOCIAL PRESENCE (0-20 points)
+  // Companies active on social = more reachable
+  let socialScore = 0;
+  const social = data.enrichment.social || {};
+  const profiles = social.profiles || {};
+  const platformCount = Object.values(profiles).filter(Boolean).length;
+
+  socialScore += platformCount * 3; // 3 points per platform (max 18)
+  if (social.recentActivity?.length > 0) {
+    socialScore += 5;
+    factors.push({ factor: 'Recent social activity', points: 5, category: 'social' });
+  }
+  if (platformCount >= 4) {
+    factors.push({ factor: 'Strong social presence', points: 12, category: 'social' });
+  }
+  breakdown.social = Math.min(20, socialScore);
+  score += breakdown.social;
+
+  // 3. TECH SOPHISTICATION (0-20 points)
+  // Companies with good tech stack = decision makers, budget
+  let techScore = 0;
+  const technologies = data.technologies || [];
+
+  if (technologies.length > 0) {
+    techScore += Math.min(10, technologies.length * 2);
+  }
+  if (technologies.some(t => ['Salesforce', 'HubSpot'].includes(t))) {
+    techScore += 5;
+    factors.push({ factor: 'Enterprise CRM', points: 5, category: 'tech' });
+  }
+  if (technologies.some(t => ['Stripe', 'Shopify'].includes(t))) {
+    techScore += 5;
+    factors.push({ factor: 'Payment/commerce enabled', points: 5, category: 'tech' });
+  }
+  breakdown.tech = Math.min(20, techScore);
+  score += breakdown.tech;
+
+  // 4. CONTACTABILITY (0-20 points)
+  // Can we actually reach them?
+  let contactScore = 0;
+
+  if (data.primaryEmail) {
+    contactScore += 10;
+    factors.push({ factor: 'Email found', points: 10, category: 'contact' });
+  }
+  if (profiles.linkedin?.url) {
+    contactScore += 5;
+    factors.push({ factor: 'LinkedIn available', points: 5, category: 'contact' });
+  }
+  if (profiles.twitter?.url || profiles.instagram?.url) {
+    contactScore += 5;
+    factors.push({ factor: 'Social DM available', points: 5, category: 'contact' });
+  }
+  breakdown.contact = Math.min(20, contactScore);
+  score += breakdown.contact;
+
+  // 5. TIMING SIGNALS (0-15 points)
+  // Right moment to reach out
+  let timingScore = 0;
+
+  if (funding.news?.length > 0) {
+    timingScore += 5;
+    factors.push({ factor: 'Recent news/PR', points: 5, category: 'timing' });
+  }
+  if (social.engagementSignals?.some(s => s.type === 'recognition')) {
+    timingScore += 5;
+    factors.push({ factor: 'Recent award/recognition', points: 5, category: 'timing' });
+  }
+  if (social.recentActivity?.some(a => a.type === 'launch')) {
+    timingScore += 5;
+    factors.push({ factor: 'Recent product launch', points: 5, category: 'timing' });
+  }
+  breakdown.timing = Math.min(15, timingScore);
+  score += breakdown.timing;
+
+  // Calculate tier
+  let tier, tierLabel;
+  if (score >= 70) {
+    tier = 'hot';
+    tierLabel = 'Hot Lead';
+  } else if (score >= 50) {
+    tier = 'warm';
+    tierLabel = 'Warm Lead';
+  } else if (score >= 30) {
+    tier = 'nurture';
+    tierLabel = 'Nurture';
+  } else {
+    tier = 'cold';
+    tierLabel = 'Cold';
+  }
+
+  return {
+    score: Math.min(100, score),
+    tier,
+    tierLabel,
+    breakdown,
+    topFactors: factors.slice(0, 5)
+  };
+}
+
+// ==================== BEST CHANNEL RECOMMENDATION ====================
+
+function recommendOutreachChannel(data) {
+  const channels = [];
+  const social = data.enrichment.social || {};
+  const profiles = social.profiles || {};
+  const funding = data.enrichment.funding || {};
+
+  // LinkedIn - Best for B2B
+  if (profiles.linkedin?.url) {
+    let linkedinScore = 50; // Base score for having LinkedIn
+    let reasons = ['Company has LinkedIn presence'];
+
+    if (profiles.linkedin.followers) {
+      const followers = parseFollowerCount(profiles.linkedin.followers);
+      if (followers > 1000) {
+        linkedinScore += 15;
+        reasons.push('Active follower base');
+      }
+    }
+    if (social.recentActivity?.some(a => a.platform === 'linkedin')) {
+      linkedinScore += 20;
+      reasons.push('Recent LinkedIn activity');
+    }
+    if (funding.hiring?.isHiring) {
+      linkedinScore += 10;
+      reasons.push('Actively hiring (checking LinkedIn)');
+    }
+
+    channels.push({
+      channel: 'LinkedIn',
+      score: linkedinScore,
+      reasons,
+      approach: 'Connect with decision makers, engage with their posts first',
+      icon: 'linkedin'
+    });
+  }
+
+  // Email - Universal fallback
+  if (data.primaryEmail) {
+    let emailScore = 40;
+    let reasons = ['Email address available'];
+
+    if (data.primaryEmail.includes('hello@') || data.primaryEmail.includes('info@')) {
+      reasons.push('Generic inbox - good for cold outreach');
+    }
+
+    channels.push({
+      channel: 'Email',
+      score: emailScore,
+      reasons,
+      approach: 'Personalized cold email with clear value prop',
+      icon: 'email'
+    });
+  }
+
+  // Twitter/X - Good for tech companies
+  if (profiles.twitter?.url) {
+    let twitterScore = 30;
+    let reasons = ['Active on Twitter/X'];
+
+    if (profiles.twitter.followers) {
+      const followers = parseFollowerCount(profiles.twitter.followers);
+      if (followers > 500) {
+        twitterScore += 15;
+        reasons.push('Engaged Twitter following');
+      }
+    }
+    if (social.recentActivity?.some(a => a.platform === 'twitter')) {
+      twitterScore += 20;
+      reasons.push('Recent tweets - checking DMs');
+    }
+    if (social.contentThemes?.includes('Technology')) {
+      twitterScore += 10;
+      reasons.push('Tech-focused - Twitter is natural channel');
+    }
+
+    channels.push({
+      channel: 'Twitter/X',
+      score: twitterScore,
+      reasons,
+      approach: 'Engage with tweets first, then DM with value',
+      icon: 'twitter'
+    });
+  }
+
+  // Instagram - Good for B2C, creative industries
+  if (profiles.instagram?.url) {
+    let igScore = 25;
+    let reasons = ['Instagram presence'];
+
+    if (profiles.instagram.followersCount || profiles.instagram.followers) {
+      const followers = parseFollowerCount(profiles.instagram.followersCount || profiles.instagram.followers);
+      if (followers > 1000) {
+        igScore += 15;
+        reasons.push('Strong Instagram following');
+      }
+    }
+    if (profiles.instagram.isBusinessAccount) {
+      igScore += 10;
+      reasons.push('Business account - checks DMs');
+    }
+
+    channels.push({
+      channel: 'Instagram',
+      score: igScore,
+      reasons,
+      approach: 'Story replies or DM after engaging with content',
+      icon: 'instagram'
+    });
+  }
+
+  // TikTok - Emerging, good for trend-forward companies
+  if (profiles.tiktok?.url) {
+    let tiktokScore = 20;
+    let reasons = ['TikTok presence'];
+
+    if (profiles.tiktok.followersCount || profiles.tiktok.followers) {
+      const followers = parseFollowerCount(profiles.tiktok.followersCount || profiles.tiktok.followers);
+      if (followers > 1000) {
+        tiktokScore += 15;
+        reasons.push('Active TikTok audience');
+      }
+    }
+
+    channels.push({
+      channel: 'TikTok',
+      score: tiktokScore,
+      reasons,
+      approach: 'Comment on videos, build familiarity before DM',
+      icon: 'tiktok'
+    });
+  }
+
+  // Sort by score
+  channels.sort((a, b) => b.score - a.score);
+
+  // Pick best channel and alternatives
+  const bestChannel = channels[0] || {
+    channel: 'Website',
+    score: 10,
+    reasons: ['No direct contact method found'],
+    approach: 'Use contact form on their website',
+    icon: 'web'
+  };
+
+  return {
+    recommended: bestChannel,
+    alternatives: channels.slice(1, 3),
+    allChannels: channels
+  };
+}
+
+function parseFollowerCount(count) {
+  if (!count) return 0;
+  if (typeof count === 'number') return count;
+
+  const str = String(count).toLowerCase().replace(/,/g, '');
+  const num = parseFloat(str);
+
+  if (str.includes('m')) return num * 1000000;
+  if (str.includes('k')) return num * 1000;
+  return num || 0;
 }
 
 // ==================== ENRICHMENT FUNCTIONS ====================
@@ -940,6 +1242,28 @@ async function enrichSocialWithInsights(domain, name) {
     insights.push(`Content themes: ${contentThemes.join(', ')}`);
   }
 
+  // Enhance profiles with RapidAPI data if available
+  const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
+  if (RAPIDAPI_KEY) {
+    const enhancedProfiles = await enrichWithRapidAPI(profiles, RAPIDAPI_KEY);
+    Object.assign(profiles, enhancedProfiles);
+
+    // Update insights with RapidAPI data
+    for (const [platform, data] of Object.entries(profiles)) {
+      if (data?.rapidApiEnriched) {
+        if (data.followersCount) {
+          insights.push(`${platform.charAt(0).toUpperCase() + platform.slice(1)}: ${formatFollowers(data.followersCount)} followers`);
+        }
+        if (data.postsCount) {
+          insights.push(`${platform.charAt(0).toUpperCase() + platform.slice(1)}: ${data.postsCount} posts`);
+        }
+        if (data.engagementRate) {
+          insights.push(`${platform.charAt(0).toUpperCase() + platform.slice(1)} engagement: ${data.engagementRate}%`);
+        }
+      }
+    }
+  }
+
   return {
     profiles,
     socialScore,
@@ -950,6 +1274,179 @@ async function enrichSocialWithInsights(domain, name) {
     engagementSignals,
     contentThemes
   };
+}
+
+// RapidAPI enrichment for detailed social metrics
+async function enrichWithRapidAPI(profiles, apiKey) {
+  const enhanced = {};
+  const fetchPromises = [];
+
+  // Instagram enrichment via RapidAPI
+  if (profiles.instagram?.url) {
+    const username = extractUsername(profiles.instagram.url, 'instagram');
+    if (username) {
+      fetchPromises.push(
+        fetchInstagramData(username, apiKey)
+          .then(data => { enhanced.instagram = { ...profiles.instagram, ...data, rapidApiEnriched: true }; })
+          .catch(() => {})
+      );
+    }
+  }
+
+  // TikTok enrichment via RapidAPI
+  if (profiles.tiktok?.url) {
+    const username = extractUsername(profiles.tiktok.url, 'tiktok');
+    if (username) {
+      fetchPromises.push(
+        fetchTikTokData(username, apiKey)
+          .then(data => { enhanced.tiktok = { ...profiles.tiktok, ...data, rapidApiEnriched: true }; })
+          .catch(() => {})
+      );
+    }
+  }
+
+  // Twitter/X enrichment via RapidAPI
+  if (profiles.twitter?.url) {
+    const username = extractUsername(profiles.twitter.url, 'twitter');
+    if (username) {
+      fetchPromises.push(
+        fetchTwitterData(username, apiKey)
+          .then(data => { enhanced.twitter = { ...profiles.twitter, ...data, rapidApiEnriched: true }; })
+          .catch(() => {})
+      );
+    }
+  }
+
+  await Promise.all(fetchPromises);
+  return enhanced;
+}
+
+function extractUsername(url, platform) {
+  try {
+    const urlObj = new URL(url);
+    const path = urlObj.pathname;
+
+    if (platform === 'instagram') {
+      const match = path.match(/^\/([^\/\?]+)/);
+      return match ? match[1] : null;
+    }
+    if (platform === 'tiktok') {
+      const match = path.match(/^\/@([^\/\?]+)/);
+      return match ? match[1] : null;
+    }
+    if (platform === 'twitter') {
+      const match = path.match(/^\/([^\/\?]+)/);
+      return match ? match[1] : null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+async function fetchInstagramData(username, apiKey) {
+  // Using Instagram Scraper API on RapidAPI
+  // You can swap this for any Instagram API provider on RapidAPI
+  try {
+    const response = await fetch(`https://instagram-scraper-api2.p.rapidapi.com/v1/info?username_or_id_or_url=${username}`, {
+      method: 'GET',
+      headers: {
+        'X-RapidAPI-Key': apiKey,
+        'X-RapidAPI-Host': 'instagram-scraper-api2.p.rapidapi.com'
+      }
+    });
+
+    if (!response.ok) return {};
+
+    const data = await response.json();
+    const user = data.data || data;
+
+    return {
+      followersCount: user.follower_count || user.followers || null,
+      followingCount: user.following_count || user.following || null,
+      postsCount: user.media_count || user.posts_count || null,
+      bio: user.biography || user.bio || null,
+      isVerified: user.is_verified || false,
+      isBusinessAccount: user.is_business || user.is_business_account || false,
+      category: user.category || user.business_category_name || null,
+      externalUrl: user.external_url || null,
+      profilePic: user.profile_pic_url || null
+    };
+  } catch (err) {
+    console.error('Instagram RapidAPI error:', err.message);
+    return {};
+  }
+}
+
+async function fetchTikTokData(username, apiKey) {
+  // Using TikTok Scraper API on RapidAPI
+  try {
+    const response = await fetch(`https://tiktok-scraper7.p.rapidapi.com/user/info?unique_id=${username}`, {
+      method: 'GET',
+      headers: {
+        'X-RapidAPI-Key': apiKey,
+        'X-RapidAPI-Host': 'tiktok-scraper7.p.rapidapi.com'
+      }
+    });
+
+    if (!response.ok) return {};
+
+    const data = await response.json();
+    const user = data.data?.user || data.user || data;
+    const stats = data.data?.stats || data.stats || {};
+
+    return {
+      followersCount: stats.followerCount || user.follower_count || null,
+      followingCount: stats.followingCount || user.following_count || null,
+      likesCount: stats.heartCount || stats.heart || user.total_likes || null,
+      videosCount: stats.videoCount || user.video_count || null,
+      bio: user.signature || user.bio || null,
+      isVerified: user.verified || false,
+      nickname: user.nickname || null
+    };
+  } catch (err) {
+    console.error('TikTok RapidAPI error:', err.message);
+    return {};
+  }
+}
+
+async function fetchTwitterData(username, apiKey) {
+  // Using Twitter/X Scraper API on RapidAPI
+  try {
+    const response = await fetch(`https://twitter-api45.p.rapidapi.com/screenname.php?screenname=${username}`, {
+      method: 'GET',
+      headers: {
+        'X-RapidAPI-Key': apiKey,
+        'X-RapidAPI-Host': 'twitter-api45.p.rapidapi.com'
+      }
+    });
+
+    if (!response.ok) return {};
+
+    const data = await response.json();
+
+    return {
+      followersCount: data.followers_count || data.sub_count || null,
+      followingCount: data.following_count || data.friends_count || null,
+      tweetsCount: data.statuses_count || data.tweets_count || null,
+      bio: data.description || data.bio || null,
+      isVerified: data.verified || data.is_blue_verified || false,
+      location: data.location || null,
+      website: data.url || null,
+      createdAt: data.created_at || null
+    };
+  } catch (err) {
+    console.error('Twitter RapidAPI error:', err.message);
+    return {};
+  }
+}
+
+function formatFollowers(count) {
+  if (!count) return 'Unknown';
+  if (typeof count === 'string') count = parseInt(count.replace(/,/g, ''), 10);
+  if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
+  if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
+  return count.toString();
 }
 
 async function enrichFundingWithSignals(domain, name) {

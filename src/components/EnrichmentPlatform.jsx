@@ -677,7 +677,107 @@ function EnrichmentPlatform() {
 
             {/* Overview Tab */}
             {detailTab === 'overview' && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
+                {/* Lead Score Card */}
+                <div style={{ background: theme.bgSecondary, borderRadius: '12px', padding: '16px', border: `1px solid ${lead.leadTier === 'hot' ? theme.error : lead.leadTier === 'warm' ? theme.warning : theme.border}` }}>
+                  <h4 style={{ color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', marginBottom: '12px' }}>Lead Score</h4>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+                    <div style={{
+                      width: '60px',
+                      height: '60px',
+                      borderRadius: '50%',
+                      background: lead.leadTier === 'hot' ? `${theme.error}20` : lead.leadTier === 'warm' ? `${theme.warning}20` : `${theme.accent}20`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: lead.leadTier === 'hot' ? theme.error : lead.leadTier === 'warm' ? theme.warning : theme.accent,
+                      fontSize: '22px',
+                      fontWeight: 700
+                    }}>
+                      {lead.leadScore || 0}
+                    </div>
+                    <div>
+                      <div style={{ color: theme.textPrimary, fontSize: '16px', fontWeight: 600 }}>{lead.leadTierLabel || 'Cold'}</div>
+                      <div style={{ color: theme.textMuted, fontSize: '12px' }}>
+                        {lead.leadTier === 'hot' ? 'Priority outreach' : lead.leadTier === 'warm' ? 'Good prospect' : lead.leadTier === 'nurture' ? 'Needs nurturing' : 'Low priority'}
+                      </div>
+                    </div>
+                  </div>
+                  {lead.leadScoreBreakdown && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {Object.entries(lead.leadScoreBreakdown).map(([key, value]) => (
+                        <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ color: theme.textMuted, fontSize: '11px', textTransform: 'capitalize' }}>{key}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ width: '60px', height: '4px', background: theme.bgTertiary, borderRadius: '2px', overflow: 'hidden' }}>
+                              <div style={{ width: `${(value / 25) * 100}%`, height: '100%', background: theme.accent, borderRadius: '2px' }} />
+                            </div>
+                            <span style={{ color: theme.textSecondary, fontSize: '11px', width: '20px' }}>{value}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Best Channel Card */}
+                <div style={{ background: theme.bgSecondary, borderRadius: '12px', padding: '16px', border: `1px solid ${theme.border}` }}>
+                  <h4 style={{ color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', marginBottom: '12px' }}>Best Outreach Channel</h4>
+                  {lead.recommendedChannel ? (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '10px',
+                          background: lead.recommendedChannel.channel === 'LinkedIn' ? '#0A66C220' :
+                                     lead.recommendedChannel.channel === 'Twitter/X' ? '#1DA1F220' :
+                                     lead.recommendedChannel.channel === 'Instagram' ? '#E4405F20' :
+                                     `${theme.success}20`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: lead.recommendedChannel.channel === 'LinkedIn' ? '#0A66C2' :
+                                 lead.recommendedChannel.channel === 'Twitter/X' ? '#1DA1F2' :
+                                 lead.recommendedChannel.channel === 'Instagram' ? '#E4405F' :
+                                 theme.success
+                        }}>
+                          {lead.recommendedChannel.channel === 'LinkedIn' ? Icons.linkedin :
+                           lead.recommendedChannel.channel === 'Twitter/X' ? Icons.twitter :
+                           lead.recommendedChannel.channel === 'Instagram' ? Icons.instagram :
+                           lead.recommendedChannel.channel === 'Email' ? Icons.mail : Icons.globe}
+                        </div>
+                        <div>
+                          <div style={{ color: theme.textPrimary, fontSize: '15px', fontWeight: 600 }}>{lead.recommendedChannel.channel}</div>
+                          <div style={{ color: theme.textMuted, fontSize: '11px' }}>Score: {lead.recommendedChannel.score}</div>
+                        </div>
+                      </div>
+                      <div style={{ color: theme.textSecondary, fontSize: '12px', marginBottom: '10px' }}>{lead.recommendedChannel.approach}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {(lead.recommendedChannel.reasons || []).map((reason, i) => (
+                          <div key={i} style={{ color: theme.textMuted, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ color: theme.success }}>{Icons.check}</span> {reason}
+                          </div>
+                        ))}
+                      </div>
+                      {lead.alternativeChannels?.length > 0 && (
+                        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${theme.border}` }}>
+                          <div style={{ color: theme.textMuted, fontSize: '10px', marginBottom: '6px' }}>ALTERNATIVES</div>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            {lead.alternativeChannels.map((ch, i) => (
+                              <span key={i} style={{ background: theme.bgTertiary, padding: '4px 8px', borderRadius: '4px', fontSize: '11px', color: theme.textSecondary }}>
+                                {ch.channel}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ color: theme.textMuted, fontSize: '13px' }}>No channel recommendation available</div>
+                  )}
+                </div>
+
                 {/* Contact Info */}
                 <div style={{ background: theme.bgSecondary, borderRadius: '12px', padding: '16px', border: `1px solid ${theme.border}` }}>
                   <h4 style={{ color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', marginBottom: '12px' }}>Contact Information</h4>
@@ -1056,10 +1156,10 @@ function EnrichmentPlatform() {
         }}>
           {[
             { label: 'Total Enriched', value: stats.totalEnriched, icon: Icons.users, color: theme.accent },
+            { label: 'Hot Leads', value: enrichedLeads.filter(l => l.leadTier === 'hot').length, icon: Icons.zap, color: '#EF4444' },
+            { label: 'Warm Leads', value: enrichedLeads.filter(l => l.leadTier === 'warm').length, icon: Icons.trendingUp, color: '#F59E0B' },
             { label: 'Emails Found', value: stats.emailsFound, icon: Icons.mail, color: '#10B981' },
-            { label: 'Social Profiles', value: stats.socialsFound, icon: Icons.instagram, color: '#F59E0B' },
-            { label: 'Tech Stacks', value: stats.techStackFound, icon: Icons.code, color: '#8B5CF6' },
-            { label: 'High Priority', value: stats.highUrgency, icon: Icons.target, color: '#EF4444' }
+            { label: 'Social Found', value: stats.socialsFound, icon: Icons.instagram, color: '#8B5CF6' }
           ].map((stat, idx) => (
             <div key={idx} style={{
               background: theme.bgSecondary,
@@ -1165,15 +1265,15 @@ function EnrichmentPlatform() {
           overflow: 'hidden'
         }}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1200px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1400px' }}>
               <thead>
                 <tr style={{ background: theme.bgTertiary }}>
                   <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Company</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'center', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Lead Score</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Best Channel</th>
                   <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Email</th>
                   <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Social</th>
-                  <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Tech Stack</th>
                   <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Why Reach Out</th>
-                  <th style={{ padding: '14px 16px', textAlign: 'center', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Urgency</th>
                   <th style={{ padding: '14px 16px', textAlign: 'center', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', width: '40px' }}></th>
                 </tr>
               </thead>
@@ -1211,6 +1311,59 @@ function EnrichmentPlatform() {
                           </div>
                         </div>
                       </td>
+                      {/* Lead Score Column */}
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                          <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '44px',
+                            height: '44px',
+                            borderRadius: '50%',
+                            background: lead.leadTier === 'hot' ? `${theme.error}20` : lead.leadTier === 'warm' ? `${theme.warning}20` : lead.leadTier === 'nurture' ? `${theme.accent}20` : `${theme.textMuted}20`,
+                            color: lead.leadTier === 'hot' ? theme.error : lead.leadTier === 'warm' ? theme.warning : lead.leadTier === 'nurture' ? theme.accent : theme.textMuted,
+                            fontSize: '16px',
+                            fontWeight: 700
+                          }}>
+                            {lead.leadScore || 0}
+                          </div>
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            color: lead.leadTier === 'hot' ? theme.error : lead.leadTier === 'warm' ? theme.warning : lead.leadTier === 'nurture' ? theme.accent : theme.textMuted
+                          }}>
+                            {lead.leadTierLabel || 'Cold'}
+                          </span>
+                        </div>
+                      </td>
+                      {/* Best Channel Column */}
+                      <td style={{ padding: '14px 16px' }}>
+                        {lead.recommendedChannel ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{
+                              color: lead.recommendedChannel.channel === 'LinkedIn' ? '#0A66C2' :
+                                     lead.recommendedChannel.channel === 'Twitter/X' ? '#1DA1F2' :
+                                     lead.recommendedChannel.channel === 'Instagram' ? '#E4405F' :
+                                     lead.recommendedChannel.channel === 'TikTok' ? '#000' :
+                                     lead.recommendedChannel.channel === 'Email' ? theme.success : theme.textMuted
+                            }}>
+                              {lead.recommendedChannel.channel === 'LinkedIn' ? Icons.linkedin :
+                               lead.recommendedChannel.channel === 'Twitter/X' ? Icons.twitter :
+                               lead.recommendedChannel.channel === 'Instagram' ? Icons.instagram :
+                               lead.recommendedChannel.channel === 'TikTok' ? Icons.tiktok :
+                               lead.recommendedChannel.channel === 'Email' ? Icons.mail : Icons.globe}
+                            </span>
+                            <div>
+                              <div style={{ color: theme.textPrimary, fontSize: '13px', fontWeight: 500 }}>{lead.recommendedChannel.channel}</div>
+                              <div style={{ color: theme.textMuted, fontSize: '10px' }}>{lead.recommendedChannel.reasons?.[0]?.slice(0, 30) || ''}</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ color: theme.textMuted, fontSize: '13px' }}>-</span>
+                        )}
+                      </td>
                       <td style={{ padding: '14px 16px' }}>
                         {lead.primaryEmail || lead.enrichment?.email?.emails?.[0] ? (
                           <div style={{ color: theme.textPrimary, fontSize: '13px' }}>
@@ -1231,23 +1384,6 @@ function EnrichmentPlatform() {
                       </td>
                       <td style={{ padding: '14px 16px' }}>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                          {(lead.technologies || []).slice(0, 3).map((tech, i) => (
-                            <span key={i} style={{
-                              background: theme.bgTertiary,
-                              padding: '3px 8px',
-                              borderRadius: '4px',
-                              fontSize: '11px',
-                              color: theme.textSecondary
-                            }}>
-                              {tech}
-                            </span>
-                          ))}
-                          {(lead.technologies || []).length > 3 && <span style={{ color: theme.textMuted, fontSize: '11px' }}>+{lead.technologies.length - 3}</span>}
-                          {(!lead.technologies || lead.technologies.length === 0) && <span style={{ color: theme.textMuted, fontSize: '13px' }}>-</span>}
-                        </div>
-                      </td>
-                      <td style={{ padding: '14px 16px' }}>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                           {(lead.outreachIntelligence?.whyReachOut || []).slice(0, 2).map((reason, i) => (
                             <span key={i} style={{
                               background: reason.urgency === 'high' ? `${theme.error}20` : `${theme.accent}20`,
@@ -1260,22 +1396,6 @@ function EnrichmentPlatform() {
                             </span>
                           ))}
                           {(!lead.outreachIntelligence?.whyReachOut || lead.outreachIntelligence.whyReachOut.length === 0) && <span style={{ color: theme.textMuted, fontSize: '13px' }}>-</span>}
-                        </div>
-                      </td>
-                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                        <div style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '50%',
-                          background: `${(lead.outreachIntelligence?.urgencyScore || 0) >= 70 ? theme.error : (lead.outreachIntelligence?.urgencyScore || 0) >= 40 ? theme.warning : theme.success}20`,
-                          color: (lead.outreachIntelligence?.urgencyScore || 0) >= 70 ? theme.error : (lead.outreachIntelligence?.urgencyScore || 0) >= 40 ? theme.warning : theme.success,
-                          fontSize: '14px',
-                          fontWeight: 600
-                        }}>
-                          {lead.outreachIntelligence?.urgencyScore || 0}
                         </div>
                       </td>
                       <td style={{ padding: '14px 16px', textAlign: 'center' }}>
