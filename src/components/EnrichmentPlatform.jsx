@@ -1118,6 +1118,8 @@ function EnrichmentPlatform() {
                 setActiveTab('upload');
                 setLeads([]);
                 setEnrichedLeads([]);
+                localStorage.removeItem('enrichment_leads');
+                localStorage.removeItem('enrichment_results');
               }}
               style={{
                 padding: '10px 16px',
