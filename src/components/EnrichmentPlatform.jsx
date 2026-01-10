@@ -24,6 +24,7 @@ const Icons = {
   filter: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>,
   trash: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
   play: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
+  refresh: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>,
   trendingUp: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
   target: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
   clock: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
@@ -60,9 +61,13 @@ function EnrichmentPlatform() {
   // UI state
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
   const [expandedLead, setExpandedLead] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [detailTab, setDetailTab] = useState('overview');
+  const [selectedLeads, setSelectedLeads] = useState(new Set());
+  const [manualDomain, setManualDomain] = useState('');
+  const [manualName, setManualName] = useState('');
 
   // Stats
   const [stats, setStats] = useState({
@@ -281,6 +286,103 @@ function EnrichmentPlatform() {
     setActiveTab('results');
   };
 
+  // ==================== LEAD MANAGEMENT ====================
+  const deleteLead = (idx) => {
+    setEnrichedLeads(prev => prev.filter((_, i) => i !== idx));
+    setExpandedLead(null);
+  };
+
+  const deleteSelectedLeads = () => {
+    setEnrichedLeads(prev => prev.filter((_, i) => !selectedLeads.has(i)));
+    setSelectedLeads(new Set());
+    setExpandedLead(null);
+  };
+
+  const toggleSelectLead = (idx) => {
+    setSelectedLeads(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(idx)) {
+        newSet.delete(idx);
+      } else {
+        newSet.add(idx);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllLeads = () => {
+    if (selectedLeads.size === enrichedLeads.length) {
+      setSelectedLeads(new Set());
+    } else {
+      setSelectedLeads(new Set(enrichedLeads.map((_, i) => i)));
+    }
+  };
+
+  const addManualLead = () => {
+    if (!manualDomain && !manualName) {
+      setError('Please enter a domain or company name');
+      return;
+    }
+
+    const domain = manualDomain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '').toLowerCase();
+
+    setLeads(prev => [...prev, {
+      name: manualName || domain,
+      domain: domain,
+      email: '',
+      phone: '',
+      industry: '',
+      location: '',
+      source: 'manual'
+    }]);
+
+    setManualDomain('');
+    setManualName('');
+    setError(null);
+  };
+
+  const rescanLead = async (lead, idx) => {
+    setError(null);
+
+    try {
+      const response = await fetch(`${getApiBase()}/api/enrich-bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companies: [lead],
+          enrichmentTypes: selectedEnrichments
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.results?.[0]) {
+          setEnrichedLeads(prev => {
+            const newLeads = [...prev];
+            newLeads[idx] = data.results[0];
+            return newLeads;
+          });
+          setSuccessMessage('Lead re-scanned successfully');
+          setTimeout(() => setSuccessMessage(null), 3000);
+        }
+      } else {
+        setError('Failed to re-scan lead');
+      }
+    } catch (err) {
+      setError(`Error: ${err.message}`);
+    }
+  };
+
+  const clearAllData = () => {
+    setLeads([]);
+    setEnrichedLeads([]);
+    setSelectedLeads(new Set());
+    setExpandedLead(null);
+    setActiveTab('upload');
+    localStorage.removeItem('enrichment_leads');
+    localStorage.removeItem('enrichment_results');
+  };
+
   // ==================== EXPORT ====================
   const exportToCSV = () => {
     if (enrichedLeads.length === 0) return;
@@ -393,6 +495,77 @@ function EnrichmentPlatform() {
         </p>
       </div>
 
+      {/* Manual Lead Entry */}
+      <div style={{
+        background: theme.bgSecondary,
+        borderRadius: '12px',
+        border: `1px solid ${theme.border}`,
+        padding: '20px',
+        marginBottom: '20px'
+      }}>
+        <h4 style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 600, marginBottom: '16px' }}>
+          Or Add Leads Manually
+        </h4>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ color: theme.textMuted, fontSize: '12px', display: 'block', marginBottom: '6px' }}>Domain *</label>
+            <input
+              type="text"
+              value={manualDomain}
+              onChange={(e) => setManualDomain(e.target.value)}
+              placeholder="example.com"
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                background: theme.bgTertiary,
+                border: `1px solid ${theme.border}`,
+                borderRadius: '8px',
+                color: theme.textPrimary,
+                fontSize: '14px',
+                outline: 'none'
+              }}
+              onKeyPress={(e) => e.key === 'Enter' && addManualLead()}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ color: theme.textMuted, fontSize: '12px', display: 'block', marginBottom: '6px' }}>Company Name (optional)</label>
+            <input
+              type="text"
+              value={manualName}
+              onChange={(e) => setManualName(e.target.value)}
+              placeholder="Company Inc."
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                background: theme.bgTertiary,
+                border: `1px solid ${theme.border}`,
+                borderRadius: '8px',
+                color: theme.textPrimary,
+                fontSize: '14px',
+                outline: 'none'
+              }}
+              onKeyPress={(e) => e.key === 'Enter' && addManualLead()}
+            />
+          </div>
+          <button
+            onClick={addManualLead}
+            style={{
+              padding: '10px 20px',
+              background: theme.accent,
+              border: 'none',
+              borderRadius: '8px',
+              color: 'white',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            + Add Lead
+          </button>
+        </div>
+      </div>
+
       {error && (
         <div style={{
           background: 'rgba(239, 68, 68, 0.1)',
@@ -450,6 +623,7 @@ function EnrichmentPlatform() {
                     <th style={{ padding: '12px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Domain</th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Industry</th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Location</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'center', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', width: '60px' }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -459,6 +633,25 @@ function EnrichmentPlatform() {
                       <td style={{ padding: '12px 16px', color: theme.textSecondary, fontSize: '14px' }}>{lead.domain || '-'}</td>
                       <td style={{ padding: '12px 16px', color: theme.textSecondary, fontSize: '14px' }}>{lead.industry || '-'}</td>
                       <td style={{ padding: '12px 16px', color: theme.textSecondary, fontSize: '14px' }}>{lead.location || '-'}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                        <button
+                          onClick={() => setLeads(prev => prev.filter((_, i) => i !== idx))}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: theme.textMuted,
+                            cursor: 'pointer',
+                            padding: '4px',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          title="Remove lead"
+                        >
+                          {Icons.x}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -639,7 +832,7 @@ function EnrichmentPlatform() {
 
     return (
       <tr>
-        <td colSpan="7" style={{ padding: 0 }}>
+        <td colSpan="8" style={{ padding: 0 }}>
           <div style={{
             background: theme.bgTertiary,
             borderTop: `1px solid ${theme.border}`,
@@ -1176,6 +1369,41 @@ function EnrichmentPlatform() {
           ))}
         </div>
 
+        {/* Success/Error Messages */}
+        {successMessage && (
+          <div style={{
+            background: 'rgba(16, 185, 129, 0.1)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            borderRadius: '10px',
+            padding: '12px 16px',
+            marginBottom: '16px',
+            color: theme.success,
+            fontSize: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            {Icons.check} {successMessage}
+          </div>
+        )}
+
+        {error && (
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: '10px',
+            padding: '12px 16px',
+            marginBottom: '16px',
+            color: theme.error,
+            fontSize: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            {Icons.alertCircle} {error}
+          </div>
+        )}
+
         {/* Actions Bar */}
         <div style={{
           display: 'flex',
@@ -1184,42 +1412,107 @@ function EnrichmentPlatform() {
           marginBottom: '20px',
           gap: '16px'
         }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: theme.bgSecondary,
-            border: `1px solid ${theme.border}`,
-            borderRadius: '10px',
-            padding: '10px 14px',
-            flex: 1,
-            maxWidth: '400px'
-          }}>
-            <span style={{ color: theme.textMuted }}>{Icons.search}</span>
-            <input
-              type="text"
-              placeholder="Search leads..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                background: 'none',
-                border: 'none',
-                outline: 'none',
-                color: theme.textPrimary,
-                fontSize: '14px',
-                width: '100%'
-              }}
-            />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: theme.bgSecondary,
+              border: `1px solid ${theme.border}`,
+              borderRadius: '10px',
+              padding: '10px 14px',
+              maxWidth: '300px',
+              flex: 1
+            }}>
+              <span style={{ color: theme.textMuted }}>{Icons.search}</span>
+              <input
+                type="text"
+                placeholder="Search leads..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  outline: 'none',
+                  color: theme.textPrimary,
+                  fontSize: '14px',
+                  width: '100%'
+                }}
+              />
+            </div>
+
+            {/* Bulk Selection Info */}
+            {selectedLeads.size > 0 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '8px 16px',
+                background: `${theme.accent}15`,
+                borderRadius: '8px',
+                border: `1px solid ${theme.accent}30`
+              }}>
+                <span style={{ color: theme.textPrimary, fontSize: '13px', fontWeight: 500 }}>
+                  {selectedLeads.size} selected
+                </span>
+                <button
+                  onClick={deleteSelectedLeads}
+                  style={{
+                    padding: '6px 12px',
+                    background: theme.error,
+                    border: 'none',
+                    borderRadius: '6px',
+                    color: 'white',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  {Icons.trash} Delete Selected
+                </button>
+                <button
+                  onClick={() => setSelectedLeads(new Set())}
+                  style={{
+                    padding: '6px 12px',
+                    background: 'transparent',
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '6px',
+                    color: theme.textSecondary,
+                    fontSize: '12px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Clear Selection
+                </button>
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: '12px' }}>
             <button
+              onClick={clearAllData}
+              style={{
+                padding: '10px 16px',
+                background: 'transparent',
+                border: `1px solid ${theme.error}50`,
+                borderRadius: '10px',
+                color: theme.error,
+                fontSize: '14px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+              title="Clear all data and start fresh"
+            >
+              {Icons.trash} Clear All
+            </button>
+            <button
               onClick={() => {
                 setActiveTab('upload');
-                setLeads([]);
-                setEnrichedLeads([]);
-                localStorage.removeItem('enrichment_leads');
-                localStorage.removeItem('enrichment_results');
               }}
               style={{
                 padding: '10px 16px',
@@ -1234,7 +1527,7 @@ function EnrichmentPlatform() {
                 gap: '8px'
               }}
             >
-              {Icons.upload} New Upload
+              {Icons.upload} Add More Leads
             </button>
             <button
               onClick={exportToCSV}
@@ -1268,28 +1561,46 @@ function EnrichmentPlatform() {
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1400px' }}>
               <thead>
                 <tr style={{ background: theme.bgTertiary }}>
+                  <th style={{ padding: '14px 16px', textAlign: 'center', width: '50px' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedLeads.size === filteredLeads.length && filteredLeads.length > 0}
+                      onChange={selectAllLeads}
+                      style={{ accentColor: theme.accent, cursor: 'pointer', width: '16px', height: '16px' }}
+                      title="Select all"
+                    />
+                  </th>
                   <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Company</th>
                   <th style={{ padding: '14px 16px', textAlign: 'center', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Lead Score</th>
                   <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Best Channel</th>
                   <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Email</th>
                   <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Social</th>
                   <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Why Reach Out</th>
-                  <th style={{ padding: '14px 16px', textAlign: 'center', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', width: '40px' }}></th>
+                  <th style={{ padding: '14px 16px', textAlign: 'center', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', width: '120px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredLeads.map((lead, idx) => (
                   <React.Fragment key={idx}>
                     <tr
-                      onClick={() => { setExpandedLead(expandedLead === idx ? null : idx); setDetailTab('overview'); }}
                       style={{
                         borderTop: `1px solid ${theme.border}`,
-                        cursor: 'pointer',
-                        background: expandedLead === idx ? theme.bgTertiary : 'transparent',
+                        background: selectedLeads.has(idx) ? `${theme.accent}08` : expandedLead === idx ? theme.bgTertiary : 'transparent',
                         transition: 'background 0.15s'
                       }}
                     >
-                      <td style={{ padding: '14px 16px' }}>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedLeads.has(idx)}
+                          onChange={() => toggleSelectLead(idx)}
+                          style={{ accentColor: theme.accent, cursor: 'pointer', width: '16px', height: '16px' }}
+                        />
+                      </td>
+                      <td
+                        style={{ padding: '14px 16px', cursor: 'pointer' }}
+                        onClick={() => { setExpandedLead(expandedLead === idx ? null : idx); setDetailTab('overview'); }}
+                      >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <div style={{
                             width: '36px',
@@ -1398,10 +1709,58 @@ function EnrichmentPlatform() {
                           {(!lead.outreachIntelligence?.whyReachOut || lead.outreachIntelligence.whyReachOut.length === 0) && <span style={{ color: theme.textMuted, fontSize: '13px' }}>-</span>}
                         </div>
                       </td>
-                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                        <span style={{ color: theme.textMuted }}>
-                          {expandedLead === idx ? Icons.chevronUp : Icons.chevronDown}
-                        </span>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                          <button
+                            onClick={() => rescanLead(lead, idx)}
+                            style={{
+                              padding: '6px 8px',
+                              background: theme.bgTertiary,
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: '6px',
+                              color: theme.textSecondary,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '11px'
+                            }}
+                            title="Re-scan this lead"
+                          >
+                            {Icons.refresh}
+                          </button>
+                          <button
+                            onClick={() => deleteLead(idx)}
+                            style={{
+                              padding: '6px 8px',
+                              background: 'transparent',
+                              border: `1px solid ${theme.error}40`,
+                              borderRadius: '6px',
+                              color: theme.error,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center'
+                            }}
+                            title="Delete this lead"
+                          >
+                            {Icons.trash}
+                          </button>
+                          <button
+                            onClick={() => { setExpandedLead(expandedLead === idx ? null : idx); setDetailTab('overview'); }}
+                            style={{
+                              padding: '6px 8px',
+                              background: 'transparent',
+                              border: 'none',
+                              color: theme.textMuted,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center'
+                            }}
+                            title={expandedLead === idx ? 'Collapse' : 'Expand'}
+                          >
+                            {expandedLead === idx ? Icons.chevronUp : Icons.chevronDown}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                     {expandedLead === idx && renderLeadDetail(lead)}
