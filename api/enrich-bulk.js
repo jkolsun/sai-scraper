@@ -627,11 +627,17 @@ async function enrichSocialWithInsights(domain, name) {
     linkedin: null
   };
 
+  // Enhanced data from searches
+  let recentActivity = [];
+  let engagementSignals = [];
+  let contentThemes = [];
+
   if (!SERPER_KEY) {
-    return { profiles, socialScore: 0, signals: [], insights: [] };
+    return { profiles, socialScore: 0, signals: [], insights: [], recentActivity: [], engagementSignals: [], contentThemes: [] };
   }
 
   try {
+    // Basic social profile searches
     const socialSearches = [
       { platform: 'linkedin', query: `site:linkedin.com/company "${searchName}"` },
       { platform: 'twitter', query: `site:twitter.com OR site:x.com "${searchName}"` },
@@ -641,6 +647,21 @@ async function enrichSocialWithInsights(domain, name) {
       { platform: 'facebook', query: `site:facebook.com "${searchName}"` }
     ];
 
+    // Enhanced searches for more intelligence
+    const enhancedSearches = [
+      // Recent LinkedIn posts/activity
+      { type: 'linkedin_activity', query: `site:linkedin.com/posts "${searchName}"` },
+      // Recent tweets
+      { type: 'twitter_activity', query: `site:twitter.com "${searchName}" (announced OR launched OR excited OR hiring)` },
+      // Company mentions and engagement
+      { type: 'mentions', query: `"${searchName}" (review OR testimonial OR customer OR partnered)` },
+      // Product/feature launches
+      { type: 'launches', query: `"${searchName}" (launched OR introducing OR new feature OR announcing)` },
+      // Awards and recognition
+      { type: 'awards', query: `"${searchName}" (award OR recognized OR top OR best OR featured)` }
+    ];
+
+    // Run basic profile searches
     const searchPromises = socialSearches.map(async ({ platform, query }) => {
       try {
         const response = await fetch('https://google.serper.dev/search', {
@@ -661,24 +682,81 @@ async function enrichSocialWithInsights(domain, name) {
           const url = result.link || '';
 
           if (platform === 'linkedin' && url.includes('linkedin.com/company/')) {
-            return { platform, data: { url, title: result.title, snippet: result.snippet }};
+            // Extract follower count from snippet if available
+            const followerMatch = (result.snippet || '').match(/(\d+[,\d]*)\s*followers?/i);
+            return {
+              platform,
+              data: {
+                url,
+                title: result.title,
+                snippet: result.snippet,
+                followers: followerMatch ? followerMatch[1] : null
+              }
+            };
           }
           if (platform === 'twitter' && (url.includes('twitter.com/') || url.includes('x.com/'))) {
             if (!url.includes('/status/')) {
-              return { platform, data: { url, title: result.title, snippet: result.snippet }};
+              const followerMatch = (result.snippet || '').match(/(\d+[,\d\.]*[KMkm]?)\s*followers?/i);
+              return {
+                platform,
+                data: {
+                  url,
+                  title: result.title,
+                  snippet: result.snippet,
+                  followers: followerMatch ? followerMatch[1] : null
+                }
+              };
             }
           }
           if (platform === 'instagram' && url.includes('instagram.com/') && !url.includes('/p/')) {
-            return { platform, data: { url, title: result.title, snippet: result.snippet }};
+            const followerMatch = (result.snippet || '').match(/(\d+[,\d\.]*[KMkm]?)\s*followers?/i);
+            return {
+              platform,
+              data: {
+                url,
+                title: result.title,
+                snippet: result.snippet,
+                followers: followerMatch ? followerMatch[1] : null
+              }
+            };
           }
           if (platform === 'tiktok' && url.includes('tiktok.com/@')) {
-            return { platform, data: { url, title: result.title, snippet: result.snippet }};
+            const followerMatch = (result.snippet || '').match(/(\d+[,\d\.]*[KMkm]?)\s*followers?/i);
+            const likesMatch = (result.snippet || '').match(/(\d+[,\d\.]*[KMkm]?)\s*likes?/i);
+            return {
+              platform,
+              data: {
+                url,
+                title: result.title,
+                snippet: result.snippet,
+                followers: followerMatch ? followerMatch[1] : null,
+                likes: likesMatch ? likesMatch[1] : null
+              }
+            };
           }
           if (platform === 'youtube' && (url.includes('/@') || url.includes('/channel/') || url.includes('/c/'))) {
-            return { platform, data: { url, title: result.title, snippet: result.snippet }};
+            const subMatch = (result.snippet || '').match(/(\d+[,\d\.]*[KMkm]?)\s*subscribers?/i);
+            return {
+              platform,
+              data: {
+                url,
+                title: result.title,
+                snippet: result.snippet,
+                subscribers: subMatch ? subMatch[1] : null
+              }
+            };
           }
           if (platform === 'facebook' && url.includes('facebook.com/') && !url.includes('/posts/')) {
-            return { platform, data: { url, title: result.title, snippet: result.snippet }};
+            const likesMatch = (result.snippet || '').match(/(\d+[,\d\.]*[KMkm]?)\s*(?:people\s+)?(?:like|follow)/i);
+            return {
+              platform,
+              data: {
+                url,
+                title: result.title,
+                snippet: result.snippet,
+                followers: likesMatch ? likesMatch[1] : null
+              }
+            };
           }
         }
 
@@ -688,17 +766,131 @@ async function enrichSocialWithInsights(domain, name) {
       }
     });
 
-    const searchResults = await Promise.all(searchPromises);
+    // Run enhanced searches for more intelligence
+    const enhancedPromises = enhancedSearches.map(async ({ type, query }) => {
+      try {
+        const response = await fetch('https://google.serper.dev/search', {
+          method: 'POST',
+          headers: {
+            'X-API-KEY': SERPER_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ q: query, num: 3 }),
+        });
 
+        if (!response.ok) return { type, results: [] };
+
+        const data = await response.json();
+        return { type, results: data.organic || [] };
+      } catch {
+        return { type, results: [] };
+      }
+    });
+
+    const [searchResults, enhancedResults] = await Promise.all([
+      Promise.all(searchPromises),
+      Promise.all(enhancedPromises)
+    ]);
+
+    // Process basic profile results
     for (const { platform, data } of searchResults) {
       profiles[platform] = data;
     }
+
+    // Process enhanced results for additional intelligence
+    for (const { type, results } of enhancedResults) {
+      if (results.length === 0) continue;
+
+      if (type === 'linkedin_activity' || type === 'twitter_activity') {
+        for (const result of results.slice(0, 2)) {
+          recentActivity.push({
+            platform: type.replace('_activity', ''),
+            title: result.title,
+            snippet: result.snippet?.slice(0, 150) + '...',
+            url: result.link,
+            date: result.date || null
+          });
+        }
+      }
+
+      if (type === 'mentions') {
+        for (const result of results) {
+          const snippet = (result.snippet || '').toLowerCase();
+          if (snippet.includes('partner') || snippet.includes('customer')) {
+            engagementSignals.push({
+              type: 'partnership',
+              detail: result.title,
+              source: result.link
+            });
+          }
+          if (snippet.includes('review') || snippet.includes('testimonial')) {
+            engagementSignals.push({
+              type: 'social_proof',
+              detail: result.title,
+              source: result.link
+            });
+          }
+        }
+      }
+
+      if (type === 'launches') {
+        for (const result of results.slice(0, 2)) {
+          recentActivity.push({
+            platform: 'news',
+            title: result.title,
+            snippet: result.snippet?.slice(0, 150),
+            url: result.link,
+            type: 'launch'
+          });
+        }
+      }
+
+      if (type === 'awards') {
+        for (const result of results) {
+          const snippet = (result.snippet || '').toLowerCase();
+          if (snippet.includes('award') || snippet.includes('recognized') || snippet.includes('top')) {
+            engagementSignals.push({
+              type: 'recognition',
+              detail: result.title,
+              source: result.link
+            });
+          }
+        }
+      }
+    }
+
+    // Analyze content themes from snippets
+    const allSnippets = [
+      ...Object.values(profiles).filter(Boolean).map(p => p.snippet || ''),
+      ...recentActivity.map(a => a.snippet || '')
+    ].join(' ').toLowerCase();
+
+    const themePatterns = [
+      { theme: 'Innovation', keywords: ['innovative', 'disrupt', 'revolutioniz', 'transform', 'cutting-edge'] },
+      { theme: 'Customer Focus', keywords: ['customer', 'client', 'user experience', 'satisfaction'] },
+      { theme: 'Growth', keywords: ['growth', 'scale', 'expand', 'growing', 'hiring'] },
+      { theme: 'Sustainability', keywords: ['sustainable', 'green', 'eco', 'environment', 'carbon'] },
+      { theme: 'Technology', keywords: ['ai', 'machine learning', 'automation', 'tech', 'digital'] },
+      { theme: 'Community', keywords: ['community', 'giving back', 'nonprofit', 'charity', 'social impact'] }
+    ];
+
+    for (const { theme, keywords } of themePatterns) {
+      if (keywords.some(kw => allSnippets.includes(kw))) {
+        contentThemes.push(theme);
+      }
+    }
+
   } catch (err) {
     console.error('Social enrichment error:', err);
   }
 
   const activePlatforms = Object.values(profiles).filter(Boolean);
-  const socialScore = Math.min(100, activePlatforms.length * 18);
+  let socialScore = Math.min(100, activePlatforms.length * 15);
+
+  // Boost score for additional signals
+  if (recentActivity.length > 0) socialScore += 10;
+  if (engagementSignals.length > 0) socialScore += 10;
+  socialScore = Math.min(100, socialScore);
 
   const signals = [];
   const insights = [];
@@ -706,10 +898,16 @@ async function enrichSocialWithInsights(domain, name) {
   if (profiles.linkedin) {
     signals.push({ signal: 'LinkedIn company page active', category: 'b2b' });
     insights.push('B2B focused - likely responds to LinkedIn outreach');
+    if (profiles.linkedin.followers) {
+      insights.push(`LinkedIn following: ${profiles.linkedin.followers}`);
+    }
   }
   if (profiles.tiktok) {
     signals.push({ signal: 'TikTok presence', category: 'consumer' });
     insights.push('Targets younger demographics, innovative marketing approach');
+    if (profiles.tiktok.followers) {
+      insights.push(`TikTok followers: ${profiles.tiktok.followers}`);
+    }
   }
   if (profiles.instagram) {
     signals.push({ signal: 'Instagram active', category: 'brand' });
@@ -728,12 +926,29 @@ async function enrichSocialWithInsights(domain, name) {
     insights.push('Potential opportunity - may need help with brand awareness');
   }
 
+  // Add signals from enhanced data
+  if (recentActivity.length > 0) {
+    signals.push({ signal: 'Recent social activity detected', category: 'engagement' });
+  }
+  if (engagementSignals.some(s => s.type === 'recognition')) {
+    signals.push({ signal: 'Industry recognition/awards', category: 'credibility' });
+  }
+  if (engagementSignals.some(s => s.type === 'partnership')) {
+    signals.push({ signal: 'Active partnerships', category: 'ecosystem' });
+  }
+  if (contentThemes.length > 0) {
+    insights.push(`Content themes: ${contentThemes.join(', ')}`);
+  }
+
   return {
     profiles,
     socialScore,
     signals,
     insights,
-    platformCount: activePlatforms.length
+    platformCount: activePlatforms.length,
+    recentActivity,
+    engagementSignals,
+    contentThemes
   };
 }
 
