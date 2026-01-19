@@ -197,6 +197,7 @@ function EnrichmentPlatform() {
 
     const file = e.dataTransfer?.files?.[0];
     if (file) processFile(file);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFileSelect = (e) => {

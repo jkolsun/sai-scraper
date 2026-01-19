@@ -55,6 +55,7 @@ function DiscoveryPlatform() {
   // UI state
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState(null);
+  // eslint-disable-next-line no-unused-vars
   const [successMessage, setSuccessMessage] = useState(null);
   const [manualDomain, setManualDomain] = useState('');
   const [manualName, setManualName] = useState('');
