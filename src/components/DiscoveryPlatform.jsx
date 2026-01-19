@@ -35,10 +35,12 @@ const getApiBase = () => {
 
 // ==================== SIGNAL TYPE LABELS ====================
 const signalLabels = {
-  receptionist: { label: 'Receptionist', color: '#10B981', icon: Icons.phone },
-  dispatcher: { label: 'Dispatcher', color: '#8B5CF6', icon: Icons.zap },
-  office_manager: { label: 'Office Manager', color: '#F59E0B', icon: Icons.briefcase },
-  recent_hiring: { label: 'Recent Hiring', color: '#3B82F6', icon: Icons.users }
+  tier1_job: { label: 'Ops Role Hiring', color: '#10B981', icon: Icons.phone },
+  tier2_job: { label: 'Admin Hiring', color: '#22C55E', icon: Icons.briefcase },
+  employee_count: { label: '11+ Employees', color: '#8B5CF6', icon: Icons.users },
+  employee_threshold: { label: '6+ Employees', color: '#A78BFA', icon: Icons.users },
+  after_hours: { label: 'After-Hours Service', color: '#F59E0B', icon: Icons.zap },
+  recent_hiring: { label: 'Active Hiring', color: '#3B82F6', icon: Icons.briefcase }
 };
 
 // ==================== MAIN COMPONENT ====================
@@ -246,11 +248,18 @@ function DiscoveryPlatform() {
             ...lead,
             scanResult: data,
             signalFound: data.signalFound,
-            signalType: data.signalType,
-            signalTypes: data.signalTypes || [],
-            totalJobCount: data.totalJobCount,
-            jobsFound: data.jobsFound || [],
-            details: data.details
+            signalStrength: data.signalStrength,
+            signals: data.signals || [],
+            signalReasons: data.signalReasons || [],
+            // Job data
+            jobs: data.jobs || {},
+            tier1Jobs: data.jobs?.tier1 || [],
+            tier2Jobs: data.jobs?.tier2 || [],
+            totalJobCount: data.jobs?.total || 0,
+            // Company signals
+            employeeCount: data.companySignals?.employeeCount,
+            afterHoursSignal: data.companySignals?.afterHoursSignal,
+            afterHoursIndicators: data.companySignals?.afterHoursIndicators || []
           };
 
           if (data.signalFound) {
@@ -338,20 +347,27 @@ function DiscoveryPlatform() {
     if (signalFoundLeads.length === 0) return;
 
     const headers = [
-      'company_name', 'domain', 'signal_type', 'all_signals', 'jobs_found', 'job_titles', 'job_urls',
-      'email', 'phone', 'industry', 'location'
+      'company_name', 'domain', 'signal_strength', 'signals', 'signal_reasons',
+      'tier1_jobs', 'tier2_jobs', 'total_jobs', 'employee_count', 'after_hours',
+      'job_titles', 'job_urls', 'email', 'phone', 'industry', 'location'
     ];
 
     const rows = signalFoundLeads.map(lead => {
-      const jobTitles = (lead.jobsFound || []).map(j => j.title).join('; ');
-      const jobUrls = (lead.jobsFound || []).slice(0, 3).map(j => j.url).join('; ');
+      const allJobs = [...(lead.tier1Jobs || []), ...(lead.tier2Jobs || [])];
+      const jobTitles = allJobs.map(j => j.title).join('; ');
+      const jobUrls = allJobs.slice(0, 3).map(j => j.url).join('; ');
 
       return [
         lead.name || '',
         lead.domain || '',
-        lead.signalType || '',
-        (lead.signalTypes || []).join('; '),
+        lead.signalStrength || '',
+        (lead.signals || []).join('; '),
+        (lead.signalReasons || []).join('; '),
+        (lead.tier1Jobs || []).length,
+        (lead.tier2Jobs || []).length,
         lead.totalJobCount || 0,
+        lead.employeeCount || '',
+        lead.afterHoursSignal ? (lead.afterHoursIndicators || []).join('; ') : '',
         jobTitles,
         jobUrls,
         lead.email || '',
@@ -632,24 +648,35 @@ function DiscoveryPlatform() {
             padding: '20px',
             marginBottom: '24px'
           }}>
-            <h4 style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 600, marginBottom: '16px' }}>
-              Hiring Signals We Detect
+            <h4 style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>
+              Multi-Signal Detection (Any ONE qualifies)
             </h4>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-              {Object.entries(signalLabels).map(([key, value]) => (
+            <p style={{ color: theme.textMuted, fontSize: '12px', marginBottom: '16px' }}>
+              Companies qualify if they have ops hiring, sufficient employees, OR after-hours service exposure
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+              {[
+                { label: 'Ops Role Hiring', desc: 'Dispatcher, Receptionist, CSR, etc.', color: '#10B981', icon: Icons.phone },
+                { label: '11+ Employees', desc: 'Likely phone delegation needed', color: '#8B5CF6', icon: Icons.users },
+                { label: 'After-Hours Service', desc: '24/7, Emergency, Same-day', color: '#F59E0B', icon: Icons.zap }
+              ].map((signal, idx) => (
                 <div
-                  key={key}
+                  key={idx}
                   style={{
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '12px',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    padding: '14px',
                     background: theme.bgTertiary,
-                    borderRadius: '8px'
+                    borderRadius: '8px',
+                    border: `1px solid ${signal.color}30`
                   }}
                 >
-                  <span style={{ color: value.color }}>{value.icon}</span>
-                  <span style={{ color: theme.textPrimary, fontSize: '13px' }}>{value.label}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ color: signal.color }}>{signal.icon}</span>
+                    <span style={{ color: theme.textPrimary, fontSize: '13px', fontWeight: 500 }}>{signal.label}</span>
+                  </div>
+                  <span style={{ color: theme.textMuted, fontSize: '11px' }}>{signal.desc}</span>
                 </div>
               ))}
             </div>
@@ -973,7 +1000,7 @@ function DiscoveryPlatform() {
           Signal Found Campaign
         </span>
         <span style={{ color: theme.success, fontSize: '13px' }}>
-          - Companies actively hiring target roles
+          - Companies with ops hiring, 11+ employees, or after-hours service
         </span>
       </div>
       <div style={{ overflowX: 'auto' }}>
@@ -1018,8 +1045,8 @@ function DiscoveryPlatform() {
                   </td>
                   <td style={{ padding: '14px 16px' }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                      {(lead.signalTypes || [lead.signalType]).filter(Boolean).map((type, i) => {
-                        const signal = signalLabels[type] || { label: type, color: theme.accent };
+                      {(lead.signals || []).map((type, i) => {
+                        const signal = signalLabels[type] || { label: type, color: theme.accent, icon: Icons.target };
                         return (
                           <span
                             key={i}
@@ -1040,6 +1067,16 @@ function DiscoveryPlatform() {
                         );
                       })}
                     </div>
+                    {/* Signal Reasons */}
+                    {lead.signalReasons && lead.signalReasons.length > 0 && (
+                      <div style={{ marginTop: '6px' }}>
+                        {lead.signalReasons.slice(0, 2).map((reason, i) => (
+                          <div key={i} style={{ color: theme.textMuted, fontSize: '11px' }}>
+                            {reason}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </td>
                   <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                     <span style={{
@@ -1055,7 +1092,8 @@ function DiscoveryPlatform() {
                   </td>
                   <td style={{ padding: '14px 16px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      {(lead.jobsFound || []).slice(0, 2).map((job, i) => (
+                      {/* Show tier1 jobs first, then tier2 */}
+                      {[...(lead.tier1Jobs || []), ...(lead.tier2Jobs || [])].slice(0, 2).map((job, i) => (
                         <a
                           key={i}
                           href={job.url}
@@ -1073,9 +1111,21 @@ function DiscoveryPlatform() {
                           {job.title.substring(0, 40)}{job.title.length > 40 ? '...' : ''} {Icons.externalLink}
                         </a>
                       ))}
-                      {(lead.jobsFound || []).length > 2 && (
+                      {/* Show after-hours indicators if no jobs */}
+                      {(lead.tier1Jobs || []).length === 0 && (lead.tier2Jobs || []).length === 0 && lead.afterHoursSignal && (
+                        <span style={{ color: theme.warning, fontSize: '12px' }}>
+                          {(lead.afterHoursIndicators || []).slice(0, 2).join(', ')}
+                        </span>
+                      )}
+                      {/* Show employee count if relevant */}
+                      {(lead.tier1Jobs || []).length === 0 && (lead.tier2Jobs || []).length === 0 && !lead.afterHoursSignal && lead.employeeCount && (
+                        <span style={{ color: theme.textMuted, fontSize: '12px' }}>
+                          {lead.employeeCount} employees detected
+                        </span>
+                      )}
+                      {[...(lead.tier1Jobs || []), ...(lead.tier2Jobs || [])].length > 2 && (
                         <span style={{ color: theme.textMuted, fontSize: '11px' }}>
-                          +{lead.jobsFound.length - 2} more
+                          +{[...(lead.tier1Jobs || []), ...(lead.tier2Jobs || [])].length - 2} more
                         </span>
                       )}
                     </div>
