@@ -1,5 +1,5 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
-import SAIScraper from './components/SAIScraper';
+import DiscoveryPlatform from './components/DiscoveryPlatform';
 import EnrichmentPlatform from './components/EnrichmentPlatform';
 
 // ==================== THEME CONTEXT ====================
@@ -170,7 +170,7 @@ function App() {
         </button>
 
         {/* Render active mode */}
-        {mode === 'scraper' ? <SAIScraper /> : <EnrichmentPlatform />}
+        {mode === 'scraper' ? <DiscoveryPlatform /> : <EnrichmentPlatform />}
       </div>
     </ThemeContext.Provider>
   );
