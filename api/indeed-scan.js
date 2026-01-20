@@ -243,9 +243,11 @@ export default async function handler(req, res) {
     let rejectedJobs = [];
     let totalJobScore = 0;
 
+    let rawOrganic = [];
     if (jobResponse.ok) {
       const jobData = await jobResponse.json();
       const organic = jobData.organic || [];
+      rawOrganic = organic;
 
       console.log('Indeed scan - Raw results count:', organic.length);
       console.log('Indeed scan - First 3 titles:', organic.slice(0, 3).map(r => r.title));
@@ -495,6 +497,8 @@ export default async function handler(req, res) {
       // Debug info
       debug: {
         jobSearchQuery,
+        rawResultsCount: rawOrganic.length,
+        rawFirstTitles: rawOrganic.slice(0, 3).map(r => r.title),
         strongCount: strongSignalJobs.length,
         weakCount: weakSignalJobs.length,
         rejectedCount: rejectedJobs.length,
