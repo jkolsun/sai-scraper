@@ -196,22 +196,11 @@ export default async function handler(req, res) {
     }
 
     // ==================== SEARCH: JOB LISTINGS ====================
-    // Search Indeed for this company's job postings
-    // We filter for actual job URLs (/viewjob, /rc/, jk=) after getting results
-    // Note: "site:" operator causes 400 errors on Vercel, so we use "indeed" keyword instead
-    // Use escaped quotes to search for exact company name
-    const jobSearchQuery = '"' + company + '" jobs indeed';
+    // Search for company job postings
+    // Note: Serper blocks quotes and site: from Vercel IPs, so use simple query
+    const jobSearchQuery = company + ' indeed jobs hiring now';
 
     console.log('Indeed scan - Job search query:', jobSearchQuery);
-
-    const jobSearchBody = {
-      q: jobSearchQuery,
-      gl: 'us',
-      hl: 'en',
-      num: 30
-    };
-    console.log('Indeed scan - Request body:', JSON.stringify(jobSearchBody));
-    console.log('Indeed scan - API Key (first 10 chars):', SERPER_KEY.substring(0, 10));
 
     const jobSearchPromise = fetch('https://google.serper.dev/search', {
       method: 'POST',
