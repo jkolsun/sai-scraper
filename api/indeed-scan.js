@@ -193,10 +193,17 @@ export default async function handler(req, res) {
     // ==================== SEARCH: JOB LISTINGS ====================
     // Search Indeed for this company's job postings
     // We filter for actual job URLs (/viewjob, /rc/, jk=) after getting results
-    // Note: Quotes around company name cause issues with Serper API
-    const jobSearchQuery = `site:indeed.com ${company} jobs`;
+    const jobSearchQuery = company + ' jobs site:indeed.com';
 
     console.log('Indeed scan - Job search query:', jobSearchQuery);
+
+    const jobSearchBody = {
+      q: jobSearchQuery,
+      gl: 'us',
+      hl: 'en',
+      num: 30
+    };
+    console.log('Indeed scan - Request body:', JSON.stringify(jobSearchBody));
 
     const jobSearchPromise = fetch('https://google.serper.dev/search', {
       method: 'POST',
@@ -204,12 +211,7 @@ export default async function handler(req, res) {
         'X-API-KEY': SERPER_KEY,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        q: jobSearchQuery,
-        gl: 'us',
-        hl: 'en',
-        num: 30
-      }),
+      body: JSON.stringify(jobSearchBody),
     });
 
     // ==================== SEARCH: COMPANY INFO ====================
