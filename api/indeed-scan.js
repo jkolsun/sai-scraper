@@ -18,7 +18,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'domain or companyName required' });
     }
 
-    const company = companyName || domain.replace(/\.(com|io|co|net|org|biz|us|info)$/i, '').replace(/[-_]/g, ' ');
+    // Clean and normalize company name
+    let company = companyName || domain.replace(/\.(com|io|co|net|org|biz|us|info)$/i, '').replace(/[-_]/g, ' ');
+    // Remove any special characters that might break the search
+    company = company.replace(/[^\w\s&-]/g, '').trim();
+
+    console.log('Indeed scan - Company name:', company, 'from:', companyName, domain);
 
     // ==================== TEXT NORMALIZATION ====================
     function normalizeText(text) {
@@ -193,7 +198,7 @@ export default async function handler(req, res) {
     // ==================== SEARCH: JOB LISTINGS ====================
     // Search Indeed for this company's job postings
     // We filter for actual job URLs (/viewjob, /rc/, jk=) after getting results
-    const jobSearchQuery = company + ' jobs site:indeed.com';
+    const jobSearchQuery = `${company} jobs site:indeed.com`;
 
     console.log('Indeed scan - Job search query:', jobSearchQuery);
 
@@ -204,6 +209,7 @@ export default async function handler(req, res) {
       num: 30
     };
     console.log('Indeed scan - Request body:', JSON.stringify(jobSearchBody));
+    console.log('Indeed scan - API Key (first 10 chars):', SERPER_KEY.substring(0, 10));
 
     const jobSearchPromise = fetch('https://google.serper.dev/search', {
       method: 'POST',
