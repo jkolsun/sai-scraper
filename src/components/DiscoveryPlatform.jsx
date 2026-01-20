@@ -35,12 +35,12 @@ const getApiBase = () => {
 
 // ==================== SIGNAL TYPE LABELS ====================
 const signalLabels = {
-  tier1_job: { label: 'Ops Role Hiring', color: '#10B981', icon: Icons.phone },
-  tier2_job: { label: 'Admin Hiring', color: '#22C55E', icon: Icons.briefcase },
+  strong_job_signal: { label: 'Strong Job Signal', color: '#10B981', icon: Icons.phone },
+  weak_job_signal: { label: 'Weak Job Signal', color: '#22C55E', icon: Icons.briefcase },
+  non_job_signal: { label: 'Company Indicators', color: '#3B82F6', icon: Icons.target },
   employee_count: { label: '11+ Employees', color: '#8B5CF6', icon: Icons.users },
-  employee_threshold: { label: '6+ Employees', color: '#A78BFA', icon: Icons.users },
   after_hours: { label: 'After-Hours Service', color: '#F59E0B', icon: Icons.zap },
-  recent_hiring: { label: 'Active Hiring', color: '#3B82F6', icon: Icons.briefcase }
+  multi_location: { label: 'Multi-Location', color: '#06B6D4', icon: Icons.globe }
 };
 
 // ==================== MAIN COMPONENT ====================
@@ -251,15 +251,18 @@ function DiscoveryPlatform() {
             signalStrength: data.signalStrength,
             signals: data.signals || [],
             signalReasons: data.signalReasons || [],
-            // Job data
+            // Job data - new structure uses strong/weak instead of tier1/tier2
             jobs: data.jobs || {},
-            tier1Jobs: data.jobs?.tier1 || [],
-            tier2Jobs: data.jobs?.tier2 || [],
+            strongJobs: data.jobs?.strong || [],
+            weakJobs: data.jobs?.weak || [],
+            allJobs: data.jobs?.all || [],
             totalJobCount: data.jobs?.total || 0,
+            totalJobScore: data.jobs?.totalScore || 0,
             // Company signals
             employeeCount: data.companySignals?.employeeCount,
             afterHoursSignal: data.companySignals?.afterHoursSignal,
-            afterHoursIndicators: data.companySignals?.afterHoursIndicators || []
+            afterHoursIndicators: data.companySignals?.afterHoursIndicators || [],
+            multiLocationSignal: data.companySignals?.multiLocationSignal
           };
 
           if (data.signalFound) {
@@ -348,12 +351,12 @@ function DiscoveryPlatform() {
 
     const headers = [
       'company_name', 'domain', 'signal_strength', 'signals', 'signal_reasons',
-      'tier1_jobs', 'tier2_jobs', 'total_jobs', 'employee_count', 'after_hours',
+      'strong_jobs', 'weak_jobs', 'total_jobs', 'job_score', 'employee_count', 'after_hours',
       'job_titles', 'job_urls', 'email', 'phone', 'industry', 'location'
     ];
 
     const rows = signalFoundLeads.map(lead => {
-      const allJobs = [...(lead.tier1Jobs || []), ...(lead.tier2Jobs || [])];
+      const allJobs = [...(lead.strongJobs || []), ...(lead.weakJobs || [])];
       const jobTitles = allJobs.map(j => j.title).join('; ');
       const jobUrls = allJobs.slice(0, 3).map(j => j.url).join('; ');
 
@@ -363,9 +366,10 @@ function DiscoveryPlatform() {
         lead.signalStrength || '',
         (lead.signals || []).join('; '),
         (lead.signalReasons || []).join('; '),
-        (lead.tier1Jobs || []).length,
-        (lead.tier2Jobs || []).length,
+        (lead.strongJobs || []).length,
+        (lead.weakJobs || []).length,
         lead.totalJobCount || 0,
+        lead.totalJobScore || 0,
         lead.employeeCount || '',
         lead.afterHoursSignal ? (lead.afterHoursIndicators || []).join('; ') : '',
         jobTitles,
@@ -1092,8 +1096,8 @@ function DiscoveryPlatform() {
                   </td>
                   <td style={{ padding: '14px 16px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      {/* Show tier1 jobs first, then tier2 */}
-                      {[...(lead.tier1Jobs || []), ...(lead.tier2Jobs || [])].slice(0, 2).map((job, i) => (
+                      {/* Show strong jobs first, then weak */}
+                      {[...(lead.strongJobs || []), ...(lead.weakJobs || [])].slice(0, 2).map((job, i) => (
                         <a
                           key={i}
                           href={job.url}
@@ -1108,24 +1112,26 @@ function DiscoveryPlatform() {
                             gap: '4px'
                           }}
                         >
-                          {job.title.substring(0, 40)}{job.title.length > 40 ? '...' : ''} {Icons.externalLink}
+                          {job.title.substring(0, 40)}{job.title.length > 40 ? '...' : ''}
+                          {job.score && <span style={{ color: theme.success, marginLeft: '4px' }}>(+{job.score})</span>}
+                          {Icons.externalLink}
                         </a>
                       ))}
                       {/* Show after-hours indicators if no jobs */}
-                      {(lead.tier1Jobs || []).length === 0 && (lead.tier2Jobs || []).length === 0 && lead.afterHoursSignal && (
+                      {(lead.strongJobs || []).length === 0 && (lead.weakJobs || []).length === 0 && lead.afterHoursSignal && (
                         <span style={{ color: theme.warning, fontSize: '12px' }}>
                           {(lead.afterHoursIndicators || []).slice(0, 2).join(', ')}
                         </span>
                       )}
                       {/* Show employee count if relevant */}
-                      {(lead.tier1Jobs || []).length === 0 && (lead.tier2Jobs || []).length === 0 && !lead.afterHoursSignal && lead.employeeCount && (
+                      {(lead.strongJobs || []).length === 0 && (lead.weakJobs || []).length === 0 && !lead.afterHoursSignal && lead.employeeCount && (
                         <span style={{ color: theme.textMuted, fontSize: '12px' }}>
                           {lead.employeeCount} employees detected
                         </span>
                       )}
-                      {[...(lead.tier1Jobs || []), ...(lead.tier2Jobs || [])].length > 2 && (
+                      {[...(lead.strongJobs || []), ...(lead.weakJobs || [])].length > 2 && (
                         <span style={{ color: theme.textMuted, fontSize: '11px' }}>
-                          +{[...(lead.tier1Jobs || []), ...(lead.tier2Jobs || [])].length - 2} more
+                          +{[...(lead.strongJobs || []), ...(lead.weakJobs || [])].length - 2} more
                         </span>
                       )}
                     </div>
@@ -1175,10 +1181,10 @@ function DiscoveryPlatform() {
                         borderTop: `1px solid ${theme.border}`
                       }}>
                         <h4 style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>
-                          All Job Postings Found
+                          All Job Postings Found (Score: {lead.totalJobScore || 0})
                         </h4>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                          {(lead.jobsFound || []).map((job, i) => (
+                          {(lead.allJobs || []).map((job, i) => (
                             <a
                               key={i}
                               href={job.url}
@@ -1190,18 +1196,62 @@ function DiscoveryPlatform() {
                                 background: theme.bgSecondary,
                                 borderRadius: '8px',
                                 textDecoration: 'none',
-                                border: `1px solid ${theme.border}`
+                                border: `1px solid ${job.signal === 'strong' ? theme.success : job.signal === 'weak' ? theme.warning : theme.border}40`
                               }}
                             >
-                              <div style={{ color: theme.textPrimary, fontSize: '13px', fontWeight: 500, marginBottom: '4px' }}>
-                                {job.title}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                <span style={{ color: theme.textPrimary, fontSize: '13px', fontWeight: 500 }}>
+                                  {job.title}
+                                </span>
+                                {job.score > 0 && (
+                                  <span style={{
+                                    background: job.signal === 'strong' ? `${theme.success}20` : job.signal === 'weak' ? `${theme.warning}20` : theme.bgTertiary,
+                                    color: job.signal === 'strong' ? theme.success : job.signal === 'weak' ? theme.warning : theme.textMuted,
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    fontSize: '11px',
+                                    fontWeight: 600
+                                  }}>
+                                    +{job.score}
+                                  </span>
+                                )}
                               </div>
+                              {job.reasons && job.reasons.length > 0 && (
+                                <div style={{ color: theme.textSecondary, fontSize: '11px', marginBottom: '4px' }}>
+                                  {job.reasons.join(' • ')}
+                                </div>
+                              )}
                               <div style={{ color: theme.textMuted, fontSize: '11px' }}>
-                                {job.snippet?.substring(0, 100)}{job.snippet?.length > 100 ? '...' : ''}
+                                {job.snippet?.substring(0, 80)}{job.snippet?.length > 80 ? '...' : ''}
                               </div>
                             </a>
                           ))}
                         </div>
+                        {/* Show company signals */}
+                        {(lead.afterHoursSignal || lead.employeeCount || lead.multiLocationSignal) && (
+                          <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${theme.border}` }}>
+                            <h5 style={{ color: theme.textSecondary, fontSize: '12px', fontWeight: 600, marginBottom: '8px' }}>
+                              Company Signals
+                            </h5>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                              {lead.employeeCount && (
+                                <span style={{ background: `${theme.accent}15`, color: theme.accent, padding: '4px 10px', borderRadius: '6px', fontSize: '12px' }}>
+                                  {lead.employeeCount} employees
+                                </span>
+                              )}
+                              {lead.afterHoursSignal && (lead.afterHoursIndicators || []).map((ind, i) => (
+                                <span key={i} style={{ background: `${theme.warning}15`, color: theme.warning, padding: '4px 10px', borderRadius: '6px', fontSize: '12px' }}>
+                                  {ind}
+                                </span>
+                              ))}
+                              {lead.multiLocationSignal && (
+                                <span style={{ background: `${theme.success}15`, color: theme.success, padding: '4px 10px', borderRadius: '6px', fontSize: '12px' }}>
+                                  Multi-location
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>
