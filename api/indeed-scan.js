@@ -191,7 +191,9 @@ export default async function handler(req, res) {
     }
 
     // ==================== SEARCH: JOB LISTINGS ====================
-    const jobSearchQuery = `site:indeed.com "${company}"`;
+    // Search for actual job postings using viewjob/jobs URLs
+    // This excludes company profile pages and gets real listings
+    const jobSearchQuery = `site:indeed.com/viewjob OR site:indeed.com/jobs "${company}"`;
 
     const jobSearchPromise = fetch('https://google.serper.dev/search', {
       method: 'POST',
@@ -243,9 +245,19 @@ export default async function handler(req, res) {
       const jobData = await jobResponse.json();
       const organic = jobData.organic || [];
 
-      const indeedResults = organic.filter(r =>
-        r.link && r.link.toLowerCase().includes('indeed.com')
-      );
+      // Filter for actual job listings, not company profile pages
+      // Exclude: /cmp/ (company profiles), /salaries, /reviews, /faq
+      const indeedResults = organic.filter(r => {
+        if (!r.link) return false;
+        const url = r.link.toLowerCase();
+        if (!url.includes('indeed.com')) return false;
+        // Exclude company profile pages
+        if (url.includes('/cmp/')) return false;
+        if (url.includes('/salaries')) return false;
+        if (url.includes('/reviews')) return false;
+        if (url.includes('/faq')) return false;
+        return true;
+      });
 
       // Count phone/front desk roles for multi-role bonus
       let phoneRoleCount = 0;
