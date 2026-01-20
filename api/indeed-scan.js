@@ -199,7 +199,8 @@ export default async function handler(req, res) {
     // Search Indeed for this company's job postings
     // We filter for actual job URLs (/viewjob, /rc/, jk=) after getting results
     // Note: "site:" operator causes 400 errors on Vercel, so we use "indeed" keyword instead
-    const jobSearchQuery = company + ' jobs hiring indeed.com';
+    // Use escaped quotes to search for exact company name
+    const jobSearchQuery = '"' + company + '" jobs indeed';
 
     console.log('Indeed scan - Job search query:', jobSearchQuery);
 
