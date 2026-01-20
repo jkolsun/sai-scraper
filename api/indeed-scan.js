@@ -195,6 +195,8 @@ export default async function handler(req, res) {
     // This excludes company profile pages and gets real listings
     const jobSearchQuery = `site:indeed.com/viewjob OR site:indeed.com/jobs "${company}"`;
 
+    console.log('Indeed scan - Job search query:', jobSearchQuery);
+
     const jobSearchPromise = fetch('https://google.serper.dev/search', {
       method: 'POST',
       headers: {
@@ -245,6 +247,9 @@ export default async function handler(req, res) {
       const jobData = await jobResponse.json();
       const organic = jobData.organic || [];
 
+      console.log('Indeed scan - Raw results count:', organic.length);
+      console.log('Indeed scan - First 3 titles:', organic.slice(0, 3).map(r => r.title));
+
       // Filter for actual job listings, not company profile pages
       // Exclude: /cmp/ (company profiles), /salaries, /reviews, /faq
       const indeedResults = organic.filter(r => {
@@ -258,6 +263,8 @@ export default async function handler(req, res) {
         if (url.includes('/faq')) return false;
         return true;
       });
+
+      console.log('Indeed scan - Filtered results count:', indeedResults.length);
 
       // Count phone/front desk roles for multi-role bonus
       let phoneRoleCount = 0;
@@ -487,6 +494,7 @@ export default async function handler(req, res) {
 
       // Debug info
       debug: {
+        jobSearchQuery,
         strongCount: strongSignalJobs.length,
         weakCount: weakSignalJobs.length,
         rejectedCount: rejectedJobs.length,
