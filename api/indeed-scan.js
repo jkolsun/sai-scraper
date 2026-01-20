@@ -244,17 +244,24 @@ export default async function handler(req, res) {
     let totalJobScore = 0;
 
     let rawOrganic = [];
+    let jobResponseStatus = jobResponse.status;
+    let jobResponseError = '';
+
     if (jobResponse.ok) {
       const jobData = await jobResponse.json();
-      const organic = jobData.organic || [];
-      rawOrganic = organic;
+      rawOrganic = jobData.organic || [];
 
-      console.log('Indeed scan - Raw results count:', organic.length);
-      console.log('Indeed scan - First 3 titles:', organic.slice(0, 3).map(r => r.title));
+      console.log('Indeed scan - Raw results count:', rawOrganic.length);
+      console.log('Indeed scan - First 3 titles:', rawOrganic.slice(0, 3).map(r => r.title));
+    } else {
+      jobResponseError = await jobResponse.text();
+      console.log('Indeed scan - Job response error:', jobResponseStatus, jobResponseError);
+    }
 
+    if (rawOrganic.length > 0) {
       // Filter for actual job listings, not company profile pages
       // Exclude: /cmp/ (company profiles), /salaries, /reviews, /faq
-      const indeedResults = organic.filter(r => {
+      const indeedResults = rawOrganic.filter(r => {
         if (!r.link) return false;
         const url = r.link.toLowerCase();
         if (!url.includes('indeed.com')) return false;
@@ -497,6 +504,8 @@ export default async function handler(req, res) {
       // Debug info
       debug: {
         jobSearchQuery,
+        jobResponseStatus,
+        jobResponseError,
         rawResultsCount: rawOrganic.length,
         rawFirstTitles: rawOrganic.slice(0, 3).map(r => r.title),
         strongCount: strongSignalJobs.length,
