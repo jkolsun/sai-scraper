@@ -102,11 +102,33 @@ function DiscoveryPlatform() {
   }, [noSignalLeads]);
 
   // ==================== FILE HANDLING ====================
+  // Parse a single CSV line handling quoted values
+  const parseCSVLine = (line) => {
+    const values = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        values.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    values.push(current);
+    return values;
+  };
+
   const parseCSV = (text) => {
     const lines = text.split('\n').filter(line => line.trim());
     if (lines.length < 2) throw new Error('CSV must have headers and at least one row');
 
-    const rawHeaders = lines[0].split(',').map(h => h.trim().replace(/['"]/g, ''));
+    // Parse header line using CSV parser (handles quoted headers with commas)
+    const rawHeaders = parseCSVLine(lines[0]).map(h => h.trim().replace(/['"]/g, ''));
     const headers = rawHeaders.map(h => h.toLowerCase());
     const rows = [];
 
@@ -181,26 +203,6 @@ function DiscoveryPlatform() {
     }
 
     return rows;
-  };
-
-  const parseCSVLine = (line) => {
-    const values = [];
-    let current = '';
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        values.push(current);
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    values.push(current);
-    return values;
   };
 
   const handleDrag = useCallback((e) => {
