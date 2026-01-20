@@ -191,9 +191,9 @@ export default async function handler(req, res) {
     }
 
     // ==================== SEARCH: JOB LISTINGS ====================
-    // Search for actual job postings using viewjob/jobs URLs
-    // This excludes company profile pages and gets real listings
-    const jobSearchQuery = `site:indeed.com/viewjob OR site:indeed.com/jobs "${company}"`;
+    // Search Indeed for this company's job postings
+    // We filter for actual job URLs (/viewjob, /rc/, jk=) after getting results
+    const jobSearchQuery = `site:indeed.com "${company}" jobs hiring`;
 
     console.log('Indeed scan - Job search query:', jobSearchQuery);
 
@@ -259,17 +259,24 @@ export default async function handler(req, res) {
     }
 
     if (rawOrganic.length > 0) {
-      // Filter for actual job listings, not company profile pages
+      // Filter for ACTUAL job listings only
+      // Must be: /viewjob, /rc/, or contain jk= (job key parameter)
       // Exclude: /cmp/ (company profiles), /salaries, /reviews, /faq
       const indeedResults = rawOrganic.filter(r => {
         if (!r.link) return false;
         const url = r.link.toLowerCase();
         if (!url.includes('indeed.com')) return false;
-        // Exclude company profile pages
+
+        // Must be an actual job listing URL
+        const isJobUrl = url.includes('/viewjob') || url.includes('/rc/') || url.includes('jk=');
+        if (!isJobUrl) return false;
+
+        // Double-check: exclude any profile pages that might slip through
         if (url.includes('/cmp/')) return false;
         if (url.includes('/salaries')) return false;
         if (url.includes('/reviews')) return false;
         if (url.includes('/faq')) return false;
+
         return true;
       });
 
