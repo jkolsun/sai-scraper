@@ -106,28 +106,71 @@ function DiscoveryPlatform() {
     const lines = text.split('\n').filter(line => line.trim());
     if (lines.length < 2) throw new Error('CSV must have headers and at least one row');
 
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+    const rawHeaders = lines[0].split(',').map(h => h.trim().replace(/['"]/g, ''));
+    const headers = rawHeaders.map(h => h.toLowerCase());
     const rows = [];
 
     for (let i = 1; i < lines.length; i++) {
       const values = parseCSVLine(lines[i]);
       if (values.length === 0) continue;
 
+      // Store all original data with original header names
+      const originalData = {};
+      rawHeaders.forEach((header, idx) => {
+        originalData[header] = values[idx]?.trim().replace(/['"]/g, '') || '';
+      });
+
+      // Also create lowercase version for easy lookup
       const row = {};
       headers.forEach((header, idx) => {
         row[header] = values[idx]?.trim().replace(/['"]/g, '') || '';
       });
 
+      // Extract key fields for scanning (map various column name formats)
       const lead = {
-        name: row.name || row.company || row.companyname || row['company name'] || row.business || '',
-        domain: row.domain || row.website || row.url || row.site || '',
+        // Key fields for scanning
+        name: row.companyname || row['company name'] || row.company || row.name || row.business || '',
+        domain: row.companydomain || row.domain || row.website || row.companywebsite || row.url || row.site || '',
+
+        // Contact info
         email: row.email || row['email address'] || '',
+        firstName: row['first name'] || row.firstname || '',
+        lastName: row['last name'] || row.lastname || '',
         phone: row.phone || row.telephone || row.mobile || '',
+
+        // LinkedIn data
+        linkedIn: row.linkedin || '',
+        headline: row.headline || '',
+        summary: row.summary || '',
+        jobTitle: row.jobtitle || row['job title'] || '',
+        jobLevel: row.joblevel || row['job level'] || '',
+        department: row.department || '',
+        connectionCount: row.connectioncount || '',
+
+        // Company info
         industry: row.industry || row.sector || '',
+        subIndustry: row.subindustry || row['sub industry'] || '',
         location: row.location || row.city || row.state || row.country || '',
+        companyWebsite: row.companywebsite || row.website || '',
+        companyHeadCount: row.companyheadcount || row.headcount || row.employees || '',
+        companyDescription: row.companydescription || '',
+
+        // Lead status fields
+        leadStatus: row['lead status'] || row.leadstatus || row.status || '',
+        verificationStatus: row['verification status'] || row.verificationstatus || '',
+        interestStatus: row['interest status'] || row.intereststatus || '',
+        emailProvider: row['email provider'] || row.emailprovider || '',
+        assigneeEmail: row['assignee email'] || row.assigneeemail || '',
+        assigneeName: row['assignee name'] || row.assigneename || '',
+        lastContactedFrom: row['last contacted from'] || row.lastcontactedfrom || '',
+
+        // Keep ALL original data for export
+        _originalData: originalData,
+        _originalHeaders: rawHeaders,
         source: 'csv_upload'
       };
 
+      // Clean domain
       if (lead.domain) {
         lead.domain = lead.domain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '').toLowerCase();
       }
@@ -349,20 +392,31 @@ function DiscoveryPlatform() {
   const exportSignalFoundCSV = () => {
     if (signalFoundLeads.length === 0) return;
 
-    const headers = [
-      'company_name', 'domain', 'signal_strength', 'signals', 'signal_reasons',
-      'strong_jobs', 'weak_jobs', 'total_jobs', 'job_score', 'employee_count', 'after_hours',
-      'job_titles', 'job_urls', 'email', 'phone', 'industry', 'location'
+    // Signal-related headers to add
+    const signalHeaders = [
+      'signal_strength', 'signals', 'signal_reasons',
+      'strong_jobs_count', 'weak_jobs_count', 'total_jobs', 'job_score',
+      'detected_employee_count', 'after_hours_indicators',
+      'job_titles', 'job_urls'
     ];
+
+    // Get original headers from first lead (if available)
+    const firstLead = signalFoundLeads[0];
+    const originalHeaders = firstLead?._originalHeaders || [];
+
+    // Combine: original headers + signal headers
+    const allHeaders = [...originalHeaders, ...signalHeaders];
 
     const rows = signalFoundLeads.map(lead => {
       const allJobs = [...(lead.strongJobs || []), ...(lead.weakJobs || [])];
       const jobTitles = allJobs.map(j => j.title).join('; ');
-      const jobUrls = allJobs.slice(0, 3).map(j => j.url).join('; ');
+      const jobUrls = allJobs.slice(0, 5).map(j => j.url).join('; ');
 
-      return [
-        lead.name || '',
-        lead.domain || '',
+      // Get original values
+      const originalValues = originalHeaders.map(h => lead._originalData?.[h] || '');
+
+      // Get signal values
+      const signalValues = [
         lead.signalStrength || '',
         (lead.signals || []).join('; '),
         (lead.signalReasons || []).join('; '),
@@ -373,16 +427,14 @@ function DiscoveryPlatform() {
         lead.employeeCount || '',
         lead.afterHoursSignal ? (lead.afterHoursIndicators || []).join('; ') : '',
         jobTitles,
-        jobUrls,
-        lead.email || '',
-        lead.phone || '',
-        lead.industry || '',
-        lead.location || ''
+        jobUrls
       ];
+
+      return [...originalValues, ...signalValues];
     });
 
     const csv = [
-      headers.join(','),
+      allHeaders.join(','),
       ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
 
@@ -392,19 +444,38 @@ function DiscoveryPlatform() {
   const exportNoSignalCSV = () => {
     if (noSignalLeads.length === 0) return;
 
-    const headers = ['company_name', 'domain', 'email', 'phone', 'industry', 'location'];
+    // Get original headers from first lead (if available)
+    const firstLead = noSignalLeads[0];
+    const originalHeaders = firstLead?._originalHeaders || [];
 
-    const rows = noSignalLeads.map(lead => [
-      lead.name || '',
-      lead.domain || '',
-      lead.email || '',
-      lead.phone || '',
-      lead.industry || '',
-      lead.location || ''
-    ]);
+    // If no original headers, use basic fallback
+    if (originalHeaders.length === 0) {
+      const headers = ['company_name', 'domain', 'email', 'phone', 'industry', 'location'];
+      const rows = noSignalLeads.map(lead => [
+        lead.name || '',
+        lead.domain || '',
+        lead.email || '',
+        lead.phone || '',
+        lead.industry || '',
+        lead.location || ''
+      ]);
+
+      const csv = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      ].join('\n');
+
+      downloadCSV(csv, 'general-blast-campaign');
+      return;
+    }
+
+    // Use original headers and data
+    const rows = noSignalLeads.map(lead => {
+      return originalHeaders.map(h => lead._originalData?.[h] || '');
+    });
 
     const csv = [
-      headers.join(','),
+      originalHeaders.join(','),
       ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
 
