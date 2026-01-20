@@ -193,7 +193,8 @@ export default async function handler(req, res) {
     // ==================== SEARCH: JOB LISTINGS ====================
     // Search Indeed for this company's job postings
     // We filter for actual job URLs (/viewjob, /rc/, jk=) after getting results
-    const jobSearchQuery = `site:indeed.com "${company}" jobs hiring`;
+    // Note: Quotes around company name cause issues with Serper API
+    const jobSearchQuery = `site:indeed.com ${company} jobs`;
 
     console.log('Indeed scan - Job search query:', jobSearchQuery);
 
