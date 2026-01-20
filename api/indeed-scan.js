@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   const SERPER_KEY = 'cad6eefce44b2e9d112983ff0796cab6ae988d8b';
 
   try {
-    const { domain, companyName } = req.body;
+    const { domain, companyName, location } = req.body;
 
     if (!domain && !companyName) {
       return res.status(400).json({ error: 'domain or companyName required' });
@@ -23,7 +23,30 @@ export default async function handler(req, res) {
     // Remove any special characters that might break the search
     company = company.replace(/[^\w\s&-]/g, '').trim();
 
-    console.log('Indeed scan - Company name:', company, 'from:', companyName, domain);
+    // Extract state from location if available (e.g., "Lexington, South Carolina" -> "SC")
+    let stateAbbrev = '';
+    if (location) {
+      const stateMatch = location.match(/,\s*([A-Za-z\s]+)(?:,|$)/);
+      if (stateMatch) {
+        const stateName = stateMatch[1].trim();
+        // Map common state names to abbreviations
+        const stateMap = {
+          'alabama': 'AL', 'alaska': 'AK', 'arizona': 'AZ', 'arkansas': 'AR', 'california': 'CA',
+          'colorado': 'CO', 'connecticut': 'CT', 'delaware': 'DE', 'florida': 'FL', 'georgia': 'GA',
+          'hawaii': 'HI', 'idaho': 'ID', 'illinois': 'IL', 'indiana': 'IN', 'iowa': 'IA',
+          'kansas': 'KS', 'kentucky': 'KY', 'louisiana': 'LA', 'maine': 'ME', 'maryland': 'MD',
+          'massachusetts': 'MA', 'michigan': 'MI', 'minnesota': 'MN', 'mississippi': 'MS', 'missouri': 'MO',
+          'montana': 'MT', 'nebraska': 'NE', 'nevada': 'NV', 'new hampshire': 'NH', 'new jersey': 'NJ',
+          'new mexico': 'NM', 'new york': 'NY', 'north carolina': 'NC', 'north dakota': 'ND', 'ohio': 'OH',
+          'oklahoma': 'OK', 'oregon': 'OR', 'pennsylvania': 'PA', 'rhode island': 'RI', 'south carolina': 'SC',
+          'south dakota': 'SD', 'tennessee': 'TN', 'texas': 'TX', 'utah': 'UT', 'vermont': 'VT',
+          'virginia': 'VA', 'washington': 'WA', 'west virginia': 'WV', 'wisconsin': 'WI', 'wyoming': 'WY'
+        };
+        stateAbbrev = stateMap[stateName.toLowerCase()] || stateName.substring(0, 2).toUpperCase();
+      }
+    }
+
+    console.log('Indeed scan - Company:', company, 'Location:', location, 'State:', stateAbbrev);
 
     // ==================== TEXT NORMALIZATION ====================
     function normalizeText(text) {
@@ -198,7 +221,10 @@ export default async function handler(req, res) {
     // ==================== SEARCH: JOB LISTINGS ====================
     // Search for company job postings
     // Note: Serper blocks quotes and site: from Vercel IPs, so use simple query
-    const jobSearchQuery = company + ' indeed jobs hiring now';
+    // Include state abbreviation if available for more targeted results
+    const jobSearchQuery = stateAbbrev
+      ? company + ' ' + stateAbbrev + ' jobs indeed'
+      : company + ' jobs indeed';
 
     console.log('Indeed scan - Job search query:', jobSearchQuery);
 

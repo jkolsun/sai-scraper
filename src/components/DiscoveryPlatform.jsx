@@ -282,7 +282,8 @@ function DiscoveryPlatform() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             domain: lead.domain,
-            companyName: lead.name
+            companyName: lead.name,
+            location: lead.location
           })
         });
 
