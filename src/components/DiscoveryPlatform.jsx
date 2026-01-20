@@ -1243,8 +1243,8 @@ function DiscoveryPlatform() {
                   </td>
                   <td style={{ padding: '14px 16px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      {/* Show strong jobs first, then weak */}
-                      {[...(lead.strongJobs || []), ...(lead.weakJobs || [])].slice(0, 2).map((job, i) => (
+                      {/* Show all jobs with links */}
+                      {(lead.allJobs || []).slice(0, 2).map((job, i) => (
                         <a
                           key={i}
                           href={job.url}
@@ -1260,7 +1260,7 @@ function DiscoveryPlatform() {
                           }}
                         >
                           {job.title.substring(0, 40)}{job.title.length > 40 ? '...' : ''}
-                          {job.score && <span style={{ color: theme.success, marginLeft: '4px' }}>(+{job.score})</span>}
+                          {job.score > 0 && <span style={{ color: theme.success, marginLeft: '4px' }}>(+{job.score})</span>}
                           {Icons.externalLink}
                         </a>
                       ))}
@@ -1270,9 +1270,9 @@ function DiscoveryPlatform() {
                           Also: {(lead.afterHoursIndicators || []).slice(0, 2).join(', ')}
                         </span>
                       )}
-                      {[...(lead.strongJobs || []), ...(lead.weakJobs || [])].length > 2 && (
+                      {(lead.allJobs || []).length > 2 && (
                         <span style={{ color: theme.textMuted, fontSize: '11px' }}>
-                          +{[...(lead.strongJobs || []), ...(lead.weakJobs || [])].length - 2} more
+                          +{(lead.allJobs || []).length - 2} more
                         </span>
                       )}
                     </div>
