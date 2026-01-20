@@ -208,7 +208,12 @@ export default async function handler(req, res) {
         'X-API-KEY': SERPER_KEY,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(jobSearchBody),
+      body: JSON.stringify({
+        q: jobSearchQuery,
+        gl: 'us',
+        hl: 'en',
+        num: 30
+      }),
     });
 
     // ==================== SEARCH: COMPANY INFO ====================
