@@ -37,10 +37,7 @@ const getApiBase = () => {
 const signalLabels = {
   strong_job_signal: { label: 'Strong Job Signal', color: '#10B981', icon: Icons.phone },
   weak_job_signal: { label: 'Weak Job Signal', color: '#22C55E', icon: Icons.briefcase },
-  non_job_signal: { label: 'Company Indicators', color: '#3B82F6', icon: Icons.target },
-  employee_count: { label: '11+ Employees', color: '#8B5CF6', icon: Icons.users },
-  after_hours: { label: 'After-Hours Service', color: '#F59E0B', icon: Icons.zap },
-  multi_location: { label: 'Multi-Location', color: '#06B6D4', icon: Icons.globe }
+  after_hours: { label: 'After-Hours Service', color: '#F59E0B', icon: Icons.zap }
 };
 
 // ==================== MAIN COMPONENT ====================
@@ -50,8 +47,9 @@ function DiscoveryPlatform() {
   // Core state
   const [activeTab, setActiveTab] = useState('upload');
   const [leads, setLeads] = useState([]);
-  const [signalFoundLeads, setSignalFoundLeads] = useState([]);
-  const [noSignalLeads, setNoSignalLeads] = useState([]);
+  const [jobSignalLeads, setJobSignalLeads] = useState([]);       // Indeed Job Search filter
+  const [afterHoursLeads, setAfterHoursLeads] = useState([]);     // After Hours Service filter
+  const [generalBlastLeads, setGeneralBlastLeads] = useState([]); // General Blast filter
   const [scanProgress, setScanProgress] = useState({ current: 0, total: 0, status: 'idle', currentCompany: '' });
 
   // UI state
@@ -62,21 +60,23 @@ function DiscoveryPlatform() {
   const [manualDomain, setManualDomain] = useState('');
   const [manualName, setManualName] = useState('');
   const [expandedLead, setExpandedLead] = useState(null);
-  const [resultsView, setResultsView] = useState('signal'); // 'signal' or 'blast'
+  const [resultsView, setResultsView] = useState('jobs'); // 'jobs', 'afterhours', or 'blast'
 
   // Load saved data
   useEffect(() => {
     try {
       const savedLeads = localStorage.getItem('discovery_leads');
-      const savedSignal = localStorage.getItem('discovery_signal_found');
-      const savedNoSignal = localStorage.getItem('discovery_no_signal');
+      const savedJobSignal = localStorage.getItem('discovery_job_signal');
+      const savedAfterHours = localStorage.getItem('discovery_after_hours');
+      const savedGeneralBlast = localStorage.getItem('discovery_general_blast');
       if (savedLeads) setLeads(JSON.parse(savedLeads));
-      if (savedSignal) {
-        const signal = JSON.parse(savedSignal);
-        setSignalFoundLeads(signal);
-        if (signal.length > 0) setActiveTab('results');
+      if (savedJobSignal) {
+        const jobs = JSON.parse(savedJobSignal);
+        setJobSignalLeads(jobs);
+        if (jobs.length > 0) setActiveTab('results');
       }
-      if (savedNoSignal) setNoSignalLeads(JSON.parse(savedNoSignal));
+      if (savedAfterHours) setAfterHoursLeads(JSON.parse(savedAfterHours));
+      if (savedGeneralBlast) setGeneralBlastLeads(JSON.parse(savedGeneralBlast));
     } catch (e) {
       console.error('Error loading saved data:', e);
     }
@@ -91,15 +91,21 @@ function DiscoveryPlatform() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('discovery_signal_found', JSON.stringify(signalFoundLeads));
+      localStorage.setItem('discovery_job_signal', JSON.stringify(jobSignalLeads));
     } catch (e) {}
-  }, [signalFoundLeads]);
+  }, [jobSignalLeads]);
 
   useEffect(() => {
     try {
-      localStorage.setItem('discovery_no_signal', JSON.stringify(noSignalLeads));
+      localStorage.setItem('discovery_after_hours', JSON.stringify(afterHoursLeads));
     } catch (e) {}
-  }, [noSignalLeads]);
+  }, [afterHoursLeads]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('discovery_general_blast', JSON.stringify(generalBlastLeads));
+    } catch (e) {}
+  }, [generalBlastLeads]);
 
   // ==================== FILE HANDLING ====================
   // Parse a single CSV line handling quoted values
@@ -260,11 +266,13 @@ function DiscoveryPlatform() {
 
     setActiveTab('scanning');
     setScanProgress({ current: 0, total: leads.length, status: 'running', currentCompany: '' });
-    setSignalFoundLeads([]);
-    setNoSignalLeads([]);
+    setJobSignalLeads([]);
+    setAfterHoursLeads([]);
+    setGeneralBlastLeads([]);
 
-    const signalResults = [];
-    const noSignalResults = [];
+    const jobResults = [];        // Companies with job postings
+    const afterHoursResults = []; // Companies with after-hours service (but no jobs)
+    const blastResults = [];      // Everyone else
 
     for (let i = 0; i < leads.length; i++) {
       const lead = leads[i];
@@ -297,7 +305,7 @@ function DiscoveryPlatform() {
             signalStrength: data.signalStrength,
             signals: data.signals || [],
             signalReasons: data.signalReasons || [],
-            // Job data - new structure uses strong/weak instead of tier1/tier2
+            // Job data
             jobs: data.jobs || {},
             strongJobs: data.jobs?.strong || [],
             weakJobs: data.jobs?.weak || [],
@@ -305,36 +313,44 @@ function DiscoveryPlatform() {
             totalJobCount: data.jobs?.total || 0,
             totalJobScore: data.jobs?.totalScore || 0,
             // Company signals
-            employeeCount: data.companySignals?.employeeCount,
             afterHoursSignal: data.companySignals?.afterHoursSignal,
-            afterHoursIndicators: data.companySignals?.afterHoursIndicators || [],
-            multiLocationSignal: data.companySignals?.multiLocationSignal
+            afterHoursIndicators: data.companySignals?.afterHoursIndicators || []
           };
 
-          if (data.signalFound) {
-            signalResults.push(enrichedLead);
-            setSignalFoundLeads([...signalResults]);
+          // Categorize: Jobs found > After Hours > General Blast
+          const hasJobSignal = (data.jobs?.total || 0) > 0;
+          const hasAfterHours = data.companySignals?.afterHoursSignal;
+
+          if (hasJobSignal) {
+            // Priority 1: Indeed Job Search
+            jobResults.push(enrichedLead);
+            setJobSignalLeads([...jobResults]);
+          } else if (hasAfterHours) {
+            // Priority 2: After Hours Service
+            afterHoursResults.push(enrichedLead);
+            setAfterHoursLeads([...afterHoursResults]);
           } else {
-            noSignalResults.push(enrichedLead);
-            setNoSignalLeads([...noSignalResults]);
+            // Priority 3: General Blast
+            blastResults.push(enrichedLead);
+            setGeneralBlastLeads([...blastResults]);
           }
         } else {
-          // API error - add to no signal
-          noSignalResults.push({
+          // API error - add to general blast
+          blastResults.push({
             ...lead,
             signalFound: false,
             scanError: 'API error'
           });
-          setNoSignalLeads([...noSignalResults]);
+          setGeneralBlastLeads([...blastResults]);
         }
       } catch (err) {
-        // Network error - add to no signal
-        noSignalResults.push({
+        // Network error - add to general blast
+        blastResults.push({
           ...lead,
           signalFound: false,
           scanError: err.message
         });
-        setNoSignalLeads([...noSignalResults]);
+        setGeneralBlastLeads([...blastResults]);
       }
 
       // Small delay to avoid rate limiting
@@ -371,64 +387,56 @@ function DiscoveryPlatform() {
     setError(null);
   };
 
-  const deleteLead = (idx, isSignal) => {
-    if (isSignal) {
-      setSignalFoundLeads(prev => prev.filter((_, i) => i !== idx));
+  const deleteLead = (idx, category) => {
+    if (category === 'jobs') {
+      setJobSignalLeads(prev => prev.filter((_, i) => i !== idx));
+    } else if (category === 'afterhours') {
+      setAfterHoursLeads(prev => prev.filter((_, i) => i !== idx));
     } else {
-      setNoSignalLeads(prev => prev.filter((_, i) => i !== idx));
+      setGeneralBlastLeads(prev => prev.filter((_, i) => i !== idx));
     }
     setExpandedLead(null);
   };
 
   const clearAllData = () => {
     setLeads([]);
-    setSignalFoundLeads([]);
-    setNoSignalLeads([]);
+    setJobSignalLeads([]);
+    setAfterHoursLeads([]);
+    setGeneralBlastLeads([]);
     setExpandedLead(null);
     setActiveTab('upload');
     localStorage.removeItem('discovery_leads');
-    localStorage.removeItem('discovery_signal_found');
-    localStorage.removeItem('discovery_no_signal');
+    localStorage.removeItem('discovery_job_signal');
+    localStorage.removeItem('discovery_after_hours');
+    localStorage.removeItem('discovery_general_blast');
   };
 
   // ==================== EXPORT ====================
-  const exportSignalFoundCSV = () => {
-    if (signalFoundLeads.length === 0) return;
+  const exportJobSignalCSV = () => {
+    if (jobSignalLeads.length === 0) return;
 
     // Signal-related headers to add
     const signalHeaders = [
-      'signal_strength', 'signals', 'signal_reasons',
-      'strong_jobs_count', 'weak_jobs_count', 'total_jobs', 'job_score',
-      'detected_employee_count', 'after_hours_indicators',
+      'signal_strength', 'strong_jobs_count', 'weak_jobs_count', 'total_jobs', 'job_score',
       'job_titles', 'job_urls'
     ];
 
-    // Get original headers from first lead (if available)
-    const firstLead = signalFoundLeads[0];
+    const firstLead = jobSignalLeads[0];
     const originalHeaders = firstLead?._originalHeaders || [];
-
-    // Combine: original headers + signal headers
     const allHeaders = [...originalHeaders, ...signalHeaders];
 
-    const rows = signalFoundLeads.map(lead => {
+    const rows = jobSignalLeads.map(lead => {
       const allJobs = [...(lead.strongJobs || []), ...(lead.weakJobs || [])];
       const jobTitles = allJobs.map(j => j.title).join('; ');
       const jobUrls = allJobs.slice(0, 5).map(j => j.url).join('; ');
 
-      // Get original values
       const originalValues = originalHeaders.map(h => lead._originalData?.[h] || '');
-
-      // Get signal values
       const signalValues = [
         lead.signalStrength || '',
-        (lead.signals || []).join('; '),
-        (lead.signalReasons || []).join('; '),
         (lead.strongJobs || []).length,
         (lead.weakJobs || []).length,
         lead.totalJobCount || 0,
         lead.totalJobScore || 0,
-        lead.employeeCount || '',
-        lead.afterHoursSignal ? (lead.afterHoursIndicators || []).join('; ') : '',
         jobTitles,
         jobUrls
       ];
@@ -441,20 +449,40 @@ function DiscoveryPlatform() {
       ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
 
-    downloadCSV(csv, 'signal-found-campaign');
+    downloadCSV(csv, 'indeed-job-search');
   };
 
-  const exportNoSignalCSV = () => {
-    if (noSignalLeads.length === 0) return;
+  const exportAfterHoursCSV = () => {
+    if (afterHoursLeads.length === 0) return;
 
-    // Get original headers from first lead (if available)
-    const firstLead = noSignalLeads[0];
+    const signalHeaders = ['after_hours_indicators'];
+    const firstLead = afterHoursLeads[0];
+    const originalHeaders = firstLead?._originalHeaders || [];
+    const allHeaders = [...originalHeaders, ...signalHeaders];
+
+    const rows = afterHoursLeads.map(lead => {
+      const originalValues = originalHeaders.map(h => lead._originalData?.[h] || '');
+      const signalValues = [(lead.afterHoursIndicators || []).join('; ')];
+      return [...originalValues, ...signalValues];
+    });
+
+    const csv = [
+      allHeaders.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    downloadCSV(csv, 'after-hours-service');
+  };
+
+  const exportGeneralBlastCSV = () => {
+    if (generalBlastLeads.length === 0) return;
+
+    const firstLead = generalBlastLeads[0];
     const originalHeaders = firstLead?._originalHeaders || [];
 
-    // If no original headers, use basic fallback
     if (originalHeaders.length === 0) {
       const headers = ['company_name', 'domain', 'email', 'phone', 'industry', 'location'];
-      const rows = noSignalLeads.map(lead => [
+      const rows = generalBlastLeads.map(lead => [
         lead.name || '',
         lead.domain || '',
         lead.email || '',
@@ -468,12 +496,11 @@ function DiscoveryPlatform() {
         ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       ].join('\n');
 
-      downloadCSV(csv, 'general-blast-campaign');
+      downloadCSV(csv, 'general-blast');
       return;
     }
 
-    // Use original headers and data
-    const rows = noSignalLeads.map(lead => {
+    const rows = generalBlastLeads.map(lead => {
       return originalHeaders.map(h => lead._originalData?.[h] || '');
     });
 
@@ -482,7 +509,7 @@ function DiscoveryPlatform() {
       ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
 
-    downloadCSV(csv, 'general-blast-campaign');
+    downloadCSV(csv, 'general-blast');
   };
 
   const downloadCSV = (csv, filename) => {
@@ -727,16 +754,16 @@ function DiscoveryPlatform() {
             marginBottom: '24px'
           }}>
             <h4 style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>
-              Multi-Signal Detection (Any ONE qualifies)
+              Quality Signal Detection
             </h4>
             <p style={{ color: theme.textMuted, fontSize: '12px', marginBottom: '16px' }}>
-              Companies qualify if they have ops hiring, sufficient employees, OR after-hours service exposure
+              Companies are categorized into 3 filters based on signal quality
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
               {[
-                { label: 'Ops Role Hiring', desc: 'Dispatcher, Receptionist, CSR, etc.', color: '#10B981', icon: Icons.phone },
-                { label: '11+ Employees', desc: 'Likely phone delegation needed', color: '#8B5CF6', icon: Icons.users },
-                { label: 'After-Hours Service', desc: '24/7, Emergency, Same-day', color: '#F59E0B', icon: Icons.zap }
+                { label: 'Indeed Job Search', desc: 'Dispatcher, Receptionist, CSR hiring', color: '#10B981', icon: Icons.briefcase },
+                { label: 'After-Hours Service', desc: '24/7, Emergency, Same-day service', color: '#F59E0B', icon: Icons.zap },
+                { label: 'General Blast', desc: 'No specific signals detected', color: '#6B7280', icon: Icons.users }
               ].map((signal, idx) => (
                 <div
                   key={idx}
@@ -836,7 +863,7 @@ function DiscoveryPlatform() {
 
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)',
+        gridTemplateColumns: 'repeat(3, 1fr)',
         gap: '16px',
         marginTop: '40px'
       }}>
@@ -846,9 +873,19 @@ function DiscoveryPlatform() {
           padding: '20px',
           border: `1px solid ${theme.success}40`
         }}>
-          <div style={{ color: theme.success, marginBottom: '8px' }}>{Icons.target}</div>
-          <div style={{ color: theme.textPrimary, fontSize: '28px', fontWeight: 700 }}>{signalFoundLeads.length}</div>
-          <div style={{ color: theme.success, fontSize: '13px', fontWeight: 500 }}>Signals Found</div>
+          <div style={{ color: theme.success, marginBottom: '8px' }}>{Icons.briefcase}</div>
+          <div style={{ color: theme.textPrimary, fontSize: '28px', fontWeight: 700 }}>{jobSignalLeads.length}</div>
+          <div style={{ color: theme.success, fontSize: '13px', fontWeight: 500 }}>Indeed Jobs</div>
+        </div>
+        <div style={{
+          background: theme.bgSecondary,
+          borderRadius: '12px',
+          padding: '20px',
+          border: `1px solid ${theme.warning}40`
+        }}>
+          <div style={{ color: theme.warning, marginBottom: '8px' }}>{Icons.zap}</div>
+          <div style={{ color: theme.textPrimary, fontSize: '28px', fontWeight: 700 }}>{afterHoursLeads.length}</div>
+          <div style={{ color: theme.warning, fontSize: '13px', fontWeight: 500 }}>After Hours</div>
         </div>
         <div style={{
           background: theme.bgSecondary,
@@ -857,7 +894,7 @@ function DiscoveryPlatform() {
           border: `1px solid ${theme.border}`
         }}>
           <div style={{ color: theme.textMuted, marginBottom: '8px' }}>{Icons.users}</div>
-          <div style={{ color: theme.textPrimary, fontSize: '28px', fontWeight: 700 }}>{noSignalLeads.length}</div>
+          <div style={{ color: theme.textPrimary, fontSize: '28px', fontWeight: 700 }}>{generalBlastLeads.length}</div>
           <div style={{ color: theme.textMuted, fontSize: '13px' }}>General Blast</div>
         </div>
       </div>
@@ -872,6 +909,9 @@ function DiscoveryPlatform() {
   );
 
   // ==================== RENDER: RESULTS TAB ====================
+  const totalScanned = jobSignalLeads.length + afterHoursLeads.length + generalBlastLeads.length;
+  const qualitySignals = jobSignalLeads.length + afterHoursLeads.length;
+
   const renderResultsTab = () => (
     <div style={{ padding: '24px' }}>
       {/* Stats Header */}
@@ -888,10 +928,22 @@ function DiscoveryPlatform() {
           border: `1px solid ${theme.success}40`
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-            <div style={{ color: theme.success }}>{Icons.target}</div>
-            <span style={{ color: theme.textMuted, fontSize: '13px' }}>Signal Found</span>
+            <div style={{ color: theme.success }}>{Icons.briefcase}</div>
+            <span style={{ color: theme.textMuted, fontSize: '13px' }}>Indeed Jobs</span>
           </div>
-          <div style={{ color: theme.textPrimary, fontSize: '28px', fontWeight: 700 }}>{signalFoundLeads.length}</div>
+          <div style={{ color: theme.textPrimary, fontSize: '28px', fontWeight: 700 }}>{jobSignalLeads.length}</div>
+        </div>
+        <div style={{
+          background: theme.bgSecondary,
+          borderRadius: '12px',
+          padding: '20px',
+          border: `1px solid ${theme.warning}40`
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+            <div style={{ color: theme.warning }}>{Icons.zap}</div>
+            <span style={{ color: theme.textMuted, fontSize: '13px' }}>After Hours</span>
+          </div>
+          <div style={{ color: theme.textPrimary, fontSize: '28px', fontWeight: 700 }}>{afterHoursLeads.length}</div>
         </div>
         <div style={{
           background: theme.bgSecondary,
@@ -903,7 +955,7 @@ function DiscoveryPlatform() {
             <div style={{ color: theme.textMuted }}>{Icons.users}</div>
             <span style={{ color: theme.textMuted, fontSize: '13px' }}>General Blast</span>
           </div>
-          <div style={{ color: theme.textPrimary, fontSize: '28px', fontWeight: 700 }}>{noSignalLeads.length}</div>
+          <div style={{ color: theme.textPrimary, fontSize: '28px', fontWeight: 700 }}>{generalBlastLeads.length}</div>
         </div>
         <div style={{
           background: theme.bgSecondary,
@@ -912,25 +964,11 @@ function DiscoveryPlatform() {
           border: `1px solid ${theme.border}`
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-            <div style={{ color: theme.accent }}>{Icons.briefcase}</div>
-            <span style={{ color: theme.textMuted, fontSize: '13px' }}>Total Scanned</span>
-          </div>
-          <div style={{ color: theme.textPrimary, fontSize: '28px', fontWeight: 700 }}>{signalFoundLeads.length + noSignalLeads.length}</div>
-        </div>
-        <div style={{
-          background: theme.bgSecondary,
-          borderRadius: '12px',
-          padding: '20px',
-          border: `1px solid ${theme.border}`
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-            <div style={{ color: theme.warning }}>{Icons.zap}</div>
-            <span style={{ color: theme.textMuted, fontSize: '13px' }}>Signal Rate</span>
+            <div style={{ color: theme.accent }}>{Icons.target}</div>
+            <span style={{ color: theme.textMuted, fontSize: '13px' }}>Quality Rate</span>
           </div>
           <div style={{ color: theme.textPrimary, fontSize: '28px', fontWeight: 700 }}>
-            {signalFoundLeads.length + noSignalLeads.length > 0
-              ? Math.round((signalFoundLeads.length / (signalFoundLeads.length + noSignalLeads.length)) * 100)
-              : 0}%
+            {totalScanned > 0 ? Math.round((qualitySignals / totalScanned) * 100) : 0}%
           </div>
         </div>
       </div>
@@ -941,9 +979,10 @@ function DiscoveryPlatform() {
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: '20px',
-        gap: '16px'
+        gap: '16px',
+        flexWrap: 'wrap'
       }}>
-        {/* Campaign Toggle */}
+        {/* 3 Filter Tabs */}
         <div style={{
           display: 'flex',
           background: theme.bgSecondary,
@@ -952,13 +991,13 @@ function DiscoveryPlatform() {
           border: `1px solid ${theme.border}`
         }}>
           <button
-            onClick={() => setResultsView('signal')}
+            onClick={() => setResultsView('jobs')}
             style={{
-              padding: '10px 20px',
-              background: resultsView === 'signal' ? theme.success : 'transparent',
+              padding: '10px 16px',
+              background: resultsView === 'jobs' ? theme.success : 'transparent',
               border: 'none',
               borderRadius: '8px',
-              color: resultsView === 'signal' ? 'white' : theme.textSecondary,
+              color: resultsView === 'jobs' ? 'white' : theme.textSecondary,
               fontSize: '14px',
               fontWeight: 500,
               cursor: 'pointer',
@@ -967,12 +1006,30 @@ function DiscoveryPlatform() {
               gap: '8px'
             }}
           >
-            {Icons.target} Signal Found ({signalFoundLeads.length})
+            {Icons.briefcase} Indeed Jobs ({jobSignalLeads.length})
+          </button>
+          <button
+            onClick={() => setResultsView('afterhours')}
+            style={{
+              padding: '10px 16px',
+              background: resultsView === 'afterhours' ? theme.warning : 'transparent',
+              border: 'none',
+              borderRadius: '8px',
+              color: resultsView === 'afterhours' ? 'white' : theme.textSecondary,
+              fontSize: '14px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            {Icons.zap} After Hours ({afterHoursLeads.length})
           </button>
           <button
             onClick={() => setResultsView('blast')}
             style={{
-              padding: '10px 20px',
+              padding: '10px 16px',
               background: resultsView === 'blast' ? theme.bgTertiary : 'transparent',
               border: 'none',
               borderRadius: '8px',
@@ -985,7 +1042,7 @@ function DiscoveryPlatform() {
               gap: '8px'
             }}
           >
-            {Icons.users} General Blast ({noSignalLeads.length})
+            {Icons.users} General Blast ({generalBlastLeads.length})
           </button>
         </div>
 
@@ -1025,40 +1082,56 @@ function DiscoveryPlatform() {
             {Icons.upload} New Scan
           </button>
           <button
-            onClick={resultsView === 'signal' ? exportSignalFoundCSV : exportNoSignalCSV}
-            disabled={(resultsView === 'signal' && signalFoundLeads.length === 0) || (resultsView === 'blast' && noSignalLeads.length === 0)}
+            onClick={() => {
+              if (resultsView === 'jobs') exportJobSignalCSV();
+              else if (resultsView === 'afterhours') exportAfterHoursCSV();
+              else exportGeneralBlastCSV();
+            }}
+            disabled={
+              (resultsView === 'jobs' && jobSignalLeads.length === 0) ||
+              (resultsView === 'afterhours' && afterHoursLeads.length === 0) ||
+              (resultsView === 'blast' && generalBlastLeads.length === 0)
+            }
             style={{
               padding: '10px 20px',
-              background: (resultsView === 'signal' && signalFoundLeads.length === 0) || (resultsView === 'blast' && noSignalLeads.length === 0)
-                ? theme.bgTertiary
-                : `linear-gradient(135deg, ${theme.gradientStart}, ${theme.gradientEnd})`,
+              background: (
+                (resultsView === 'jobs' && jobSignalLeads.length === 0) ||
+                (resultsView === 'afterhours' && afterHoursLeads.length === 0) ||
+                (resultsView === 'blast' && generalBlastLeads.length === 0)
+              ) ? theme.bgTertiary : `linear-gradient(135deg, ${theme.gradientStart}, ${theme.gradientEnd})`,
               border: 'none',
               borderRadius: '10px',
-              color: (resultsView === 'signal' && signalFoundLeads.length === 0) || (resultsView === 'blast' && noSignalLeads.length === 0)
-                ? theme.textMuted
-                : 'white',
+              color: (
+                (resultsView === 'jobs' && jobSignalLeads.length === 0) ||
+                (resultsView === 'afterhours' && afterHoursLeads.length === 0) ||
+                (resultsView === 'blast' && generalBlastLeads.length === 0)
+              ) ? theme.textMuted : 'white',
               fontSize: '14px',
               fontWeight: 600,
-              cursor: (resultsView === 'signal' && signalFoundLeads.length === 0) || (resultsView === 'blast' && noSignalLeads.length === 0)
-                ? 'not-allowed'
-                : 'pointer',
+              cursor: (
+                (resultsView === 'jobs' && jobSignalLeads.length === 0) ||
+                (resultsView === 'afterhours' && afterHoursLeads.length === 0) ||
+                (resultsView === 'blast' && generalBlastLeads.length === 0)
+              ) ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '8px'
             }}
           >
-            {Icons.download} Export {resultsView === 'signal' ? 'Signal Found' : 'General Blast'} CSV
+            {Icons.download} Export CSV
           </button>
         </div>
       </div>
 
       {/* Results Table */}
-      {resultsView === 'signal' ? renderSignalFoundTable() : renderNoSignalTable()}
+      {resultsView === 'jobs' && renderJobsTable()}
+      {resultsView === 'afterhours' && renderAfterHoursTable()}
+      {resultsView === 'blast' && renderGeneralBlastTable()}
     </div>
   );
 
-  // ==================== RENDER: SIGNAL FOUND TABLE ====================
-  const renderSignalFoundTable = () => (
+  // ==================== RENDER: INDEED JOBS TABLE ====================
+  const renderJobsTable = () => (
     <div style={{
       background: theme.bgSecondary,
       borderRadius: '12px',
@@ -1073,12 +1146,12 @@ function DiscoveryPlatform() {
         alignItems: 'center',
         gap: '10px'
       }}>
-        <span style={{ color: theme.success }}>{Icons.target}</span>
+        <span style={{ color: theme.success }}>{Icons.briefcase}</span>
         <span style={{ color: theme.textPrimary, fontSize: '15px', fontWeight: 600 }}>
-          Signal Found Campaign
+          Indeed Job Search
         </span>
         <span style={{ color: theme.success, fontSize: '13px' }}>
-          - Companies with ops hiring, 11+ employees, or after-hours service
+          - Companies hiring for dispatcher, receptionist, CSR roles
         </span>
       </div>
       <div style={{ overflowX: 'auto' }}>
@@ -1086,18 +1159,18 @@ function DiscoveryPlatform() {
           <thead>
             <tr style={{ background: theme.bgTertiary }}>
               <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Company</th>
-              <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Signal Type</th>
+              <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Signal Strength</th>
               <th style={{ padding: '14px 16px', textAlign: 'center', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Jobs Found</th>
-              <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Sample Jobs</th>
+              <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Job Postings</th>
               <th style={{ padding: '14px 16px', textAlign: 'center', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', width: '100px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {signalFoundLeads.map((lead, idx) => (
+            {jobSignalLeads.map((lead, idx) => (
               <React.Fragment key={idx}>
                 <tr style={{
                   borderTop: `1px solid ${theme.border}`,
-                  background: expandedLead === `signal-${idx}` ? theme.bgTertiary : 'transparent'
+                  background: expandedLead === `jobs-${idx}` ? theme.bgTertiary : 'transparent'
                 }}>
                   <td style={{ padding: '14px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1191,16 +1264,10 @@ function DiscoveryPlatform() {
                           {Icons.externalLink}
                         </a>
                       ))}
-                      {/* Show after-hours indicators if no jobs */}
-                      {(lead.strongJobs || []).length === 0 && (lead.weakJobs || []).length === 0 && lead.afterHoursSignal && (
+                      {/* Show after-hours indicators if present */}
+                      {lead.afterHoursSignal && (
                         <span style={{ color: theme.warning, fontSize: '12px' }}>
-                          {(lead.afterHoursIndicators || []).slice(0, 2).join(', ')}
-                        </span>
-                      )}
-                      {/* Show employee count if relevant */}
-                      {(lead.strongJobs || []).length === 0 && (lead.weakJobs || []).length === 0 && !lead.afterHoursSignal && lead.employeeCount && (
-                        <span style={{ color: theme.textMuted, fontSize: '12px' }}>
-                          {lead.employeeCount} employees detected
+                          Also: {(lead.afterHoursIndicators || []).slice(0, 2).join(', ')}
                         </span>
                       )}
                       {[...(lead.strongJobs || []), ...(lead.weakJobs || [])].length > 2 && (
@@ -1213,7 +1280,7 @@ function DiscoveryPlatform() {
                   <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                       <button
-                        onClick={() => deleteLead(idx, true)}
+                        onClick={() => deleteLead(idx, 'jobs')}
                         style={{
                           padding: '6px 8px',
                           background: 'transparent',
@@ -1229,7 +1296,7 @@ function DiscoveryPlatform() {
                         {Icons.trash}
                       </button>
                       <button
-                        onClick={() => setExpandedLead(expandedLead === `signal-${idx}` ? null : `signal-${idx}`)}
+                        onClick={() => setExpandedLead(expandedLead === `jobs-${idx}` ? null : `jobs-${idx}`)}
                         style={{
                           padding: '6px 8px',
                           background: 'transparent',
@@ -1239,14 +1306,14 @@ function DiscoveryPlatform() {
                           display: 'flex',
                           alignItems: 'center'
                         }}
-                        title={expandedLead === `signal-${idx}` ? 'Collapse' : 'Expand'}
+                        title={expandedLead === `jobs-${idx}` ? 'Collapse' : 'Expand'}
                       >
-                        {expandedLead === `signal-${idx}` ? Icons.chevronUp : Icons.chevronDown}
+                        {expandedLead === `jobs-${idx}` ? Icons.chevronUp : Icons.chevronDown}
                       </button>
                     </div>
                   </td>
                 </tr>
-                {expandedLead === `signal-${idx}` && (
+                {expandedLead === `jobs-${idx}` && (
                   <tr>
                     <td colSpan="5" style={{ padding: 0 }}>
                       <div style={{
@@ -1301,28 +1368,18 @@ function DiscoveryPlatform() {
                             </a>
                           ))}
                         </div>
-                        {/* Show company signals */}
-                        {(lead.afterHoursSignal || lead.employeeCount || lead.multiLocationSignal) && (
+                        {/* Show after-hours indicators if present */}
+                        {lead.afterHoursSignal && (
                           <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${theme.border}` }}>
                             <h5 style={{ color: theme.textSecondary, fontSize: '12px', fontWeight: 600, marginBottom: '8px' }}>
-                              Company Signals
+                              Also Detected
                             </h5>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                              {lead.employeeCount && (
-                                <span style={{ background: `${theme.accent}15`, color: theme.accent, padding: '4px 10px', borderRadius: '6px', fontSize: '12px' }}>
-                                  {lead.employeeCount} employees
-                                </span>
-                              )}
-                              {lead.afterHoursSignal && (lead.afterHoursIndicators || []).map((ind, i) => (
+                              {(lead.afterHoursIndicators || []).map((ind, i) => (
                                 <span key={i} style={{ background: `${theme.warning}15`, color: theme.warning, padding: '4px 10px', borderRadius: '6px', fontSize: '12px' }}>
                                   {ind}
                                 </span>
                               ))}
-                              {lead.multiLocationSignal && (
-                                <span style={{ background: `${theme.success}15`, color: theme.success, padding: '4px 10px', borderRadius: '6px', fontSize: '12px' }}>
-                                  Multi-location
-                                </span>
-                              )}
                             </div>
                           </div>
                         )}
@@ -1335,16 +1392,124 @@ function DiscoveryPlatform() {
           </tbody>
         </table>
       </div>
-      {signalFoundLeads.length === 0 && (
+      {jobSignalLeads.length === 0 && (
         <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-          <p style={{ color: theme.textMuted }}>No leads with hiring signals found</p>
+          <p style={{ color: theme.textMuted }}>No companies with job postings found</p>
         </div>
       )}
     </div>
   );
 
-  // ==================== RENDER: NO SIGNAL TABLE ====================
-  const renderNoSignalTable = () => (
+  // ==================== RENDER: AFTER HOURS TABLE ====================
+  const renderAfterHoursTable = () => (
+    <div style={{
+      background: theme.bgSecondary,
+      borderRadius: '12px',
+      border: `1px solid ${theme.warning}30`,
+      overflow: 'hidden'
+    }}>
+      <div style={{
+        padding: '16px 20px',
+        background: `${theme.warning}10`,
+        borderBottom: `1px solid ${theme.warning}30`,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px'
+      }}>
+        <span style={{ color: theme.warning }}>{Icons.zap}</span>
+        <span style={{ color: theme.textPrimary, fontSize: '15px', fontWeight: 600 }}>
+          After-Hours Service
+        </span>
+        <span style={{ color: theme.warning, fontSize: '13px' }}>
+          - Companies offering 24/7, emergency, or same-day service
+        </span>
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ background: theme.bgTertiary }}>
+              <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Company</th>
+              <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Domain</th>
+              <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>After-Hours Indicators</th>
+              <th style={{ padding: '14px 16px', textAlign: 'left', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Location</th>
+              <th style={{ padding: '14px 16px', textAlign: 'center', color: theme.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', width: '80px' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {afterHoursLeads.map((lead, idx) => (
+              <tr key={idx} style={{ borderTop: `1px solid ${theme.border}` }}>
+                <td style={{ padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '8px',
+                      background: `${theme.warning}20`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: theme.warning,
+                      fontSize: '14px',
+                      fontWeight: 600
+                    }}>
+                      {(lead.name || lead.domain || '?')[0].toUpperCase()}
+                    </div>
+                    <span style={{ color: theme.textPrimary, fontSize: '14px' }}>{lead.name || '-'}</span>
+                  </div>
+                </td>
+                <td style={{ padding: '14px 16px', color: theme.textSecondary, fontSize: '14px' }}>{lead.domain || '-'}</td>
+                <td style={{ padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {(lead.afterHoursIndicators || []).map((ind, i) => (
+                      <span key={i} style={{
+                        background: `${theme.warning}20`,
+                        color: theme.warning,
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: 500
+                      }}>
+                        {ind}
+                      </span>
+                    ))}
+                  </div>
+                </td>
+                <td style={{ padding: '14px 16px', color: theme.textSecondary, fontSize: '14px' }}>{lead.location || '-'}</td>
+                <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                  <button
+                    onClick={() => deleteLead(idx, 'afterhours')}
+                    style={{
+                      padding: '6px 8px',
+                      background: 'transparent',
+                      border: `1px solid ${theme.error}40`,
+                      borderRadius: '6px',
+                      color: theme.error,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto'
+                    }}
+                    title="Delete"
+                  >
+                    {Icons.trash}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {afterHoursLeads.length === 0 && (
+        <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+          <p style={{ color: theme.textMuted }}>No companies with after-hours service found</p>
+        </div>
+      )}
+    </div>
+  );
+
+  // ==================== RENDER: GENERAL BLAST TABLE ====================
+  const renderGeneralBlastTable = () => (
     <div style={{
       background: theme.bgSecondary,
       borderRadius: '12px',
@@ -1361,10 +1526,10 @@ function DiscoveryPlatform() {
       }}>
         <span style={{ color: theme.textMuted }}>{Icons.users}</span>
         <span style={{ color: theme.textPrimary, fontSize: '15px', fontWeight: 600 }}>
-          General Blast Campaign
+          General Blast
         </span>
         <span style={{ color: theme.textMuted, fontSize: '13px' }}>
-          - Companies without specific hiring signals
+          - Companies without specific signals detected
         </span>
       </div>
       <div style={{ overflowX: 'auto' }}>
@@ -1379,7 +1544,7 @@ function DiscoveryPlatform() {
             </tr>
           </thead>
           <tbody>
-            {noSignalLeads.map((lead, idx) => (
+            {generalBlastLeads.map((lead, idx) => (
               <tr key={idx} style={{ borderTop: `1px solid ${theme.border}` }}>
                 <td style={{ padding: '14px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1405,7 +1570,7 @@ function DiscoveryPlatform() {
                 <td style={{ padding: '14px 16px', color: theme.textSecondary, fontSize: '14px' }}>{lead.location || '-'}</td>
                 <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                   <button
-                    onClick={() => deleteLead(idx, false)}
+                    onClick={() => deleteLead(idx, 'blast')}
                     style={{
                       padding: '6px 8px',
                       background: 'transparent',
@@ -1428,9 +1593,9 @@ function DiscoveryPlatform() {
           </tbody>
         </table>
       </div>
-      {noSignalLeads.length === 0 && (
+      {generalBlastLeads.length === 0 && (
         <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-          <p style={{ color: theme.textMuted }}>No leads in general blast campaign</p>
+          <p style={{ color: theme.textMuted }}>No leads in general blast</p>
         </div>
       )}
     </div>
@@ -1467,12 +1632,12 @@ function DiscoveryPlatform() {
           <div style={{ display: 'flex', gap: '4px' }}>
             {[
               { id: 'upload', label: 'Upload', icon: Icons.upload },
-              { id: 'results', label: 'Results', icon: Icons.target, count: signalFoundLeads.length + noSignalLeads.length }
+              { id: 'results', label: 'Results', icon: Icons.target, count: totalScanned }
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={() => (tab.id === 'upload' || signalFoundLeads.length + noSignalLeads.length > 0) ? setActiveTab(tab.id) : null}
-                disabled={tab.id === 'results' && signalFoundLeads.length + noSignalLeads.length === 0}
+                onClick={() => (tab.id === 'upload' || totalScanned > 0) ? setActiveTab(tab.id) : null}
+                disabled={tab.id === 'results' && totalScanned === 0}
                 style={{
                   padding: '8px 16px',
                   background: activeTab === tab.id ? theme.bgTertiary : 'transparent',
@@ -1480,11 +1645,11 @@ function DiscoveryPlatform() {
                   borderRadius: '8px',
                   color: activeTab === tab.id ? theme.textPrimary : theme.textMuted,
                   fontSize: '14px',
-                  cursor: tab.id === 'results' && signalFoundLeads.length + noSignalLeads.length === 0 ? 'not-allowed' : 'pointer',
+                  cursor: tab.id === 'results' && totalScanned === 0 ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  opacity: tab.id === 'results' && signalFoundLeads.length + noSignalLeads.length === 0 ? 0.5 : 1
+                  opacity: tab.id === 'results' && totalScanned === 0 ? 0.5 : 1
                 }}
               >
                 {tab.icon}

@@ -457,11 +457,15 @@ export default async function handler(req, res) {
     }
 
     // ==================== FINAL SIGNAL DETERMINATION ====================
-    // Step 5: Stack signals - upgrade if non-job signals present
+    // Prioritize QUALITY over QUANTITY
+    // Only 2 signal types qualify:
+    // 1. Indeed Job Search - companies with job postings (dispatcher, receptionist, etc.)
+    // 2. After Hours Service - companies offering 24/7, emergency, same-day service
+    // Employee count is NO LONGER a qualifying signal
 
     const hasStrongJobSignal = strongSignalJobs.length > 0;
     const hasWeakJobSignal = weakSignalJobs.length > 0;
-    const hasNonJobSignal = employeeSignal || afterHoursSignal || multiLocationSignal;
+    const hasJobSignal = hasStrongJobSignal || hasWeakJobSignal;
 
     let finalSignal = 'none';
     let finalStrength = 'none';
@@ -482,32 +486,22 @@ export default async function handler(req, res) {
       signals.push('weak_job_signal');
       signalReasons.push(`Weak job signal: ${weakSignalJobs.map(j => j.title).slice(0, 2).join(', ')}`);
     }
-    // No job signal but has non-job signals = WEAK (upgraded)
-    else if (hasNonJobSignal) {
+    // No job signal but has after-hours service = WEAK (after-hours filter)
+    else if (afterHoursSignal) {
       finalSignal = 'found';
       finalStrength = 'weak';
-      signals.push('non_job_signal');
-      signalReasons.push('No job signal but company indicators present');
-    }
-
-    // Add specific signal types
-    if (employeeSignal) {
-      signals.push('employee_count');
-      signalReasons.push(`${employeeCount}+ employees (likely phone delegation)`);
-    }
-
-    if (afterHoursSignal) {
       signals.push('after_hours');
-      signalReasons.push(`After-hours exposure: ${afterHoursIndicators.slice(0, 2).join(', ')}`);
+      signalReasons.push(`After-hours service: ${afterHoursIndicators.slice(0, 2).join(', ')}`);
     }
 
-    if (multiLocationSignal) {
-      signals.push('multi_location');
-      signalReasons.push('Multi-location operation');
+    // Add after_hours signal if present (even with job signals)
+    if (afterHoursSignal && hasJobSignal) {
+      signals.push('after_hours');
+      signalReasons.push(`Also offers after-hours: ${afterHoursIndicators.slice(0, 2).join(', ')}`);
     }
 
-    // If strong job + non-job signals, note the stack
-    if (hasStrongJobSignal && hasNonJobSignal) {
+    // If strong job + after-hours, note the stack
+    if (hasStrongJobSignal && afterHoursSignal) {
       finalStrength = 'very_strong';
       signalReasons.push('Multiple signal types detected (high confidence)');
     }
