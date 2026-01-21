@@ -109,40 +109,76 @@ function DiscoveryPlatform() {
   }, [generalBlastLeads]);
 
   // ==================== FILE HANDLING ====================
-  // Parse a single CSV line handling quoted values
-  const parseCSVLine = (line) => {
-    const values = [];
-    let current = '';
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        values.push(current);
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    values.push(current);
-    return values;
-  };
-
+  // Parse CSV text handling multiline quoted fields (for Apple Numbers, Google Sheets, etc.)
   const parseCSV = (text) => {
-    const lines = text.split('\n').filter(line => line.trim());
-    if (lines.length < 2) throw new Error('CSV must have headers and at least one row');
-
-    // Parse header line using CSV parser (handles quoted headers with commas)
-    const rawHeaders = parseCSVLine(lines[0]).map(h => h.trim().replace(/['"]/g, ''));
-    const headers = rawHeaders.map(h => h.toLowerCase());
     const rows = [];
     const skipped = { noNameOrDomain: 0, emptyRows: 0 };
 
-    for (let i = 1; i < lines.length; i++) {
-      const values = parseCSVLine(lines[i]);
-      if (values.length === 0 || values.every(v => !v.trim())) {
+    // Parse entire CSV character by character to handle multiline quoted fields
+    const allRows = [];
+    let currentRow = [];
+    let currentValue = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const nextChar = text[i + 1];
+
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          // Escaped quote ("") - add single quote and skip next
+          currentValue += '"';
+          i++;
+        } else {
+          // Toggle quote mode
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        // End of field
+        currentRow.push(currentValue.trim());
+        currentValue = '';
+      } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+        // End of row (handle both \n and \r\n)
+        if (char === '\r') i++; // Skip the \n in \r\n
+        currentRow.push(currentValue.trim());
+        if (currentRow.some(v => v)) { // Only add non-empty rows
+          allRows.push(currentRow);
+        }
+        currentRow = [];
+        currentValue = '';
+      } else if (char === '\r' && !inQuotes) {
+        // End of row (just \r, old Mac format)
+        currentRow.push(currentValue.trim());
+        if (currentRow.some(v => v)) {
+          allRows.push(currentRow);
+        }
+        currentRow = [];
+        currentValue = '';
+      } else {
+        currentValue += char;
+      }
+    }
+
+    // Don't forget the last row/value
+    if (currentValue || currentRow.length > 0) {
+      currentRow.push(currentValue.trim());
+      if (currentRow.some(v => v)) {
+        allRows.push(currentRow);
+      }
+    }
+
+    if (allRows.length < 2) throw new Error('CSV must have headers and at least one row');
+
+    // First row is headers
+    const rawHeaders = allRows[0].map(h => h.replace(/^["']|["']$/g, '').trim());
+    const headers = rawHeaders.map(h => h.toLowerCase());
+    const totalDataRows = allRows.length - 1;
+
+    // Process data rows
+    for (let i = 1; i < allRows.length; i++) {
+      const values = allRows[i];
+
+      if (values.length === 0 || values.every(v => !v)) {
         skipped.emptyRows++;
         continue;
       }
@@ -150,13 +186,13 @@ function DiscoveryPlatform() {
       // Store all original data with original header names
       const originalData = {};
       rawHeaders.forEach((header, idx) => {
-        originalData[header] = values[idx]?.trim().replace(/['"]/g, '') || '';
+        originalData[header] = (values[idx] || '').replace(/^["']|["']$/g, '');
       });
 
       // Also create lowercase version for easy lookup
       const row = {};
       headers.forEach((header, idx) => {
-        row[header] = values[idx]?.trim().replace(/['"]/g, '') || '';
+        row[header] = (values[idx] || '').replace(/^["']|["']$/g, '');
       });
 
       // Extract key fields for scanning (map various column name formats)
@@ -216,7 +252,7 @@ function DiscoveryPlatform() {
       }
     }
 
-    return { rows, skipped, totalRows: lines.length - 1 };
+    return { rows, skipped, totalRows: totalDataRows };
   };
 
   const handleDrag = useCallback((e) => {
