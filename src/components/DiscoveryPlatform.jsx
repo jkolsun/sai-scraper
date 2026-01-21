@@ -61,6 +61,7 @@ function DiscoveryPlatform() {
   const [manualName, setManualName] = useState('');
   const [expandedLead, setExpandedLead] = useState(null);
   const [resultsView, setResultsView] = useState('jobs'); // 'jobs', 'afterhours', or 'blast'
+  const [scanSummary, setScanSummary] = useState(null); // Summary of skipped/failed leads
 
   // Load saved data
   useEffect(() => {
@@ -137,10 +138,14 @@ function DiscoveryPlatform() {
     const rawHeaders = parseCSVLine(lines[0]).map(h => h.trim().replace(/['"]/g, ''));
     const headers = rawHeaders.map(h => h.toLowerCase());
     const rows = [];
+    const skipped = { noNameOrDomain: 0, emptyRows: 0 };
 
     for (let i = 1; i < lines.length; i++) {
       const values = parseCSVLine(lines[i]);
-      if (values.length === 0) continue;
+      if (values.length === 0 || values.every(v => !v.trim())) {
+        skipped.emptyRows++;
+        continue;
+      }
 
       // Store all original data with original header names
       const originalData = {};
@@ -195,6 +200,7 @@ function DiscoveryPlatform() {
         // Keep ALL original data for export
         _originalData: originalData,
         _originalHeaders: rawHeaders,
+        _rowNumber: i + 1, // Track original row number (1-indexed, +1 for header)
         source: 'csv_upload'
       };
 
@@ -205,10 +211,12 @@ function DiscoveryPlatform() {
 
       if (lead.name || lead.domain) {
         rows.push(lead);
+      } else {
+        skipped.noNameOrDomain++;
       }
     }
 
-    return rows;
+    return { rows, skipped, totalRows: lines.length - 1 };
   };
 
   const handleDrag = useCallback((e) => {
@@ -238,6 +246,7 @@ function DiscoveryPlatform() {
 
   const processFile = async (file) => {
     setError(null);
+    setScanSummary(null);
 
     if (!file.name.endsWith('.csv')) {
       setError('Please upload a CSV file');
@@ -246,7 +255,7 @@ function DiscoveryPlatform() {
 
     try {
       const text = await file.text();
-      const parsedLeads = parseCSV(text);
+      const { rows: parsedLeads, skipped, totalRows } = parseCSV(text);
 
       if (parsedLeads.length === 0) {
         setError('No valid leads found in CSV. Make sure you have columns like "name", "domain", or "company".');
@@ -254,6 +263,18 @@ function DiscoveryPlatform() {
       }
 
       setLeads(parsedLeads);
+
+      // Track skipped leads for later notification
+      const totalSkipped = skipped.noNameOrDomain + skipped.emptyRows;
+      if (totalSkipped > 0) {
+        setScanSummary({
+          type: 'upload',
+          totalRows,
+          validLeads: parsedLeads.length,
+          skipped
+        });
+      }
+
       setError(null);
     } catch (err) {
       setError(`Error parsing CSV: ${err.message}`);
@@ -269,10 +290,12 @@ function DiscoveryPlatform() {
     setJobSignalLeads([]);
     setAfterHoursLeads([]);
     setGeneralBlastLeads([]);
+    setScanSummary(null);
 
     const jobResults = [];        // Companies with job postings
     const afterHoursResults = []; // Companies with after-hours service (but no jobs)
     const blastResults = [];      // Everyone else
+    const scanErrors = [];        // Track API/network errors
 
     for (let i = 0; i < leads.length; i++) {
       const lead = leads[i];
@@ -335,16 +358,19 @@ function DiscoveryPlatform() {
             setGeneralBlastLeads([...blastResults]);
           }
         } else {
-          // API error - add to general blast
+          // API error - track it and add to general blast
+          const errorMsg = `HTTP ${response.status}`;
+          scanErrors.push({ company: lead.name || lead.domain, error: errorMsg });
           blastResults.push({
             ...lead,
             signalFound: false,
-            scanError: 'API error'
+            scanError: errorMsg
           });
           setGeneralBlastLeads([...blastResults]);
         }
       } catch (err) {
-        // Network error - add to general blast
+        // Network error - track it and add to general blast
+        scanErrors.push({ company: lead.name || lead.domain, error: err.message });
         blastResults.push({
           ...lead,
           signalFound: false,
@@ -358,6 +384,21 @@ function DiscoveryPlatform() {
         await new Promise(r => setTimeout(r, 300));
       }
     }
+
+    // Calculate final results
+    const totalProcessed = jobResults.length + afterHoursResults.length + blastResults.length;
+    const totalInput = leads.length;
+
+    // Set scan summary for notification
+    setScanSummary({
+      type: 'scan',
+      totalInput,
+      totalProcessed,
+      jobSignals: jobResults.length,
+      afterHours: afterHoursResults.length,
+      generalBlast: blastResults.length,
+      errors: scanErrors
+    });
 
     setScanProgress({ current: leads.length, total: leads.length, status: 'complete', currentCompany: '' });
     setActiveTab('results');
@@ -663,6 +704,53 @@ function DiscoveryPlatform() {
         </div>
       )}
 
+      {/* Upload Summary - shows skipped leads */}
+      {scanSummary && scanSummary.type === 'upload' && (
+        <div style={{
+          background: `${theme.warning}15`,
+          border: `1px solid ${theme.warning}40`,
+          borderRadius: '12px',
+          padding: '16px 20px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '12px'
+        }}>
+          <div style={{ color: theme.warning, flexShrink: 0, marginTop: '2px' }}>
+            {Icons.alertCircle}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 600, marginBottom: '6px' }}>
+              {scanSummary.skipped.noNameOrDomain + scanSummary.skipped.emptyRows} rows skipped from CSV
+            </div>
+            <div style={{ color: theme.textSecondary, fontSize: '13px', lineHeight: '1.5' }}>
+              {scanSummary.skipped.noNameOrDomain > 0 && (
+                <div>• {scanSummary.skipped.noNameOrDomain} row(s) missing company name AND domain</div>
+              )}
+              {scanSummary.skipped.emptyRows > 0 && (
+                <div>• {scanSummary.skipped.emptyRows} empty row(s)</div>
+              )}
+              <div style={{ marginTop: '6px', color: theme.textMuted, fontSize: '12px' }}>
+                Loaded {scanSummary.validLeads} of {scanSummary.totalRows} total rows
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => setScanSummary(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: theme.textMuted,
+              cursor: 'pointer',
+              padding: '4px',
+              flexShrink: 0
+            }}
+          >
+            {Icons.x}
+          </button>
+        </div>
+      )}
+
       {leads.length > 0 && (
         <div style={{ marginTop: '30px' }}>
           <div style={{
@@ -912,8 +1000,84 @@ function DiscoveryPlatform() {
   const totalScanned = jobSignalLeads.length + afterHoursLeads.length + generalBlastLeads.length;
   const qualitySignals = jobSignalLeads.length + afterHoursLeads.length;
 
+  const renderScanSummaryBanner = () => {
+    if (!scanSummary) return null;
+
+    // For scan results - show if there were any errors or discrepancies
+    if (scanSummary.type === 'scan') {
+      const hasErrors = scanSummary.errors && scanSummary.errors.length > 0;
+      const hasMismatch = scanSummary.totalInput !== scanSummary.totalProcessed;
+
+      if (!hasErrors && !hasMismatch) return null;
+
+      return (
+        <div style={{
+          background: `${theme.warning}15`,
+          border: `1px solid ${theme.warning}40`,
+          borderRadius: '12px',
+          padding: '16px 20px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '12px'
+        }}>
+          <div style={{ color: theme.warning, flexShrink: 0, marginTop: '2px' }}>
+            {Icons.alertCircle}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 600, marginBottom: '6px' }}>
+              Scan Summary: {scanSummary.totalProcessed} of {scanSummary.totalInput} leads processed
+            </div>
+            <div style={{ color: theme.textSecondary, fontSize: '13px', lineHeight: '1.5' }}>
+              {hasErrors && (
+                <div style={{ marginBottom: '8px' }}>
+                  <strong>{scanSummary.errors.length} lead(s) had API errors</strong> and were added to General Blast:
+                  <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                    {scanSummary.errors.slice(0, 5).map((err, i) => (
+                      <li key={i} style={{ marginBottom: '2px' }}>
+                        {err.company}: {err.error}
+                      </li>
+                    ))}
+                    {scanSummary.errors.length > 5 && (
+                      <li style={{ color: theme.textMuted }}>
+                        ...and {scanSummary.errors.length - 5} more
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+              {hasMismatch && !hasErrors && (
+                <div>
+                  Some leads may have been skipped due to missing company name or domain.
+                </div>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={() => setScanSummary(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: theme.textMuted,
+              cursor: 'pointer',
+              padding: '4px',
+              flexShrink: 0
+            }}
+          >
+            {Icons.x}
+          </button>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   const renderResultsTab = () => (
     <div style={{ padding: '24px' }}>
+      {/* Scan Summary Banner */}
+      {renderScanSummaryBanner()}
+
       {/* Stats Header */}
       <div style={{
         display: 'grid',
