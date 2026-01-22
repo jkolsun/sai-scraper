@@ -322,8 +322,41 @@ export default async function handler(req, res) {
         const url = result.link || '';
 
         // Extract clean job title
-        let jobTitle = title.split(/[|\-–—]/)[0].trim();
+        // Indeed titles often formatted as: "Company Name - Job Title | Indeed.com"
+        // or "Job Title - Company Name | Indeed.com"
+        // We need to identify which part is the actual job role
+        let jobTitle = title;
+
+        // First, remove " | Indeed.com" or similar suffixes
+        jobTitle = jobTitle.replace(/\s*\|\s*Indeed\.com.*$/i, '').trim();
+
+        // Split by dash/hyphen to get parts
+        const parts = jobTitle.split(/\s*[-–—]\s*/).map(p => p.trim()).filter(p => p);
+
+        // Job role keywords to identify which part is the job title
+        const jobRoleKeywords = /\b(receptionist|dispatcher|coordinator|assistant|manager|representative|csr|customer\s*service|front\s*desk|office|admin|call\s*center|scheduler|intake|operator|technician|tech|installer|plumber|electrician|helper|apprentice|sales|marketing)\b/i;
+
+        // Find the part that contains job role keywords
+        let bestPart = parts[0]; // default to first part
+        for (const part of parts) {
+          if (jobRoleKeywords.test(part)) {
+            bestPart = part;
+            break;
+          }
+        }
+
+        jobTitle = bestPart;
+
+        // Remove "at Company" or "in Location" suffixes
         jobTitle = jobTitle.replace(/\s+at\s+.*$/i, '').replace(/\s+in\s+.*$/i, '').trim();
+
+        // Fix capitalization: convert ALL CAPS to Title Case
+        if (jobTitle === jobTitle.toUpperCase() && jobTitle.length > 2) {
+          jobTitle = jobTitle.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        }
+
+        // Fix spacing issues (multiple spaces, no space after slash)
+        jobTitle = jobTitle.replace(/\s+/g, ' ').replace(/\/\s*/g, ' / ').trim();
 
         const classification = classifyJob(jobTitle, snippet);
 
