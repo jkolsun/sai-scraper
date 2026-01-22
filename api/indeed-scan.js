@@ -355,6 +355,14 @@ export default async function handler(req, res) {
           jobTitle = jobTitle.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
         }
 
+        // Preserve common acronyms (HVAC, CSR, etc.)
+        jobTitle = jobTitle
+          .replace(/\bHvac\b/g, 'HVAC')
+          .replace(/\bCsr\b/g, 'CSR')
+          .replace(/\bHr\b/g, 'HR')
+          .replace(/\bIt\b/g, 'IT')
+          .replace(/\bAc\b/g, 'AC');
+
         // Fix spacing issues (multiple spaces, no space after slash)
         jobTitle = jobTitle.replace(/\s+/g, ' ').replace(/\/\s*/g, ' / ').trim();
 
