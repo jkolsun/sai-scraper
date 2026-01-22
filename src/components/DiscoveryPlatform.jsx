@@ -492,9 +492,9 @@ function DiscoveryPlatform() {
   const exportJobSignalCSV = () => {
     if (jobSignalLeads.length === 0) return;
 
-    // Signal-related headers to add
+    // Signal-related headers to add - hiringTitle is the key column for campaigns
     const signalHeaders = [
-      'signal_strength', 'strong_jobs_count', 'weak_jobs_count', 'total_jobs', 'job_score',
+      'hiringTitle', 'signal_strength', 'strong_jobs_count', 'weak_jobs_count', 'total_jobs', 'job_score',
       'job_titles', 'job_urls'
     ];
 
@@ -507,8 +507,13 @@ function DiscoveryPlatform() {
       const jobTitles = allJobs.map(j => j.title).join('; ');
       const jobUrls = allJobs.slice(0, 5).map(j => j.url).join('; ');
 
+      // hiringTitle: Get the primary job title they're hiring for (first strong job, or first weak job)
+      const primaryJob = (lead.strongJobs || [])[0] || (lead.weakJobs || [])[0] || (lead.allJobs || [])[0];
+      const hiringTitle = primaryJob?.title || '';
+
       const originalValues = originalHeaders.map(h => lead._originalData?.[h] || '');
       const signalValues = [
+        hiringTitle,
         lead.signalStrength || '',
         (lead.strongJobs || []).length,
         (lead.weakJobs || []).length,
