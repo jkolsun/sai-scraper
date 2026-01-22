@@ -334,34 +334,64 @@ export default async function handler(req, res) {
         const parts = jobTitle.split(/\s*[-–—]\s*/).map(p => p.trim()).filter(p => p);
 
         // Job role keywords to identify which part is the job title
-        const jobRoleKeywords = /\b(receptionist|dispatcher|coordinator|assistant|manager|representative|csr|customer\s*service|front\s*desk|office|admin|call\s*center|scheduler|intake|operator|technician|tech|installer|plumber|electrician|helper|apprentice|sales|marketing)\b/i;
+        const jobRoleKeywords = /\b(receptionist|dispatcher|coordinator|assistant|manager|representative|csr|customer\s*service|front\s*desk|office|admin|call\s*center|scheduler|intake|operator|technician|tech|installer|plumber|electrician|helper|apprentice|sales|marketing|clerk|secretary|bookkeeper|accountant|specialist|analyst|support|service\s*advisor)\b/i;
 
-        // Find the part that contains job role keywords
-        let bestPart = parts[0]; // default to first part
+        // Words that are NOT job titles - industry terms, company types, locations
+        const notJobTitles = /^(hvac|plumbing|electrical|heating|cooling|air\s*conditioning|ac|mechanical|construction|roofing|landscaping|cleaning|restoration|pest\s*control|jobs?|careers?|hiring|openings?|positions?|opportunities?|now\s*hiring|urgently?\s*hiring|full[\s-]?time|part[\s-]?time|remote|hybrid|on[\s-]?site|\d+.*(?:hr|hour|year|yr|annually|week|wk)|(?:tx|ca|fl|ny|pa|oh|il|ga|nc|mi|nj|va|wa|az|ma|tn|in|mo|md|wi|mn|co|al|sc|la|ky|or|ok|ct|ut|ia|nv|ar|ms|ks|nm|ne|wv|id|hi|nh|me|mt|ri|de|sd|nd|ak|dc|wy|vt))\s*$/i;
+
+        // Find the part that contains job role keywords (and is not a "not job title" term)
+        let bestPart = null;
         for (const part of parts) {
+          // Skip if it's an industry/location term
+          if (notJobTitles.test(part)) continue;
+
           if (jobRoleKeywords.test(part)) {
             bestPart = part;
             break;
           }
         }
 
-        jobTitle = bestPart;
+        // If no keyword match, try to find ANY part that's not an industry term
+        if (!bestPart) {
+          for (const part of parts) {
+            if (!notJobTitles.test(part) && part.length > 3) {
+              bestPart = part;
+              break;
+            }
+          }
+        }
+
+        // If still nothing good, try to extract from snippet
+        if (!bestPart || notJobTitles.test(bestPart)) {
+          const snippetMatch = snippet.match(/(?:hiring|looking\s*for|seeking|need)\s*(?:a|an)?\s*([A-Za-z\s\/]+?)(?:\.|,|to\s|who\s|with\s|\d)/i);
+          if (snippetMatch && snippetMatch[1]) {
+            const extracted = snippetMatch[1].trim();
+            if (!notJobTitles.test(extracted) && extracted.length > 3) {
+              bestPart = extracted;
+            }
+          }
+        }
+
+        // Final fallback: leave empty rather than showing bad data
+        jobTitle = bestPart || '';
 
         // Remove "at Company" or "in Location" suffixes
         jobTitle = jobTitle.replace(/\s+at\s+.*$/i, '').replace(/\s+in\s+.*$/i, '').trim();
 
         // Fix capitalization: convert ALL CAPS to Title Case
-        if (jobTitle === jobTitle.toUpperCase() && jobTitle.length > 2) {
+        if (jobTitle && jobTitle === jobTitle.toUpperCase() && jobTitle.length > 2) {
           jobTitle = jobTitle.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
         }
 
         // Preserve common acronyms (HVAC, CSR, etc.)
-        jobTitle = jobTitle
-          .replace(/\bHvac\b/g, 'HVAC')
-          .replace(/\bCsr\b/g, 'CSR')
-          .replace(/\bHr\b/g, 'HR')
-          .replace(/\bIt\b/g, 'IT')
-          .replace(/\bAc\b/g, 'AC');
+        if (jobTitle) {
+          jobTitle = jobTitle
+            .replace(/\bHvac\b/g, 'HVAC')
+            .replace(/\bCsr\b/g, 'CSR')
+            .replace(/\bHr\b/g, 'HR')
+            .replace(/\bIt\b/g, 'IT')
+            .replace(/\bAc\b/g, 'AC');
+        }
 
         // Fix spacing issues (multiple spaces, no space after slash)
         jobTitle = jobTitle.replace(/\s+/g, ' ').replace(/\/\s*/g, ' / ').trim();
